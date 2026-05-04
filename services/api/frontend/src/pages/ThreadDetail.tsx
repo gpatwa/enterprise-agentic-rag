@@ -1,19 +1,16 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AskBox } from '@/components/home/AskBox';
 import { AnswerCard } from '@/components/answer/AnswerCard';
+import { SourcesReasoningRail } from '@/components/answer/SourcesReasoningRail';
 import { SavedQuestionDialog } from '@/components/saved/SavedQuestionDialog';
+import { MessageReplay } from '@/components/threads/MessageReplay';
 import { useAsk } from '@/lib/useAsk';
+import { useThread, useThreadMessages } from '@/lib/queries';
 import { useToast } from '@/components/ui/use-toast';
 import { formatRelative } from '@/lib/format';
-import type { Thread } from '@/types';
-
-interface ThreadDetailResponse extends Thread {
-  pinned?: boolean;
-}
 
 export function ThreadDetailPage() {
   const { threadId = '' } = useParams<{ threadId: string }>();
@@ -22,35 +19,17 @@ export function ThreadDetailPage() {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [pendingSaveQuestion, setPendingSaveQuestion] = useState('');
 
-  const {
-    data: thread,
-    isLoading,
-    error,
-  } = useQuery<ThreadDetailResponse>({
-    queryKey: ['threads', threadId],
-    queryFn: async () => {
-      const { api } = await import('@/lib/api');
-      // No specific GET helper yet — call the endpoint directly.
-      const res = await fetch(`/api/v1/threads/${threadId}`, {
-        headers: {
-          Authorization: `Bearer ${await (await import('@/lib/api')).getToken()}`,
-        },
-      });
-      if (!res.ok) throw new Error(`thread fetch failed: ${res.status}`);
-      void api;
-      return res.json();
-    },
-    enabled: Boolean(threadId),
-  });
+  const { data: thread, isLoading: threadLoading, error: threadError } = useThread(threadId);
+  const { data: msgs, isLoading: msgsLoading } = useThreadMessages(threadId);
+  const messages = msgs?.messages ?? [];
 
   const handleAsk = (q: string) => ask(q, { sessionId: threadId });
-
   const handleSaveTurn = (q: string) => {
     setPendingSaveQuestion(q);
     setSaveDialogOpen(true);
   };
 
-  if (error) {
+  if (threadError) {
     return (
       <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12">
@@ -69,7 +48,8 @@ export function ThreadDetailPage() {
   }
 
   return (
-    <div className="flex-1 overflow-auto">
+    <>
+      <div className="flex-1 overflow-auto">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12">
         {/* Breadcrumb */}
         <Button asChild variant="ghost" size="sm" className="mb-6 -ml-2">
@@ -80,7 +60,7 @@ export function ThreadDetailPage() {
         </Button>
 
         {/* Header */}
-        {isLoading ? (
+        {threadLoading ? (
           <div className="space-y-3 mb-8">
             <div className="h-7 w-2/3 bg-surface-muted rounded animate-pulse" />
             <div className="h-4 w-1/3 bg-surface-muted rounded animate-pulse" />
@@ -107,24 +87,24 @@ export function ThreadDetailPage() {
           )
         )}
 
-        {/* History placeholder (W2 will render full message replay) */}
-        <div className="glass rounded-lg p-5 text-sm text-fg-secondary mb-6">
-          <div className="text-xs uppercase tracking-wider text-fg-muted mb-2">Conversation</div>
-          <p>
-            Compass loads prior context from this thread automatically when you continue.
-            <span className="text-fg-muted"> Full message replay ships in W2.</span>
-          </p>
+        {/* Message replay */}
+        <div className="mb-6">
+          <MessageReplay messages={messages} isLoading={msgsLoading} />
         </div>
 
         {/* Active turn */}
         {turn && (
           <div className="mb-6">
-            <AnswerCard turn={turn} onSave={handleSaveTurn} />
+            <AnswerCard
+              turn={turn}
+              onSave={handleSaveTurn}
+              onFollowUp={(q) => ask(q, { sessionId: threadId })}
+            />
           </div>
         )}
 
         {/* Continue */}
-        <div className="space-y-2">
+        <div className="space-y-2 sticky bottom-0 pt-4 pb-4 bg-bg/80 backdrop-blur-sm">
           <div className="text-xs uppercase tracking-wider text-fg-muted">Continue the conversation</div>
           <AskBox
             onSubmit={(q) => {
@@ -136,8 +116,6 @@ export function ThreadDetailPage() {
             }}
           />
         </div>
-
-        <div className="h-12" />
       </div>
 
       <SavedQuestionDialog
@@ -146,6 +124,10 @@ export function ThreadDetailPage() {
         initialQuestion={pendingSaveQuestion}
         initialTitle={pendingSaveQuestion.slice(0, 60)}
       />
-    </div>
+      </div>
+
+      {/* Right-rail trace when a turn is active */}
+      {turn && <SourcesReasoningRail turn={turn} />}
+    </>
   );
 }

@@ -1,7 +1,9 @@
 import {
   AlertCircle,
+  ArrowRight,
   Bookmark,
   ExternalLink,
+  Lightbulb,
   Sparkles,
   Star,
   type LucideIcon,
@@ -24,9 +26,10 @@ import { ContextLayersBlock } from './ContextLayersBlock';
 interface Props {
   turn: AskTurn;
   onSave?: (q: string) => void;
+  onFollowUp?: (q: string) => void;
 }
 
-export function AnswerCard({ turn, onSave }: Props) {
+export function AnswerCard({ turn, onSave, onFollowUp }: Props) {
   return (
     <article className="glass-strong rounded-xl border border-border/60 p-5 space-y-4">
       {/* Header — user question + pipeline */}
@@ -99,6 +102,28 @@ export function AnswerCard({ turn, onSave }: Props) {
 
       {/* Final answer */}
       {turn.answer && <AnswerText content={turn.answer} streaming={turn.streaming} />}
+
+      {/* Follow-up suggestions */}
+      {turn.followUps.length > 0 && onFollowUp && (
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-fg-muted font-medium">
+            <Lightbulb className="w-3 h-3" />
+            Follow up
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {turn.followUps.map((q, i) => (
+              <button
+                key={i}
+                onClick={() => onFollowUp(q)}
+                className="group inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md glass border border-border/60 hover:border-accent/40 hover:bg-accent/[0.06] text-fg-secondary hover:text-fg transition text-left max-w-full"
+              >
+                <span className="truncate">{q}</span>
+                <ArrowRight className="w-3 h-3 flex-shrink-0 text-fg-muted group-hover:text-accent transition" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stream error */}
       {turn.error && (

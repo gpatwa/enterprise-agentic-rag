@@ -92,6 +92,12 @@ export interface ErrorEvent {
   content: string;
 }
 
+export interface FollowUpsEvent {
+  type: 'follow_ups';
+  suggestions: string[];
+  session_id?: string;
+}
+
 export type ChatEvent =
   | StatusEvent
   | ToolResultEvent
@@ -103,7 +109,8 @@ export type ChatEvent =
   | DataResultEvent
   | DataErrorEvent
   | AnswerEvent
-  | ErrorEvent;
+  | ErrorEvent
+  | FollowUpsEvent;
 
 /** Aggregated state of a single ask → answer turn. */
 export interface AskTurn {
@@ -132,6 +139,8 @@ export interface AskTurn {
   toolResults: { tool: string; content: string }[];
   /** final synthesized answer */
   answer: string | null;
+  /** suggested follow-up questions emitted at end of stream */
+  followUps: string[];
   /** terminal error from the stream */
   error: string | null;
   /** whether the stream is still active */

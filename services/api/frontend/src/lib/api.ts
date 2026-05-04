@@ -62,6 +62,16 @@ export const api = {
     if (!res.ok) throw new Error(`pinThread failed: ${res.status}`);
     return res.json();
   },
+  async getThread(threadId: string) {
+    const res = await authedFetch(`/threads/${threadId}`);
+    if (!res.ok) throw new Error(`getThread failed: ${res.status}`);
+    return res.json();
+  },
+  async getThreadMessages(threadId: string, limit = 50): Promise<{ thread_id: string; messages: import('@/types').ThreadMessage[] }> {
+    const res = await authedFetch(`/threads/${threadId}/messages?limit=${limit}`);
+    if (!res.ok) throw new Error(`getThreadMessages failed: ${res.status}`);
+    return res.json();
+  },
 
   // ── Saved questions ──────────────────────────────────────────────
   async listSavedQuestions(opts: { limit?: number; pinnedOnly?: boolean } = {}): Promise<SavedQuestionsResponse> {

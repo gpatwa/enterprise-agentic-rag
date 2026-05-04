@@ -7,6 +7,7 @@ import { Pinned } from '@/components/home/Pinned';
 import { RecentThreads } from '@/components/home/RecentThreads';
 import { RightRail } from '@/components/layout/RightRail';
 import { AnswerCard } from '@/components/answer/AnswerCard';
+import { SourcesReasoningRail } from '@/components/answer/SourcesReasoningRail';
 import { SavedQuestionDialog } from '@/components/saved/SavedQuestionDialog';
 import type { LandingResponse } from '@/types';
 
@@ -138,7 +139,11 @@ export function HomePage() {
           {/* Active turn — answer card stack */}
           {turn && (
             <div className="mt-8">
-              <AnswerCard turn={turn} onSave={handleSaveTurn} />
+              <AnswerCard
+                turn={turn}
+                onSave={handleSaveTurn}
+                onFollowUp={(q) => ask(q, { sessionId: turn.sessionId })}
+              />
             </div>
           )}
 
@@ -159,14 +164,18 @@ export function HomePage() {
         </div>
       </div>
 
-      {/* Right rail */}
-      <RightRail
-        sources={view.sources}
-        knowledge={view.knowledge_counts}
-        governance={view.governance}
-        tenant={view.tenant}
-        user={view.user}
-      />
+      {/* Right rail — switches when a turn is active */}
+      {turn ? (
+        <SourcesReasoningRail turn={turn} />
+      ) : (
+        <RightRail
+          sources={view.sources}
+          knowledge={view.knowledge_counts}
+          governance={view.governance}
+          tenant={view.tenant}
+          user={view.user}
+        />
+      )}
 
       {/* Save-question dialog (controlled — opened from AnswerCard) */}
       <SavedQuestionDialog

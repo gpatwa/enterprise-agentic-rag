@@ -41,6 +41,41 @@ async def get_thread(
     return t
 
 
+@router.get("/threads/{thread_id}/messages")
+async def get_thread_messages(
+    thread_id: str,
+    limit: int = 50,
+    ctx: TenantContext = Depends(get_tenant_context),
+):
+    """
+    Return the chronological message list for a thread.
+
+    Uses the existing chat_history table (session_id == thread_id).
+    Tenant + user scoping enforced by PostgresMemory.get_history.
+    """
+    from app.memory.postgres import postgres_memory
+
+    rows = await postgres_memory.get_history(
+        session_id=thread_id,
+        limit=limit,
+        user_id=ctx.user_id,
+        tenant_id=ctx.tenant_id,
+    )
+    return {
+        "thread_id": thread_id,
+        "messages": [
+            {
+                "id": r.id,
+                "role": r.role,
+                "content": r.content,
+                "created_at": r.created_at.replace(microsecond=0).isoformat() + "Z",
+                "metadata": r.metadata_ or {},
+            }
+            for r in rows
+        ],
+    }
+
+
 class PinThreadRequest(BaseModel):
     pinned: bool
 

@@ -23,6 +23,7 @@ function emptyTurn(question: string, sessionId?: string | null): AskTurn {
     dataError: null,
     toolResults: [],
     answer: null,
+    followUps: [],
     error: null,
     streaming: true,
   };
@@ -65,6 +66,8 @@ function applyEvent(turn: AskTurn, e: ChatEvent): AskTurn {
       return { ...turn, dataError: e.content };
     case 'answer':
       return { ...turn, answer: e.content };
+    case 'follow_ups':
+      return { ...turn, followUps: e.suggestions };
     case 'error':
       return { ...turn, error: e.content, streaming: false };
     case 'step_progress':

@@ -4,13 +4,13 @@ import { HomePage } from '@/pages/Home';
 import { ThreadsPage } from '@/pages/Threads';
 import { ThreadDetailPage } from '@/pages/ThreadDetail';
 import { SavedPage } from '@/pages/Saved';
+import { SolutionsPage } from '@/pages/Solutions';
 import { StubPage } from '@/pages/StubPage';
 import {
   LayoutDashboard,
   Database,
   Brain,
   Bot,
-  Users,
 } from 'lucide-react';
 
 /** Root layout — same AppShell for every authenticated route. */
@@ -104,15 +104,14 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: '/solutions',
+    element: <Navigate to="/solutions/everyone" replace />,
+  },
+  {
     path: '/solutions/:persona',
     element: (
       <RootLayout>
-        <StubPage
-          icon={Users}
-          title="Solutions"
-          description="Persona-specific landing pages: Finance, RevOps, Data, Engineering, Security, Everyone. PERSONA_CONTENT in src/pages/Solutions.tsx is pre-shaped."
-          ship="W2"
-        />
+        <SolutionsPage />
       </RootLayout>
     ),
   },

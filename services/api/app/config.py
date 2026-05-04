@@ -143,6 +143,7 @@ class Settings(BaseSettings):
     # -----------------------------------------------------------------
     # Data Analytics Agent
     # -----------------------------------------------------------------
+    NEW_UI_ENABLED: bool = False               # Serve Compass v2 SPA at root when on (legacy at /v1)
     DATA_ANALYTICS_ENABLED: bool = False       # Master switch (default off)
     ANALYTICS_DB_URL: Optional[str] = None     # Separate read-only DB (falls back to DATABASE_URL)
     ANALYTICS_QUERY_TIMEOUT: int = 10          # Max seconds per SQL query

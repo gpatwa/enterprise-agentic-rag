@@ -231,13 +231,58 @@ app.include_router(sources_routes.router, prefix="/api/v1/sources", tags=["Sourc
 
 # Serve Chat UI at root "/"
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+SPA_DIST_DIR = os.path.join(os.path.dirname(__file__), "frontend", "dist")
+SPA_AVAILABLE = os.path.isdir(SPA_DIST_DIR) and os.path.isfile(os.path.join(SPA_DIST_DIR, "index.html"))
+
+
+# Mount the new SPA's static assets (always available when built)
+if SPA_AVAILABLE:
+    app.mount(
+        "/assets",
+        StaticFiles(directory=os.path.join(SPA_DIST_DIR, "assets")),
+        name="spa-assets",
+    )
+
+# Legacy v1 chat UI — always available at /v1
+@app.get("/v1", include_in_schema=False)
+@app.get("/v1/", include_in_schema=False)
+async def serve_legacy_ui():
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+
 
 @app.get("/", include_in_schema=False)
 async def serve_ui():
+    """
+    Serve the new Compass SPA when NEW_UI_ENABLED=true and the build exists,
+    otherwise fall back to the legacy v1 UI. The legacy UI stays reachable
+    at /v1 either way.
+    """
+    if settings.NEW_UI_ENABLED and SPA_AVAILABLE:
+        return FileResponse(os.path.join(SPA_DIST_DIR, "index.html"))
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+
+
+# SPA client-side routes — return index.html for any unknown path under the SPA
+# (so /threads, /saved, /solutions/finance, etc. all hit the React Router).
+@app.get("/{spa_path:path}", include_in_schema=False)
+async def serve_spa_route(spa_path: str):
+    if not (settings.NEW_UI_ENABLED and SPA_AVAILABLE):
+        return Response(status_code=404)
+    # Don't shadow API or asset paths
+    if spa_path.startswith(("api/", "auth/", "health/", "assets/", "v1/", "static/")):
+        return Response(status_code=404)
+    # Serve actual files if present
+    candidate = os.path.join(SPA_DIST_DIR, spa_path)
+    if os.path.isfile(candidate):
+        return FileResponse(candidate)
+    # Otherwise, hand off to React Router
+    return FileResponse(os.path.join(SPA_DIST_DIR, "index.html"))
+
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
+    if SPA_AVAILABLE and os.path.isfile(os.path.join(SPA_DIST_DIR, "compass-favicon.svg")):
+        return FileResponse(os.path.join(SPA_DIST_DIR, "compass-favicon.svg"))
     return Response(status_code=204)
 
 if __name__ == "__main__":

@@ -21,6 +21,110 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+# ── Follow-up suggestions helper ─────────────────────────────────────
+_FOLLOW_UP_PROMPT = """Given the user's question and the assistant's answer, suggest 3-4 short follow-up questions a user is likely to ask next.
+
+Rules:
+- Each suggestion must be a complete question (ends with ?).
+- Keep each under 80 characters.
+- Vary the angle: drill-down, comparison, trend, root-cause.
+- Output ONLY valid JSON: {"suggestions": ["...", "...", "..."]}
+- No prose, no markdown.
+
+User question: {q}
+Assistant answer: {a}"""
+
+
+_TITLE_PROMPT = """Generate a short title (5-8 words, no quotes, no trailing punctuation) for a conversation that begins with this user question. Be specific and descriptive.
+
+Question: {q}
+
+Output ONLY the title text, nothing else."""
+
+
+async def _generate_thread_title(question: str, llm) -> str | None:
+    """Best-effort 5-8 word LLM title. Returns None on any error."""
+    try:
+        prompt = _TITLE_PROMPT.format(q=(question or "")[:300])
+        response = await llm.chat_completion(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+        )
+        title = (response or "").strip().strip('"').strip("'").rstrip(" .?!,:;")
+        if 3 < len(title) <= 80:
+            return title
+    except Exception:
+        pass
+    return None
+
+
+async def _maybe_update_thread_title(
+    tenant_id: str, user_id: str, thread_id: str, question: str, llm
+) -> None:
+    """
+    Called on stream completion. If the thread is on its first turn (or title
+    is still the truncated derived title), generate a better title via LLM
+    and update the row.
+    """
+    try:
+        from app.threads.manager import (
+            derive_title,
+            get_thread,
+            update_thread_title,
+        )
+
+        existing = await get_thread(tenant_id, user_id, thread_id)
+        if not existing:
+            return
+        # Only re-title if we're at message_count <= 2 (one user + one assistant)
+        # AND the title still matches the derived truncation.
+        if existing["message_count"] > 2:
+            return
+        if existing["title"] != derive_title(question):
+            return  # User or LLM has already set a meaningful title
+
+        new_title = await asyncio.wait_for(
+            _generate_thread_title(question, llm), timeout=4.0
+        )
+        if new_title and new_title != existing["title"]:
+            await update_thread_title(tenant_id, user_id, thread_id, new_title)
+    except Exception as e:
+        logger.debug("thread auto-title skipped: %s", e)
+
+
+async def _generate_follow_ups(question: str, answer: str, llm) -> list[str]:
+    """
+    Best-effort 3-4 follow-up suggestions. Returns [] on any error.
+    """
+    try:
+        # Cap inputs so very long answers don't bloat the prompt
+        q = (question or "")[:500]
+        a = (answer or "")[:1500]
+        prompt = _FOLLOW_UP_PROMPT.format(q=q, a=a)
+
+        response = await llm.chat_completion(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+        )
+
+        # Tolerant JSON parse — tolerate model preamble/markdown
+        import json as _json
+        import re as _re
+
+        match = _re.search(r"\{[^{}]*\"suggestions\"[^{}]*\}", response, _re.DOTALL)
+        payload = match.group(0) if match else response
+        data = _json.loads(payload)
+        suggestions = data.get("suggestions", [])
+        # Sanity filter
+        return [
+            s.strip()
+            for s in suggestions
+            if isinstance(s, str) and 5 <= len(s.strip()) <= 200
+        ][:4]
+    except Exception:
+        return []
+
+
 # ── Thread persistence helper ────────────────────────────────────────
 async def _upsert_thread_safe(
     tenant_id: str, user_id: str, session_id: str, first_user_message: str
@@ -334,6 +438,23 @@ async def chat_stream(
                             "session_id": session_id
                         }) + "\n"
 
+            # Generate follow-up suggestions before closing the stream.
+            # Best-effort, never blocks more than a few hundred ms.
+            if final_answer:
+                try:
+                    suggestions = await asyncio.wait_for(
+                        _generate_follow_ups(req.message, final_answer, llm),
+                        timeout=4.0,
+                    )
+                    if suggestions:
+                        yield json.dumps({
+                            "type": "follow_ups",
+                            "suggestions": suggestions,
+                            "session_id": session_id,
+                        }) + "\n"
+                except (asyncio.TimeoutError, Exception) as fu_err:
+                    logger.debug("follow-ups skipped: %s", fu_err)
+
             # 6. Post-Processing — persist and cache after stream completes
             if final_answer:
                 try:
@@ -346,6 +467,11 @@ async def chat_stream(
                     )
                 except Exception as post_err:
                     logger.error(f"Post-processing error: {post_err}", exc_info=True)
+
+                # Auto-title the thread after the first turn (best-effort, async)
+                asyncio.create_task(
+                    _maybe_update_thread_title(tenant_id, user_id, session_id, req.message, llm)
+                )
 
                 # Extract long-term memories in background (non-blocking, best-effort)
                 async def _extract_memories():

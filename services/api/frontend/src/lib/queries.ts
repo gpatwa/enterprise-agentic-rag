@@ -4,7 +4,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
-import type { LandingResponse, SavedQuestionDetail, Thread } from '@/types';
+import type { LandingResponse, SavedQuestionDetail, Thread, ThreadMessage } from '@/types';
 
 export const queryKeys = {
   landing: ['home', 'landing'] as const,
@@ -29,6 +29,24 @@ export function useThreads(opts: { limit?: number; pinnedOnly?: boolean } = {}) 
     queryKey: queryKeys.threads(opts),
     queryFn: () => api.listThreads(opts),
     staleTime: 30_000,
+  });
+}
+
+export function useThread(threadId: string | undefined) {
+  return useQuery<Thread>({
+    queryKey: ['threads', threadId],
+    queryFn: () => api.getThread(threadId!),
+    enabled: Boolean(threadId),
+    staleTime: 30_000,
+  });
+}
+
+export function useThreadMessages(threadId: string | undefined) {
+  return useQuery<{ thread_id: string; messages: ThreadMessage[] }>({
+    queryKey: ['threads', threadId, 'messages'],
+    queryFn: () => api.getThreadMessages(threadId!),
+    enabled: Boolean(threadId),
+    staleTime: 15_000,
   });
 }
 

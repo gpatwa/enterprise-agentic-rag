@@ -81,6 +81,26 @@ async def get_thread(tenant_id: str, user_id: str, thread_id: str) -> Optional[d
         return _thread_to_dict(t) if t else None
 
 
+async def update_thread_title(
+    tenant_id: str, user_id: str, thread_id: str, title: str
+) -> bool:
+    """Replace the thread title (used after LLM auto-titling)."""
+    if _pg.AsyncSessionLocal is None or not title.strip():
+        return False
+    async with _pg.AsyncSessionLocal() as s:
+        result = await s.execute(
+            update(Thread)
+            .where(
+                Thread.id == thread_id,
+                Thread.tenant_id == tenant_id,
+                Thread.user_id == user_id,
+            )
+            .values(title=title.strip()[:500])
+        )
+        await s.commit()
+        return result.rowcount > 0
+
+
 async def upsert_thread(
     tenant_id: str,
     user_id: str,

@@ -33,6 +33,14 @@ export interface Thread {
   pinned?: boolean;
 }
 
+export interface ThreadMessage {
+  id: number;
+  role: 'user' | 'assistant' | string;
+  content: string;
+  created_at: string;
+  metadata?: Record<string, unknown>;
+}
+
 export interface SavedQuestionDetail {
   id: string;
   title: string;
