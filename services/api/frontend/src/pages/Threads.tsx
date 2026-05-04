@@ -18,7 +18,7 @@ export function ThreadsPage() {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="max-w-4xl mx-auto px-8 py-12">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12">
         <header className="mb-8">
           <div className="text-xs uppercase tracking-widest text-fg-muted mb-2">Threads</div>
           <h1 className="text-2xl font-semibold tracking-tight">Your conversations</h1>

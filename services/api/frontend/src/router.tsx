@@ -2,10 +2,10 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { HomePage } from '@/pages/Home';
 import { ThreadsPage } from '@/pages/Threads';
+import { ThreadDetailPage } from '@/pages/ThreadDetail';
 import { SavedPage } from '@/pages/Saved';
 import { StubPage } from '@/pages/StubPage';
 import {
-  MessageSquare,
   LayoutDashboard,
   Database,
   Brain,
@@ -39,12 +39,7 @@ export const router = createBrowserRouter([
     path: '/threads/:threadId',
     element: (
       <RootLayout>
-        <StubPage
-          icon={MessageSquare}
-          title="Thread detail"
-          description="Single-thread view with the answer card stack, right-rail sources & reasoning, and follow-up suggestions."
-          ship="W3"
-        />
+        <ThreadDetailPage />
       </RootLayout>
     ),
   },

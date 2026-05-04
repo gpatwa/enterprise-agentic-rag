@@ -25,7 +25,7 @@ const statusDot = {
 
 export function RightRail({ sources, knowledge, governance, tenant, user }: Props) {
   return (
-    <aside className="w-[300px] glass border-l overflow-auto">
+    <aside className="hidden lg:block w-[300px] glass border-l overflow-auto">
       <div className="px-5 py-5">
         {/* Sources */}
         <section className="mb-6">

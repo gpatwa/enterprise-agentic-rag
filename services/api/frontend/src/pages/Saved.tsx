@@ -1,29 +1,18 @@
-import { useState } from 'react';
 import { Bookmark, BookmarkX, Plus, Play, Trash2 } from 'lucide-react';
 import {
-  useCreateSavedQuestion,
   useDeleteSavedQuestion,
   useSavedQuestions,
   useUpdateSavedQuestion,
 } from '@/lib/queries';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { SavedQuestionDialog } from '@/components/saved/SavedQuestionDialog';
 import type { SavedQuestionDetail } from '@/types';
 import { formatRelative } from '@/lib/format';
 
@@ -33,8 +22,8 @@ export function SavedPage() {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="max-w-4xl mx-auto px-8 py-12">
-        <header className="mb-8 flex items-start justify-between">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12">
+        <header className="mb-8 flex items-start justify-between flex-wrap gap-3">
           <div>
             <div className="text-xs uppercase tracking-widest text-fg-muted mb-2">Saved</div>
             <h1 className="text-2xl font-semibold tracking-tight">Saved questions</h1>
@@ -43,7 +32,7 @@ export function SavedPage() {
               result preview.
             </p>
           </div>
-          <NewSavedQuestionDialog />
+          <SavedQuestionDialog />
         </header>
 
         {isLoading && (
@@ -68,7 +57,7 @@ export function SavedPage() {
             <p className="text-sm text-fg-secondary mb-6 max-w-sm mx-auto">
               Save a question to re-run it later. Saved questions can be pinned to your Home page.
             </p>
-            <NewSavedQuestionDialog
+            <SavedQuestionDialog
               trigger={
                 <Button>
                   <Plus className="w-4 h-4" />
@@ -175,114 +164,5 @@ function SavedRow({ q }: { q: SavedQuestionDetail }) {
         </Tooltip>
       </div>
     </li>
-  );
-}
-
-function NewSavedQuestionDialog({ trigger }: { trigger?: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const [questionText, setQuestionText] = useState('');
-  const [pinToHome, setPinToHome] = useState(false);
-  const create = useCreateSavedQuestion();
-  const { toast } = useToast();
-
-  const reset = () => {
-    setTitle('');
-    setQuestionText('');
-    setPinToHome(false);
-  };
-
-  const submit = () => {
-    if (!title.trim() || !questionText.trim()) return;
-    create.mutate(
-      {
-        title: title.trim(),
-        question_text: questionText.trim(),
-        pinned: pinToHome,
-      },
-      {
-        onSuccess: () => {
-          toast({ title: 'Saved', description: title });
-          reset();
-          setOpen(false);
-        },
-        onError: () =>
-          toast({
-            title: 'Save failed',
-            description: 'Could not save question. Try again.',
-            variant: 'destructive',
-          }),
-      }
-    );
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button>
-            <Plus className="w-4 h-4" />
-            New saved question
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Save a question</DialogTitle>
-          <DialogDescription>
-            Bookmark a question to re-run later. Pinned questions show on your Home page.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-3">
-          <div>
-            <label htmlFor="sq-title" className="text-xs text-fg-muted block mb-1">
-              Title
-            </label>
-            <Input
-              id="sq-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Revenue by month last year"
-              className="glass border"
-            />
-          </div>
-          <div>
-            <label htmlFor="sq-question" className="text-xs text-fg-muted block mb-1">
-              Question
-            </label>
-            <textarea
-              id="sq-question"
-              value={questionText}
-              onChange={(e) => setQuestionText(e.target.value)}
-              placeholder="The full question Compass will run"
-              rows={3}
-              className="glass border w-full rounded-md px-3 py-2 text-sm resize-none"
-            />
-          </div>
-          <label className="flex items-center gap-2 text-sm text-fg-secondary cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={pinToHome}
-              onChange={(e) => setPinToHome(e.target.checked)}
-              className="accent-accent"
-            />
-            Pin to Home page
-          </label>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={submit}
-            disabled={!title.trim() || !questionText.trim() || create.isPending}
-          >
-            {create.isPending ? 'Saving…' : 'Save'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }

@@ -1,19 +1,27 @@
 import { type ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { BottomTabBar } from './BottomTabBar';
 
 /**
- * Three-pane shell: Sidebar · Main · (RightRail mounted by individual pages).
- * Mobile: Sidebar collapses to bottom tab bar (W3).
+ * Responsive shell.
+ *   - md+ : Sidebar (left) · Main · (RightRail mounted by individual pages)
+ *   - <md : Main only · BottomTabBar fixed at bottom
  */
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden bg-bg">
-      <Sidebar />
-      <main className="flex-1 flex flex-col overflow-hidden">
+      {/* Sidebar — hidden under md */}
+      <div className="hidden md:flex">
+        <Sidebar />
+      </div>
+
+      <div className="flex-1 flex flex-col overflow-hidden">
         <TopBar />
-        <div className="flex-1 flex overflow-hidden">{children}</div>
-      </main>
+        <main className="flex-1 flex overflow-hidden">{children}</main>
+        {/* Bottom tab bar — visible only under md */}
+        <BottomTabBar />
+      </div>
     </div>
   );
 }

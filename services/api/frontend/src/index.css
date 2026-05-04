@@ -103,4 +103,9 @@
       -webkit-backdrop-filter: none;
     }
   }
+
+  /* iOS safe-area padding for the bottom tab bar */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
 }

@@ -8,7 +8,7 @@ const API_BASE = '/api/v1';
 
 let cachedToken: string | null = null;
 
-async function getToken(): Promise<string> {
+export async function getToken(): Promise<string> {
   if (cachedToken) return cachedToken;
   const res = await fetch('/auth/token', {
     method: 'POST',
