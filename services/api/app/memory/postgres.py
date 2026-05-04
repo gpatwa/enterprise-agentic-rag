@@ -49,6 +49,12 @@ try:
 except ImportError:
     pass  # Context layer not installed (optional)
 
+# Import threads + saved_questions models so their tables are auto-created
+try:
+    from app.threads.models import Thread, SavedQuestion  # noqa: F401
+except ImportError:
+    pass
+
 # 3. Async Engine & Session
 #    The engine is lazily initialised so that secrets injected via
 #    Key Vault during the lifespan hook are available before the first

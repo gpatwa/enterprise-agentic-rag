@@ -16,7 +16,7 @@ from app.clients.storage.factory import create_storage_client
 from app.cache.redis import redis_client
 from app.cache.semantic import set_vectordb_client as set_semantic_vectordb
 from app.agents.nodes.retriever import set_clients as set_retriever_clients
-from app.routes import chat, upload, health, auth, system, documents, context, home
+from app.routes import chat, upload, health, auth, system, documents, context, home, threads as threads_routes, sources as sources_routes
 from app.routes.health import set_clients as set_health_clients
 from app.config import settings
 
@@ -226,6 +226,8 @@ app.include_router(system.router, prefix="/api/v1/system", tags=["System"])
 app.include_router(documents.router, prefix="/api/v1/documents", tags=["Documents"])
 app.include_router(context.router, prefix="/api/v1/context", tags=["Context"])
 app.include_router(home.router, prefix="/api/v1/home", tags=["Home"])
+app.include_router(threads_routes.router, prefix="/api/v1", tags=["Threads"])
+app.include_router(sources_routes.router, prefix="/api/v1/sources", tags=["Sources"])
 
 # Serve Chat UI at root "/"
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")

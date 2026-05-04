@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { api } from '@/lib/api';
+import { useLanding } from '@/lib/queries';
 import { AskBox } from '@/components/home/AskBox';
 import { QuickStart } from '@/components/home/QuickStart';
 import { Pinned } from '@/components/home/Pinned';
@@ -7,7 +6,7 @@ import { RecentThreads } from '@/components/home/RecentThreads';
 import { RightRail } from '@/components/layout/RightRail';
 import type { LandingResponse } from '@/types';
 
-/** Fallback data for offline / pre-backend dev. */
+/** Fallback dataset for offline / pre-backend dev. */
 const MOCK: LandingResponse = {
   user: { id: 'u_1', name: 'Gopal', role: 'admin' },
   tenant: { id: 'acme-prod', name: 'Acme Corp', residency: 'us-east-1' },
@@ -87,31 +86,21 @@ const MOCK: LandingResponse = {
 };
 
 export function HomePage() {
-  const [data, setData] = useState<LandingResponse | null>(null);
+  const { data, isLoading, error } = useLanding();
 
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .getLanding()
-      .then((d: LandingResponse) => {
-        if (!cancelled) setData(d);
-      })
-      .catch(() => {
-        // Fall back to mock when backend isn't reachable yet (W1 dev).
-        if (!cancelled) setData(MOCK);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // When the backend isn't reachable yet (W1 offline dev), use the mock
+  // so designers and reviewers can still iterate on the UI.
+  const view = data ?? (error ? MOCK : null);
 
-  if (!data) {
+  if (isLoading && !view) {
     return (
       <div className="flex-1 flex items-center justify-center text-fg-muted">
         <div className="animate-pulse">Loading…</div>
       </div>
     );
   }
+
+  if (!view) return null;
 
   return (
     <>
@@ -120,9 +109,10 @@ export function HomePage() {
         <div className="max-w-3xl mx-auto px-8 py-12">
           {/* Hero */}
           <div className="mb-8">
-            <div className="text-sm text-fg-muted mb-2">Welcome back, {data.user.name}.</div>
+            <div className="text-sm text-fg-muted mb-2">Welcome back, {view.user.name}.</div>
             <h1 className="text-2xl font-semibold tracking-tight leading-tight text-fg">
-              Ask. <span className="font-serif italic font-normal accent-grad-text">Verify.</span> Act.
+              Ask. <span className="font-serif italic font-normal accent-grad-text">Verify.</span>{' '}
+              Act.
             </h1>
             <p className="text-fg-secondary mt-3 text-base">
               Governed answers across data, documents, and code — with citations, SQL, lineage, and
@@ -136,13 +126,13 @@ export function HomePage() {
           {/* Quick-start */}
           <div className="mt-12">
             <QuickStart
-              categories={data.quick_start_categories}
+              categories={view.quick_start_categories}
               onPickQuestion={(text) => console.log('pick', text)}
             />
           </div>
 
-          <Pinned questions={data.pinned_questions} />
-          <RecentThreads threads={data.recent_threads} />
+          <Pinned questions={view.pinned_questions} />
+          <RecentThreads threads={view.recent_threads} />
 
           <div className="h-12" />
         </div>
@@ -150,11 +140,11 @@ export function HomePage() {
 
       {/* Right rail */}
       <RightRail
-        sources={data.sources}
-        knowledge={data.knowledge_counts}
-        governance={data.governance}
-        tenant={data.tenant}
-        user={data.user}
+        sources={view.sources}
+        knowledge={view.knowledge_counts}
+        governance={view.governance}
+        tenant={view.tenant}
+        user={view.user}
       />
     </>
   );

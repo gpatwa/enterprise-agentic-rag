@@ -8,28 +8,29 @@ import {
   Bot,
   Settings,
   ChevronsUpDown,
+  type LucideIcon,
 } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: LucideIcon;
   label: string;
-  href: string;
-  active?: boolean;
+  to: string;
   badge?: string;
 }
 
 const primaryNav: NavItem[] = [
-  { icon: Home, label: 'Home', href: '/', active: true },
-  { icon: MessageSquare, label: 'Threads', href: '/threads', badge: '12' },
-  { icon: Bookmark, label: 'Saved', href: '/saved', badge: '5' },
-  { icon: LayoutDashboard, label: 'Dashboards', href: '/dashboards' },
+  { icon: Home, label: 'Home', to: '/' },
+  { icon: MessageSquare, label: 'Threads', to: '/threads', badge: '12' },
+  { icon: Bookmark, label: 'Saved', to: '/saved', badge: '5' },
+  { icon: LayoutDashboard, label: 'Dashboards', to: '/dashboards' },
 ];
 
 const workspaceNav: NavItem[] = [
-  { icon: Database, label: 'Sources', href: '/sources' },
-  { icon: Brain, label: 'Knowledge', href: '/knowledge' },
-  { icon: Bot, label: 'Agents', href: '/agents', badge: 'Beta' },
+  { icon: Database, label: 'Sources', to: '/sources' },
+  { icon: Brain, label: 'Knowledge', to: '/knowledge' },
+  { icon: Bot, label: 'Agents', to: '/agents', badge: 'Beta' },
 ];
 
 export function Sidebar() {
@@ -52,14 +53,14 @@ export function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-auto">
         {primaryNav.map((item) => (
-          <NavLink key={item.href} {...item} />
+          <SidebarLink key={item.to} {...item} />
         ))}
 
         <div className="mt-5 mb-2 px-2.5 text-xs uppercase tracking-wider text-fg-muted font-medium">
           Workspace
         </div>
         {workspaceNav.map((item) => (
-          <NavLink key={item.href} {...item} />
+          <SidebarLink key={item.to} {...item} />
         ))}
       </nav>
 
@@ -80,16 +81,19 @@ export function Sidebar() {
   );
 }
 
-function NavLink({ icon: Icon, label, href, active, badge }: NavItem) {
+function SidebarLink({ icon: Icon, label, to, badge }: NavItem) {
   return (
-    <a
-      href={href}
-      className={cn(
-        'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition',
-        active
-          ? 'bg-white/5 text-fg font-medium'
-          : 'text-fg-secondary hover:bg-white/5 hover:text-fg'
-      )}
+    <NavLink
+      to={to}
+      end={to === '/'}
+      className={({ isActive }) =>
+        cn(
+          'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition',
+          isActive
+            ? 'bg-white/5 text-fg font-medium'
+            : 'text-fg-secondary hover:bg-white/5 hover:text-fg'
+        )
+      }
     >
       <Icon className="w-4 h-4" />
       <span className="flex-1">{label}</span>
@@ -105,6 +109,6 @@ function NavLink({ icon: Icon, label, href, active, badge }: NavItem) {
           {badge}
         </span>
       )}
-    </a>
+    </NavLink>
   );
 }
