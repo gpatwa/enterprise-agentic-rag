@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Solid filled background for tiny sizes (favicon, app icon) -->
+  <rect width="32" height="32" rx="8" fill="#0a0c14"/>
+  <defs>
+    <linearGradient id="fgrad" x1="6" y1="6" x2="26" y2="26" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"  stop-color="#a99dff"/>
+      <stop offset="100%" stop-color="#6fc3ff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Simplified at small size: just the needle with glow -->
+  <circle cx="16" cy="16" r="11" stroke="url(#fgrad)" stroke-width="2.5" fill="none" opacity="0.4"/>
+  <path d="M 9 23 L 23 9 M 23 9 L 19 9 M 23 9 L 23 13"
+        stroke="url(#fgrad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

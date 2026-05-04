@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!--
+    Compass logo mark.
+    Concept: A compass needle (arrow) inside a circle that doubles as a "C".
+    The needle is a sharp diagonal that breaks the circle — signaling navigation
+    AND grounded directionality. Negative space at the gap reads as the "C" of Compass.
+  -->
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"  stop-color="#8b7eff"/>
+      <stop offset="100%" stop-color="#5fb4ff"/>
+    </linearGradient>
+    <linearGradient id="grad-needle" x1="14" y1="14" x2="50" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"  stop-color="#a99dff"/>
+      <stop offset="100%" stop-color="#6fc3ff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer ring with gap (creates the implicit "C") -->
+  <path
+    d="M 32 6
+       A 26 26 0 1 0 50.385 50.385"
+    stroke="url(#grad)"
+    stroke-width="6"
+    stroke-linecap="round"
+    fill="none"/>
+
+  <!-- Compass needle: solid diagonal arrow pointing NE -->
+  <path
+    d="M 18 46 L 46 18"
+    stroke="url(#grad-needle)"
+    stroke-width="6"
+    stroke-linecap="round"/>
+
+  <!-- Arrowhead at top-right of needle -->
+  <path
+    d="M 46 18 L 38 18 M 46 18 L 46 26"
+    stroke="url(#grad-needle)"
+    stroke-width="6"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
+</svg>

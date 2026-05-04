@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" fill="none">
+  <defs>
+    <linearGradient id="lgrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"  stop-color="#7c6ef0"/>
+      <stop offset="100%" stop-color="#3b8fdb"/>
+    </linearGradient>
+    <linearGradient id="lgrad-needle" x1="14" y1="14" x2="50" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"  stop-color="#5b4dc7"/>
+      <stop offset="100%" stop-color="#2b89ff"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(0,0)">
+    <path d="M 32 6 A 26 26 0 1 0 50.385 50.385"
+          stroke="url(#lgrad)" stroke-width="6" stroke-linecap="round" fill="none"/>
+    <path d="M 18 46 L 46 18"
+          stroke="url(#lgrad-needle)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M 46 18 L 38 18 M 46 18 L 46 26"
+          stroke="url(#lgrad-needle)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <text x="80" y="42"
+        font-family="Inter, system-ui, sans-serif"
+        font-weight="600"
+        font-size="32"
+        letter-spacing="-0.02em"
+        fill="#0c0a18">compass</text>
+</svg>

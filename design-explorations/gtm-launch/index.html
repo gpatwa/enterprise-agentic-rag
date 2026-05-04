@@ -1,0 +1,906 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Compass — The unified answer-and-action layer for enterprise data</title>
+<meta name="description" content="Compass gives every employee governed answers across data and documents — with citations, SQL, lineage, and audit on every response. Open source core, cloud, VPC, and on-prem options." />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #07090f;
+    --surface: #0e1119;
+    --surface-2: #161a26;
+    --border: rgba(255,255,255,0.07);
+    --border-strong: rgba(255,255,255,0.12);
+    --accent-from: #8b7eff;
+    --accent-to: #5fb4ff;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: #e7e9f0;
+    margin: 0;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  .serif { font-family: 'Source Serif 4', Georgia, serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Toned-down gradient orbs (only 2, lower opacity, smaller blur) */
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.30;
+    pointer-events: none;
+    animation: drift 28s ease-in-out infinite alternate;
+  }
+  .orb-1 { width: 460px; height: 460px; background: #6049d6; top: -8%; left: -6%; }
+  .orb-2 { width: 400px; height: 400px; background: #2b89ff; top: 12%; right: -8%; animation-delay: -10s; animation-duration: 32s; }
+  @keyframes drift {
+    0%   { transform: translate(0, 0) scale(1); }
+    50%  { transform: translate(40px, -25px) scale(1.04); }
+    100% { transform: translate(-20px, 20px) scale(0.98); }
+  }
+
+  /* Glass primitives */
+  .glass {
+    background: rgba(20, 24, 36, 0.55);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid var(--border);
+  }
+  .glass-strong {
+    background: rgba(20, 24, 36, 0.78);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    border: 1px solid var(--border-strong);
+  }
+
+  .accent-grad {
+    background: linear-gradient(135deg, var(--accent-from) 0%, var(--accent-to) 100%);
+  }
+  .accent-grad-text {
+    background: linear-gradient(135deg, #a99dff 0%, #6fc3ff 100%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .text-faint { color: #6e7488; }
+  .text-mid { color: #9aa0b6; }
+
+  /* Primary CTA */
+  .cta-primary {
+    background: linear-gradient(135deg, #8b7eff 0%, #5fb4ff 100%);
+    color: white;
+    box-shadow: 0 4px 20px -4px rgba(124,110,240,0.40), 0 0 0 1px rgba(255,255,255,0.06) inset;
+    transition: transform 120ms, box-shadow 200ms;
+  }
+  .cta-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px -4px rgba(124,110,240,0.50), 0 0 0 1px rgba(255,255,255,0.10) inset; }
+
+  pre.code-block {
+    background: rgba(8, 10, 16, 0.7);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+  .syn-key { color: #c485ff; }
+  .syn-str { color: #98e07a; }
+  .syn-com { color: #5e6477; font-style: italic; }
+  .syn-num { color: #f0b048; }
+  .syn-fn  { color: #6fc3ff; }
+
+  .bullet-grid > * { transition: border-color 160ms, background 160ms; }
+  .bullet-grid > *:hover { border-color: rgba(124,110,240,0.4); background: rgba(20,24,36,0.65); }
+
+  .divider { background: linear-gradient(90deg, transparent, var(--border-strong), transparent); height: 1px; }
+
+  /* Mode tab */
+  .mode-tab[data-active="true"] { background: rgba(124,110,240,0.15); border-color: rgba(124,110,240,0.40); color: #fff; }
+
+  /* Pending placeholder marker — visible in dev, marketing should replace before launch */
+  .pending-mark {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #f0b048;
+    background: rgba(240, 176, 72, 0.10);
+    border: 1px solid rgba(240, 176, 72, 0.25);
+    padding: 2px 6px;
+    border-radius: 4px;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── NAV ─────────────────────────── -->
+<nav class="fixed top-0 left-0 right-0 z-50 glass-strong">
+  <div class="max-w-7xl mx-auto px-6 h-16 flex items-center gap-8">
+    <a href="#" class="flex items-center gap-2 font-semibold text-base" style="letter-spacing: -0.02em;">
+      <img src="../brand/logo-mark.svg" alt="" class="w-7 h-7" style="filter: drop-shadow(0 4px 12px rgba(124,110,240,0.35));">
+      <span>compass</span>
+    </a>
+    <div class="hidden md:flex items-center gap-6 text-sm text-mid">
+      <a href="#product" class="hover:text-white transition">Product</a>
+      <a href="#features" class="hover:text-white transition">How it works</a>
+      <a href="#use-cases" class="hover:text-white transition">Use cases</a>
+      <a href="#trust" class="hover:text-white transition">Trust</a>
+      <a href="#pricing" class="hover:text-white transition">Pricing</a>
+      <a href="#docs" class="hover:text-white transition">Docs</a>
+      <a href="https://github.com" class="hover:text-white transition flex items-center gap-1.5">
+        <i data-lucide="github" class="w-3.5 h-3.5"></i> GitHub
+      </a>
+    </div>
+    <div class="flex-1"></div>
+    <a href="#login" class="text-sm text-mid hover:text-white transition hidden md:inline">Log in</a>
+    <a href="#demo" class="cta-primary px-4 py-2 rounded-lg text-sm font-medium">Book a demo</a>
+  </div>
+</nav>
+
+<!-- ── HERO ──────────────────────────── -->
+<section class="relative min-h-screen pt-32 pb-16 flex items-center overflow-hidden">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <div class="relative max-w-7xl mx-auto px-6 w-full">
+    <div class="text-center max-w-4xl mx-auto">
+      <!-- Eyebrow -->
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass text-xs text-mid mb-8" style="letter-spacing: 0.04em;">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+        The unified answer-and-action layer for enterprise data
+      </div>
+
+      <h1 class="text-7xl md:text-8xl font-semibold tracking-tight leading-[0.95]">
+        Ask. <span class="serif italic font-normal accent-grad-text">Verify.</span> Act.
+      </h1>
+      <p class="mt-8 text-lg md:text-xl text-mid leading-relaxed max-w-3xl mx-auto">
+        Compass gives every employee governed answers across warehouses, documents, code, and SaaS tools — with citations, SQL, lineage, permissions, and audit trails built into every response.
+      </p>
+
+      <div class="mt-10 flex items-center justify-center gap-3 flex-wrap">
+        <a href="#demo" class="cta-primary px-6 py-3.5 rounded-xl text-base font-semibold inline-flex items-center gap-2">
+          Book a demo
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </a>
+        <a href="https://github.com" class="px-6 py-3.5 rounded-xl text-base font-medium glass border border-white/10 hover:border-white/20 transition inline-flex items-center gap-2">
+          <i data-lucide="github" class="w-4 h-4"></i>
+          Explore open-source core
+        </a>
+      </div>
+
+      <p class="mt-6 text-xs text-faint">
+        Cloud, VPC, and on-prem options · MIT-licensed core · No credit card to start
+      </p>
+    </div>
+
+    <!-- Hero product preview with Ask/Verify/Act tabs -->
+    <div class="relative mt-16 max-w-6xl mx-auto">
+      <div class="absolute inset-0 accent-grad opacity-15 blur-3xl rounded-3xl"></div>
+
+      <!-- Mode tabs -->
+      <div class="relative flex items-center justify-center gap-1.5 mb-4">
+        <button class="mode-tab glass border border-white/10 rounded-full px-4 py-1.5 text-sm font-medium transition flex items-center gap-2" data-active="true">
+          <span class="w-5 h-5 rounded-full accent-grad flex items-center justify-center text-[10px] font-bold text-white">1</span>
+          Ask
+        </button>
+        <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-faint"></i>
+        <button class="mode-tab glass border border-white/10 rounded-full px-4 py-1.5 text-sm font-medium transition flex items-center gap-2 text-mid hover:text-white">
+          <span class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold">2</span>
+          Verify
+        </button>
+        <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-faint"></i>
+        <button class="mode-tab glass border border-white/10 rounded-full px-4 py-1.5 text-sm font-medium transition flex items-center gap-2 text-mid hover:text-white">
+          <span class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold">3</span>
+          Act
+        </button>
+      </div>
+
+      <div class="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-indigo-500/10" style="aspect-ratio: 16/10;">
+        <iframe src="../06-calm-glass/home.html" class="w-full h-full" loading="lazy" title="Compass product preview — Ask mode"></iframe>
+      </div>
+      <div class="absolute -bottom-3 left-1/2 -translate-x-1/2 glass-strong rounded-full px-4 py-1.5 text-xs text-mid whitespace-nowrap border border-white/10">
+        Live preview · this is the actual product
+      </div>
+    </div>
+
+    <!-- Three modes side-by-side — visible execution proof point -->
+    <div class="grid md:grid-cols-3 gap-3 mt-16 max-w-6xl mx-auto bullet-grid">
+      <div class="glass rounded-xl p-5">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-7 h-7 rounded-lg accent-grad flex items-center justify-center text-xs font-bold text-white">1</span>
+          <div class="text-xs uppercase tracking-widest text-indigo-300 font-semibold">Ask</div>
+        </div>
+        <div class="font-semibold text-base mb-2">Ask in plain language.</div>
+        <p class="text-sm text-mid leading-relaxed">Across warehouses, documents, code, and SaaS tools. Compass routes the question and selects the right data.</p>
+      </div>
+      <div class="glass rounded-xl p-5">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-7 h-7 rounded-lg accent-grad flex items-center justify-center text-xs font-bold text-white">2</span>
+          <div class="text-xs uppercase tracking-widest text-indigo-300 font-semibold">Verify</div>
+        </div>
+        <div class="font-semibold text-base mb-2">Verify the proof.</div>
+        <p class="text-sm text-mid leading-relaxed">Every answer ships with citations, SQL, glossary, lineage, freshness, confidence, and a permissions trail.</p>
+      </div>
+      <div class="glass rounded-xl p-5">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-7 h-7 rounded-lg accent-grad flex items-center justify-center text-xs font-bold text-white">3</span>
+          <div class="text-xs uppercase tracking-widest text-indigo-300 font-semibold">Act</div>
+        </div>
+        <div class="font-semibold text-base mb-2">Act with controls.</div>
+        <p class="text-sm text-mid leading-relaxed">Create reports, update dashboards, open tickets, notify owners, trigger workflows, or export — under approval, RBAC, and audit.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── BETA-USER QUOTE (PENDING — replace before launch) ────────── -->
+<section class="py-16 border-t border-white/5">
+  <div class="max-w-4xl mx-auto px-6">
+    <div class="relative glass rounded-2xl px-8 py-10 md:px-12">
+      <div class="pending-mark">PENDING · pull from real beta user with explicit written permission before launch</div>
+      <i data-lucide="quote" class="w-6 h-6 text-indigo-400 mb-4 opacity-60"></i>
+      <blockquote class="serif italic text-xl md:text-2xl leading-snug text-white">
+        "We replaced four ad-hoc dashboards and a Slack channel where finance asked the analytics team to verify numbers. Compass gives the CFO the answer with the SQL attached — and our analysts get their week back."
+      </blockquote>
+      <div class="mt-6 flex items-center gap-3 text-sm">
+        <div class="w-9 h-9 rounded-full bg-white/5 border border-white/10"></div>
+        <div>
+          <div class="font-medium text-white">[Beta User Name]</div>
+          <div class="text-xs text-faint">[Title], [Company] · Compass beta program</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PROBLEM ──────────────── -->
+<section class="py-32 relative" id="product">
+  <div class="max-w-5xl mx-auto px-6">
+    <div class="text-xs uppercase tracking-widest text-faint mb-4">The problem</div>
+    <h2 class="text-4xl md:text-5xl font-semibold tracking-tight leading-tight">
+      Enterprise work is split across search, BI, dashboards, tickets, docs, and warehouses. Employees ask one question, then chase <span class="serif italic accent-grad-text">five systems</span> to trust the answer.
+    </h2>
+
+    <div class="grid md:grid-cols-3 gap-4 mt-16 bullet-grid">
+      <div class="glass rounded-2xl p-6">
+        <div class="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center mb-4">
+          <i data-lucide="search" class="w-5 h-5 text-blue-300"></i>
+        </div>
+        <div class="font-semibold text-lg mb-2">Search finds documents, not answers.</div>
+        <p class="text-sm text-mid leading-relaxed">
+          Enterprise search returns ten links and a hint. The user still has to open each, parse it, and stitch the answer together.
+        </p>
+      </div>
+      <div class="glass rounded-2xl p-6">
+        <div class="w-10 h-10 rounded-lg bg-amber-500/15 flex items-center justify-center mb-4">
+          <i data-lucide="bar-chart-3" class="w-5 h-5 text-amber-300"></i>
+        </div>
+        <div class="font-semibold text-lg mb-2">BI answers known questions, not new ones.</div>
+        <p class="text-sm text-mid leading-relaxed">
+          Pre-built dashboards cover yesterday's question. Today's question goes to a Slack thread and a ticket queue.
+        </p>
+      </div>
+      <div class="glass rounded-2xl p-6">
+        <div class="w-10 h-10 rounded-lg bg-red-500/15 flex items-center justify-center mb-4">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-red-400"></i>
+        </div>
+        <div class="font-semibold text-lg mb-2">AI chat answers without enough governance.</div>
+        <p class="text-sm text-mid leading-relaxed">
+          Generic chatbots invent column names, ignore your business rules, and leave no audit trail. The CFO can't act on that.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── WHAT COMPASS UNIFIES ───────────────── -->
+<section class="py-32 relative">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="text-center max-w-3xl mx-auto mb-16">
+      <div class="text-xs uppercase tracking-widest text-faint mb-4">What Compass unifies</div>
+      <h2 class="text-4xl md:text-5xl font-semibold tracking-tight leading-tight">
+        One layer above your <span class="serif italic accent-grad-text">enterprise stack</span>.
+      </h2>
+      <p class="text-mid mt-5 text-base max-w-2xl mx-auto">
+        Connect the systems where work happens. Compass orchestrates retrieval, applies your business context, and returns evidence-backed answers your team can act on.
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 bullet-grid">
+      <div class="glass rounded-2xl p-6">
+        <div class="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center mb-4">
+          <i data-lucide="file-text" class="w-5 h-5 text-blue-300"></i>
+        </div>
+        <div class="font-semibold text-lg mb-2">Knowledge</div>
+        <p class="text-sm text-mid leading-relaxed mb-4">Documents and conversations, structured by your team's reality.</p>
+        <ul class="text-xs text-faint space-y-1">
+          <li>· Confluence, Notion, Google Drive</li>
+          <li>· Slack, Teams, Zoom transcripts</li>
+          <li>· GitHub repos, wikis, README</li>
+          <li>· Tickets (Jira, Linear, ServiceNow)</li>
+        </ul>
+      </div>
+      <div class="glass rounded-2xl p-6">
+        <div class="w-10 h-10 rounded-lg bg-emerald-500/15 flex items-center justify-center mb-4">
+          <i data-lucide="database" class="w-5 h-5 text-emerald-300"></i>
+        </div>
+        <div class="font-semibold text-lg mb-2">Data</div>
+        <p class="text-sm text-mid leading-relaxed mb-4">Structured analytics across your warehouses and SaaS records.</p>
+        <ul class="text-xs text-faint space-y-1">
+          <li>· Snowflake, BigQuery, Postgres</li>
+          <li>· Salesforce, HubSpot, Stripe</li>
+          <li>· S3, Azure Blob, GCS</li>
+          <li>· dbt models, semantic views</li>
+        </ul>
+      </div>
+      <div class="glass rounded-2xl p-6">
+        <div class="w-10 h-10 rounded-lg bg-indigo-500/15 flex items-center justify-center mb-4">
+          <i data-lucide="brain" class="w-5 h-5 text-indigo-300"></i>
+        </div>
+        <div class="font-semibold text-lg mb-2">Context</div>
+        <p class="text-sm text-mid leading-relaxed mb-4">Your business reality, applied to every answer.</p>
+        <ul class="text-xs text-faint space-y-1">
+          <li>· Glossary &amp; KPI definitions</li>
+          <li>· Business rules &amp; policies</li>
+          <li>· Code lineage &amp; ownership</li>
+          <li>· Freshness &amp; permission scopes</li>
+        </ul>
+      </div>
+      <div class="glass rounded-2xl p-6">
+        <div class="w-10 h-10 rounded-lg bg-amber-500/15 flex items-center justify-center mb-4">
+          <i data-lucide="workflow" class="w-5 h-5 text-amber-300"></i>
+        </div>
+        <div class="font-semibold text-lg mb-2">Actions</div>
+        <p class="text-sm text-mid leading-relaxed mb-4">Governed execution back into the systems work happens in.</p>
+        <ul class="text-xs text-faint space-y-1">
+          <li>· Generate reports &amp; exports</li>
+          <li>· Open tickets &amp; alerts</li>
+          <li>· Trigger workflows &amp; webhooks</li>
+          <li>· Approval flows &amp; rollbacks</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS — 4 LAYERS ──────────────── -->
+<section class="py-32 relative" id="features">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="text-center max-w-3xl mx-auto mb-20">
+      <div class="text-xs uppercase tracking-widest text-faint mb-4">How it works</div>
+      <h2 class="text-4xl md:text-5xl font-semibold tracking-tight leading-tight">
+        Four layers that turn questions into <span class="serif italic accent-grad-text">trusted action</span>.
+      </h2>
+    </div>
+
+    <div class="space-y-24">
+      <!-- 01 Connect -->
+      <div class="grid md:grid-cols-2 gap-12 items-center">
+        <div>
+          <div class="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-indigo-300 mb-4">
+            <span class="w-6 h-6 rounded-full accent-grad flex items-center justify-center text-[10px] font-bold text-white">01</span>
+            Connect every source
+          </div>
+          <h3 class="text-3xl font-semibold tracking-tight mb-4 leading-tight">
+            Hybrid retrieval across <span class="serif italic">structured, unstructured, graph, code, and multimodal</span> data.
+          </h3>
+          <p class="text-mid leading-relaxed text-base">
+            Vector search, knowledge graphs, structured SQL, semantic-layer views, and image embeddings — all routed by a planner that knows when to use what.
+          </p>
+        </div>
+        <div class="glass-strong rounded-2xl p-6">
+<pre class="code-block"><span class="syn-com"># Compass selects the right tool for the question</span>
+<span class="syn-key">user</span>: <span class="syn-str">"Why did Q2 revenue miss in EMEA?"</span>
+
+<span class="syn-com">↓ planner routes through:</span>
+<span class="syn-com">  · vector retrieval (PRD, OKR docs)</span>
+<span class="syn-com">  · structured SQL (warehouse)</span>
+<span class="syn-com">  · graph (account ownership)</span>
+<span class="syn-com">  · code lineage (revenue model)</span>
+
+<span class="syn-com">↓ context layer applies:</span>
+<span class="syn-com">  · finance "revenue" definition</span>
+<span class="syn-com">  · EMEA region mapping</span>
+<span class="syn-com">  · close-of-quarter rule</span></pre>
+        </div>
+      </div>
+
+      <!-- 02 Apply Context -->
+      <div class="grid md:grid-cols-2 gap-12 items-center">
+        <div class="md:order-1 order-2 glass-strong rounded-2xl overflow-hidden">
+          <div class="border-b border-white/5 px-5 py-3 flex items-center gap-2 text-xs text-faint uppercase tracking-wider">
+            <i data-lucide="brain" class="w-3.5 h-3.5"></i> Context applied · before the answer
+          </div>
+          <div class="p-5 space-y-3">
+            <div class="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+              <div class="flex items-center gap-2 mb-1.5">
+                <span class="text-xs px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-medium">DEFINITION</span>
+                <span class="text-sm font-semibold">Revenue</span>
+              </div>
+              <code class="text-xs text-mid mono">SUM(payment_value) WHERE order_status = 'delivered'</code>
+            </div>
+            <div class="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+              <div class="flex items-center gap-2 mb-1.5">
+                <span class="text-xs px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-300 font-medium">RULE</span>
+                <span class="text-sm font-semibold">Recognition policy</span>
+              </div>
+              <p class="text-xs text-mid">Recognized at delivery, not purchase. Returns excluded.</p>
+            </div>
+            <div class="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+              <div class="flex items-center gap-2 mb-1.5">
+                <span class="text-xs px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 font-medium">LINEAGE</span>
+                <span class="text-sm font-semibold">orders model</span>
+              </div>
+              <p class="text-xs text-mid">Salesforce → Fivetran → dbt → Postgres · refreshed every 1h.</p>
+            </div>
+            <div class="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+              <div class="flex items-center gap-2 mb-1.5">
+                <span class="text-xs px-1.5 py-0.5 rounded bg-red-500/15 text-red-300 font-medium">PERMISSION</span>
+                <span class="text-sm font-semibold">Row-level scope</span>
+              </div>
+              <p class="text-xs text-mid">EMEA-only rows visible to user role <span class="mono">finance.regional</span>.</p>
+            </div>
+          </div>
+        </div>
+        <div class="md:order-2 order-1">
+          <div class="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-indigo-300 mb-4">
+            <span class="w-6 h-6 rounded-full accent-grad flex items-center justify-center text-[10px] font-bold text-white">02</span>
+            Apply business context
+          </div>
+          <h3 class="text-3xl font-semibold tracking-tight mb-4 leading-tight">
+            Definitions, rules, lineage, permissions, and freshness — <span class="serif italic">before</span> the answer.
+          </h3>
+          <p class="text-mid leading-relaxed text-base">
+            Compass injects your glossary, business rules, code lineage, and policy at query time, so "revenue" or "active customer" mean what they mean at your company — not what the model guessed.
+          </p>
+        </div>
+      </div>
+
+      <!-- 03 Answer with proof -->
+      <div class="grid md:grid-cols-2 gap-12 items-center">
+        <div>
+          <div class="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-indigo-300 mb-4">
+            <span class="w-6 h-6 rounded-full accent-grad flex items-center justify-center text-[10px] font-bold text-white">03</span>
+            Answer with proof
+          </div>
+          <h3 class="text-3xl font-semibold tracking-tight mb-4 leading-tight">
+            Every response ships with <span class="serif italic">citations, SQL, confidence, and audit</span>.
+          </h3>
+          <p class="text-mid leading-relaxed text-base">
+            Show the CFO the SQL behind the number. Show the auditor the row that produced the citation. Show the security lead the user, tenant, role, and time of every query. No black boxes.
+          </p>
+          <ul class="mt-6 space-y-2.5 text-sm text-mid">
+            <li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0"></i> Inline citations with source documents</li>
+            <li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0"></i> Generated SQL with execution plan + rows scanned</li>
+            <li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0"></i> Confidence score + reasoning trace</li>
+            <li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0"></i> Audit log: who, what, when, which sources</li>
+          </ul>
+        </div>
+        <div class="glass-strong rounded-2xl p-6">
+          <div class="space-y-3 text-sm">
+            <div class="flex items-center gap-3">
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+              <span class="font-medium flex-1">Citations</span>
+              <span class="mono text-xs text-faint">3 docs</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <i data-lucide="code-2" class="w-4 h-4 text-indigo-400"></i>
+              <span class="font-medium flex-1">Generated SQL</span>
+              <span class="mono text-xs text-faint">1 query · 1.2s</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <i data-lucide="bar-chart-3" class="w-4 h-4 text-cyan-400"></i>
+              <span class="font-medium flex-1">Confidence</span>
+              <span class="mono text-xs text-emerald-400">0.84 · high</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <i data-lucide="file-check" class="w-4 h-4 text-amber-400"></i>
+              <span class="font-medium flex-1">Audit log entry</span>
+              <span class="mono text-xs text-faint">written</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 04 Execute with controls -->
+      <div class="grid md:grid-cols-2 gap-12 items-center">
+        <div class="md:order-1 order-2 glass-strong rounded-2xl p-6 space-y-3">
+          <div class="text-xs text-faint uppercase tracking-wider mb-2">Pending action · awaiting approval</div>
+          <div class="rounded-lg border border-white/10 bg-white/[0.02] p-4">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-8 h-8 rounded-md bg-amber-500/15 flex items-center justify-center">
+                <i data-lucide="alert-circle" class="w-4 h-4 text-amber-300"></i>
+              </div>
+              <div class="flex-1">
+                <div class="font-medium text-sm">Open ticket: "Investigate EMEA Q2 churn drop"</div>
+                <div class="text-xs text-faint">target: Jira · assignee: revops · severity: P2</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 pt-2 border-t border-white/5">
+              <button class="cta-primary px-3 py-1.5 rounded-md text-xs font-semibold">Approve &amp; run</button>
+              <button class="px-3 py-1.5 rounded-md text-xs glass border border-white/10">Reject</button>
+              <div class="flex-1"></div>
+              <span class="text-[11px] text-faint">RBAC · role: revops_lead · audit: on</span>
+            </div>
+          </div>
+          <div class="text-xs text-mid leading-relaxed pt-1">
+            Actions are typed, scoped, and rollback-safe. Compass never executes without a configured approval policy and full audit logging.
+          </div>
+        </div>
+        <div class="md:order-2 order-1">
+          <div class="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-indigo-300 mb-4">
+            <span class="w-6 h-6 rounded-full accent-grad flex items-center justify-center text-[10px] font-bold text-white">04</span>
+            Execute with controls
+          </div>
+          <h3 class="text-3xl font-semibold tracking-tight mb-4 leading-tight">
+            Take governed action — with <span class="serif italic">approvals, RBAC, and rollback</span>.
+          </h3>
+          <p class="text-mid leading-relaxed text-base">
+            Compass can write back. Generate a board-deck export. Open a ticket on the right team. Notify the data owner of an anomaly. Trigger a webhook. All scoped by role, gated by approval, and logged for audit.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── USE CASES BY BUYER ──────────────── -->
+<section class="py-32 relative" id="use-cases">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="text-center max-w-3xl mx-auto mb-16">
+      <div class="text-xs uppercase tracking-widest text-faint mb-4">Use cases</div>
+      <h2 class="text-4xl md:text-5xl font-semibold tracking-tight leading-tight">
+        Built for questions that <span class="serif italic accent-grad-text">cannot be wrong</span>.
+      </h2>
+    </div>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 bullet-grid">
+      <div class="glass rounded-2xl p-6">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center"><i data-lucide="trending-up" class="w-4 h-4 text-emerald-300"></i></div>
+          <div class="font-semibold text-base">CFO &amp; Finance</div>
+        </div>
+        <p class="text-sm text-mid leading-relaxed">Revenue, margin, churn, forecast, and board-metric questions — with the SQL and lineage attached. Stop emailing the analytics team at 9pm.</p>
+      </div>
+      <div class="glass rounded-2xl p-6">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center"><i data-lucide="target" class="w-4 h-4 text-blue-300"></i></div>
+          <div class="font-semibold text-base">RevOps &amp; Sales</div>
+        </div>
+        <p class="text-sm text-mid leading-relaxed">Pipeline changes, account risk, quota performance, and CRM inconsistencies — answered against Salesforce + warehouse + product usage.</p>
+      </div>
+      <div class="glass rounded-2xl p-6">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center"><i data-lucide="database" class="w-4 h-4 text-indigo-300"></i></div>
+          <div class="font-semibold text-base">Data leaders</div>
+        </div>
+        <p class="text-sm text-mid leading-relaxed">Reduce repeated analyst requests. Enforce one definition of every metric. Centralize governance without becoming the bottleneck.</p>
+      </div>
+      <div class="glass rounded-2xl p-6">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center"><i data-lucide="code-2" class="w-4 h-4 text-amber-300"></i></div>
+          <div class="font-semibold text-base">Engineering</div>
+        </div>
+        <p class="text-sm text-mid leading-relaxed">Trace data lineage, code ownership, incident timelines, and service dependencies — across repos, runbooks, dashboards, and tickets.</p>
+      </div>
+      <div class="glass rounded-2xl p-6">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center"><i data-lucide="shield" class="w-4 h-4 text-red-300"></i></div>
+          <div class="font-semibold text-base">Security &amp; Compliance</div>
+        </div>
+        <p class="text-sm text-mid leading-relaxed">Audit who asked what, what data was accessed, and whether PII was redacted. Tenant-scoped, role-aware, fully logged.</p>
+      </div>
+      <div class="glass rounded-2xl p-6">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-8 h-8 rounded-lg bg-cyan-500/15 flex items-center justify-center"><i data-lucide="users" class="w-4 h-4 text-cyan-300"></i></div>
+          <div class="font-semibold text-base">Every employee</div>
+        </div>
+        <p class="text-sm text-mid leading-relaxed">Ask company questions without knowing which tool, dashboard, or wiki page holds the answer. Compass routes through them all.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── COMPARISON ─────────────────────── -->
+<section class="py-32 relative">
+  <div class="max-w-5xl mx-auto px-6">
+    <div class="text-center mb-12">
+      <div class="text-xs uppercase tracking-widest text-faint mb-4">How we compare</div>
+      <h2 class="text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
+        Not search. Not BI. <span class="serif italic accent-grad-text">Not another analyst notebook.</span>
+      </h2>
+      <p class="text-mid mt-5 text-base max-w-2xl mx-auto">
+        Compass sits above your enterprise systems as the governed layer employees use to ask, verify, and act.
+      </p>
+    </div>
+
+    <div class="glass rounded-2xl overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-white/5 bg-white/[0.02]">
+            <th class="text-left py-4 px-5 font-medium text-mid"></th>
+            <th class="text-center py-4 px-3 font-medium text-mid text-xs">Enterprise<br/>search</th>
+            <th class="text-center py-4 px-3 font-medium text-mid text-xs">AI<br/>analytics</th>
+            <th class="text-center py-4 px-3 font-medium text-mid text-xs">Semantic<br/>layer</th>
+            <th class="text-center py-4 px-3 font-medium text-mid text-xs">Analyst<br/>workspace</th>
+            <th class="text-center py-4 px-3 font-medium text-mid text-xs">File<br/>analysis</th>
+            <th class="text-center py-4 px-3 font-semibold accent-grad-text text-xs">Compass</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5">
+          <tr><td class="py-3 px-5 text-mid">Answers across docs, data, &amp; code</td>
+              <td class="text-center text-faint">partial</td><td class="text-center text-faint">data only</td><td class="text-center text-faint">data only</td><td class="text-center text-faint">data only</td><td class="text-center text-faint">files only</td>
+              <td class="text-center"><i data-lucide="check" class="w-4 h-4 text-emerald-400 inline"></i></td></tr>
+          <tr><td class="py-3 px-5 text-mid">Citations &amp; SQL on every response</td>
+              <td class="text-center text-faint">links only</td><td class="text-center text-faint">partial</td><td class="text-center text-faint">—</td><td class="text-center"><i data-lucide="check" class="w-4 h-4 text-emerald-400 inline"></i></td><td class="text-center text-faint">partial</td>
+              <td class="text-center"><i data-lucide="check" class="w-4 h-4 text-emerald-400 inline"></i></td></tr>
+          <tr><td class="py-3 px-5 text-mid">Business glossary &amp; rules applied</td>
+              <td class="text-center text-faint">—</td><td class="text-center text-faint">—</td><td class="text-center"><i data-lucide="check" class="w-4 h-4 text-emerald-400 inline"></i></td><td class="text-center text-faint">manual</td><td class="text-center text-faint">—</td>
+              <td class="text-center"><i data-lucide="check" class="w-4 h-4 text-emerald-400 inline"></i></td></tr>
+          <tr><td class="py-3 px-5 text-mid">Multi-tenant, RBAC, audit log</td>
+              <td class="text-center"><i data-lucide="check" class="w-4 h-4 text-emerald-400 inline"></i></td><td class="text-center text-faint">partial</td><td class="text-center text-faint">partial</td><td class="text-center text-faint">partial</td><td class="text-center text-faint">—</td>
+              <td class="text-center"><i data-lucide="check" class="w-4 h-4 text-emerald-400 inline"></i></td></tr>
+          <tr><td class="py-3 px-5 text-mid">Open-source core / on-prem option</td>
+              <td class="text-center text-faint">—</td><td class="text-center text-faint">—</td><td class="text-center"><i data-lucide="check" class="w-4 h-4 text-emerald-400 inline"></i></td><td class="text-center text-faint">—</td><td class="text-center text-faint">—</td>
+              <td class="text-center"><i data-lucide="check" class="w-4 h-4 text-emerald-400 inline"></i></td></tr>
+          <tr><td class="py-3 px-5 text-mid">Governed actions back into systems</td>
+              <td class="text-center text-faint">—</td><td class="text-center text-faint">—</td><td class="text-center text-faint">—</td><td class="text-center text-faint">limited</td><td class="text-center text-faint">—</td>
+              <td class="text-center"><i data-lucide="check" class="w-4 h-4 text-emerald-400 inline"></i></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="text-center text-mid mt-10 text-base max-w-3xl mx-auto leading-relaxed">
+      Glean searches. Cube governs metrics. Hex serves analysts. Julius analyzes files.
+      <span class="text-white"> Compass is the governed layer where every employee can ask, verify, and act across enterprise data.</span>
+    </p>
+  </div>
+</section>
+
+<!-- ── PRICING ────────────────────────── -->
+<section class="py-32 relative" id="pricing">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="text-center mb-16">
+      <div class="text-xs uppercase tracking-widest text-faint mb-4">Pricing</div>
+      <h2 class="text-4xl md:text-5xl font-semibold tracking-tight">Open-core foundation. <span class="serif italic accent-grad-text">Enterprise-grade tiers.</span></h2>
+      <p class="text-mid mt-4 text-lg max-w-2xl mx-auto">Self-host the core for free. Add governance, scale, and deployment options as you grow.</p>
+    </div>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-7xl mx-auto">
+      <!-- Open Source Core -->
+      <div class="glass rounded-2xl p-6 flex flex-col">
+        <div class="text-xs uppercase tracking-widest text-faint mb-3">Open Source Core</div>
+        <div class="flex items-baseline gap-2 mb-1">
+          <span class="text-4xl font-semibold">$0</span>
+        </div>
+        <p class="text-sm text-mid mb-6">For developers and self-hosted evaluation.</p>
+        <ul class="text-sm space-y-2.5 text-mid mb-6 flex-1">
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Core RAG engine</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Local / self-host</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Basic connectors</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Single tenant</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Community Discord</li>
+        </ul>
+        <a href="https://github.com" class="block text-center py-2.5 rounded-lg border border-white/10 hover:border-white/20 text-sm font-medium transition">
+          <i data-lucide="github" class="w-3.5 h-3.5 inline -mt-0.5"></i> Star on GitHub
+        </a>
+      </div>
+
+      <!-- Team Cloud -->
+      <div class="glass rounded-2xl p-6 flex flex-col">
+        <div class="text-xs uppercase tracking-widest text-faint mb-3">Team Cloud</div>
+        <div class="flex items-baseline gap-2 mb-1">
+          <span class="text-4xl font-semibold">$49</span>
+          <span class="text-sm text-faint">/user/mo</span>
+        </div>
+        <p class="text-sm text-mid mb-6">For small data and product teams.</p>
+        <ul class="text-sm space-y-2.5 text-mid mb-6 flex-1">
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Up to 25 users</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> 5 connectors</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Basic citations</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Basic SQL evidence</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Short audit retention</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Email support · 14-day trial</li>
+        </ul>
+        <a href="#demo" class="block text-center py-2.5 rounded-lg border border-white/10 hover:border-white/20 text-sm font-medium transition">Start trial</a>
+      </div>
+
+      <!-- Business — featured -->
+      <div class="glass-strong rounded-2xl p-6 flex flex-col relative ring-2 ring-indigo-500/40">
+        <div class="absolute -top-3 left-6 text-[10px] font-bold uppercase tracking-widest accent-grad text-white px-2.5 py-1 rounded">Most popular</div>
+        <div class="text-xs uppercase tracking-widest accent-grad-text mb-3 font-medium">Business</div>
+        <div class="flex items-baseline gap-2 mb-1">
+          <span class="text-4xl font-semibold">$99</span>
+          <span class="text-sm text-faint">/user/mo</span>
+        </div>
+        <p class="text-xs text-faint mb-1">+ platform minimum</p>
+        <p class="text-sm text-mid mb-6">For mid-market companies standardizing governed answers.</p>
+        <ul class="text-sm space-y-2.5 text-mid mb-6 flex-1">
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> SSO / SAML</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> RBAC + admin console</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> All standard connectors</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Glossary &amp; business rules</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Audit logs · PII redaction</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Usage analytics · priority support</li>
+        </ul>
+        <a href="#demo" class="block text-center py-2.5 rounded-lg cta-primary text-sm font-semibold">Book a demo</a>
+      </div>
+
+      <!-- Enterprise -->
+      <div class="glass rounded-2xl p-6 flex flex-col">
+        <div class="text-xs uppercase tracking-widest text-faint mb-3">Enterprise</div>
+        <div class="flex items-baseline gap-2 mb-1">
+          <span class="text-3xl font-semibold serif italic">Custom</span>
+        </div>
+        <p class="text-xs text-faint mb-1">Cloud, VPC, and on-prem options</p>
+        <p class="text-sm text-mid mb-6">For regulated industries &amp; scale.</p>
+        <ul class="text-sm space-y-2.5 text-mid mb-6 flex-1">
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> VPC / on-prem deployment</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Custom data residency</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Advanced audit retention</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Dedicated support + CSM</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Custom MSA / DPA · 99.9%+ SLA</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Approval workflows for actions</li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 mt-1 flex-shrink-0"></i> Custom model / provider routing</li>
+        </ul>
+        <a href="#demo" class="block text-center py-2.5 rounded-lg border border-white/10 hover:border-white/20 text-sm font-medium transition">Talk to sales</a>
+      </div>
+    </div>
+
+    <p class="text-center text-xs text-faint mt-12">Annual billing available · Enterprise typically starts at $60k/year cloud, higher for VPC and on-prem.</p>
+  </div>
+</section>
+
+<!-- ── TRUST / SECURITY ──────────────── -->
+<section class="py-24 border-t border-white/5" id="trust">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="text-center mb-12">
+      <div class="text-xs uppercase tracking-widest text-faint mb-4">Trust &amp; security</div>
+      <h2 class="text-3xl md:text-4xl font-semibold tracking-tight">Built for enterprises with <span class="serif italic accent-grad-text">real audit obligations</span>.</h2>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+      <div class="glass rounded-xl p-5 text-center">
+        <i data-lucide="user-check" class="w-7 h-7 text-emerald-400 mx-auto mb-3"></i>
+        <div class="font-semibold text-sm">RBAC + tenant scoping</div>
+        <div class="text-xs text-faint mt-1">Row-level security</div>
+      </div>
+      <div class="glass rounded-xl p-5 text-center">
+        <i data-lucide="eye-off" class="w-7 h-7 text-blue-400 mx-auto mb-3"></i>
+        <div class="font-semibold text-sm">PII redaction</div>
+        <div class="text-xs text-faint mt-1">Configurable policies</div>
+      </div>
+      <div class="glass rounded-xl p-5 text-center">
+        <i data-lucide="file-check" class="w-7 h-7 text-indigo-400 mx-auto mb-3"></i>
+        <div class="font-semibold text-sm">Audit logs</div>
+        <div class="text-xs text-faint mt-1">Every query, every action</div>
+      </div>
+      <div class="glass rounded-xl p-5 text-center">
+        <i data-lucide="lock" class="w-7 h-7 text-purple-400 mx-auto mb-3"></i>
+        <div class="font-semibold text-sm">AES-256 + TLS 1.3</div>
+        <div class="text-xs text-faint mt-1">At rest &amp; in transit</div>
+      </div>
+      <div class="glass rounded-xl p-5 text-center">
+        <i data-lucide="server" class="w-7 h-7 text-amber-400 mx-auto mb-3"></i>
+        <div class="font-semibold text-sm">VPC &amp; on-prem</div>
+        <div class="text-xs text-faint mt-1">Enterprise tier</div>
+      </div>
+      <div class="glass rounded-xl p-5 text-center">
+        <i data-lucide="globe" class="w-7 h-7 text-cyan-400 mx-auto mb-3"></i>
+        <div class="font-semibold text-sm">Data residency</div>
+        <div class="text-xs text-faint mt-1">Custom regions</div>
+      </div>
+      <div class="glass rounded-xl p-5 text-center">
+        <i data-lucide="shield-check" class="w-7 h-7 text-emerald-400 mx-auto mb-3"></i>
+        <div class="font-semibold text-sm">SOC 2 Type II</div>
+        <div class="text-xs text-faint mt-1">In progress</div>
+      </div>
+      <div class="glass rounded-xl p-5 text-center">
+        <i data-lucide="key" class="w-7 h-7 text-rose-400 mx-auto mb-3"></i>
+        <div class="font-semibold text-sm">SSO + SAML</div>
+        <div class="text-xs text-faint mt-1">Okta · Azure AD · Google</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FINAL CTA ─────────────────────── -->
+<section class="py-32 relative overflow-hidden" id="demo">
+  <div class="absolute inset-0 -z-10">
+    <div class="orb" style="width: 600px; height: 600px; background: #6049d6; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.18; filter: blur(80px);"></div>
+  </div>
+  <div class="max-w-4xl mx-auto px-6 text-center">
+    <h2 class="text-5xl md:text-6xl font-semibold tracking-tight leading-tight">
+      Ask. <span class="serif italic accent-grad-text">Verify.</span> Act.
+    </h2>
+    <p class="text-mid mt-6 text-lg max-w-xl mx-auto">
+      See Compass on your data in a 30-minute demo. Or self-host the open-source core today.
+    </p>
+    <div class="mt-10 flex items-center justify-center gap-3 flex-wrap">
+      <a href="#" class="cta-primary px-7 py-4 rounded-xl text-base font-semibold inline-flex items-center gap-2">
+        Book a demo <i data-lucide="arrow-right" class="w-4 h-4"></i>
+      </a>
+      <a href="https://github.com" class="px-7 py-4 rounded-xl text-base font-medium glass border border-white/10 hover:border-white/20 transition inline-flex items-center gap-2">
+        <i data-lucide="github" class="w-4 h-4"></i> Explore open-source core
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ────────────────────────── -->
+<footer class="border-t border-white/5 py-14">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="grid md:grid-cols-5 gap-8 mb-10">
+      <div class="md:col-span-2">
+        <a href="#" class="flex items-center gap-2 font-semibold text-base mb-3" style="letter-spacing: -0.02em;">
+          <img src="../brand/logo-mark.svg" alt="" class="w-7 h-7">
+          <span>compass</span>
+        </a>
+        <p class="text-sm text-mid max-w-xs leading-relaxed">
+          The unified answer-and-action layer for enterprise data.
+        </p>
+        <div class="flex gap-2 mt-5">
+          <a href="#" class="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-mid hover:text-white hover:border-white/20 transition"><i data-lucide="github" class="w-4 h-4"></i></a>
+          <a href="#" class="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-mid hover:text-white hover:border-white/20 transition"><i data-lucide="twitter" class="w-4 h-4"></i></a>
+          <a href="#" class="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-mid hover:text-white hover:border-white/20 transition"><i data-lucide="linkedin" class="w-4 h-4"></i></a>
+          <a href="#" class="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-mid hover:text-white hover:border-white/20 transition"><i data-lucide="message-circle" class="w-4 h-4"></i></a>
+        </div>
+      </div>
+      <div>
+        <div class="text-xs uppercase tracking-wider text-faint mb-3 font-medium">Product</div>
+        <ul class="space-y-2 text-sm text-mid">
+          <li><a href="#features" class="hover:text-white">How it works</a></li>
+          <li><a href="#use-cases" class="hover:text-white">Use cases</a></li>
+          <li><a href="#" class="hover:text-white">Connectors</a></li>
+          <li><a href="#pricing" class="hover:text-white">Pricing</a></li>
+          <li><a href="#" class="hover:text-white">Changelog</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="text-xs uppercase tracking-wider text-faint mb-3 font-medium">Company</div>
+        <ul class="space-y-2 text-sm text-mid">
+          <li><a href="#" class="hover:text-white">About</a></li>
+          <li><a href="#" class="hover:text-white">Blog</a></li>
+          <li><a href="#" class="hover:text-white">Customers</a></li>
+          <li><a href="#" class="hover:text-white">Careers</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="text-xs uppercase tracking-wider text-faint mb-3 font-medium">Resources</div>
+        <ul class="space-y-2 text-sm text-mid">
+          <li><a href="#" class="hover:text-white">Docs</a></li>
+          <li><a href="#" class="hover:text-white">GitHub</a></li>
+          <li><a href="#" class="hover:text-white">Discord</a></li>
+          <li><a href="#" class="hover:text-white">Status</a></li>
+          <li><a href="#trust" class="hover:text-white">Security</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="divider mb-6"></div>
+    <div class="flex flex-wrap items-center justify-between gap-4 text-xs text-faint">
+      <div>© 2026 Compass, Inc.</div>
+      <div class="flex gap-5">
+        <a href="#" class="hover:text-white">Privacy</a>
+        <a href="#" class="hover:text-white">Terms</a>
+        <a href="#" class="hover:text-white">DPA</a>
+        <a href="#" class="hover:text-white">Security</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>

@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Acme RAG · Wisdom Premium</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif&display=swap" rel="stylesheet" />
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #fafafa; color: #0c0a18; font-size: 14px; }
+  .serif { font-family: 'Instrument Serif', 'Tiempos', serif; }
+  .scrollbar-thin::-webkit-scrollbar { width: 8px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 4px; }
+  .gradient-hero {
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124,110,240,0.15), transparent),
+      radial-gradient(ellipse 60% 50% at 80% 30%, rgba(94,212,164,0.10), transparent),
+      radial-gradient(ellipse 60% 50% at 20% 30%, rgba(95,180,255,0.08), transparent);
+  }
+  .glow-card {
+    background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.5) inset, 0 1px 2px rgba(0,0,0,0.04), 0 4px 16px -4px rgba(0,0,0,0.04);
+  }
+</style>
+</head>
+<body class="antialiased min-h-screen">
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-[240px] flex-shrink-0 bg-white border-r border-zinc-200 flex flex-col">
+    <div class="px-4 py-4 border-b border-zinc-200">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">A</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-semibold truncate">Acme Corp</div>
+          <div class="text-xs text-zinc-500 truncate">Enterprise plan</div>
+        </div>
+        <button class="text-zinc-400 hover:text-zinc-700"><i data-lucide="chevrons-up-down" class="w-3.5 h-3.5"></i></button>
+      </div>
+    </div>
+
+    <nav class="flex-1 px-3 py-4 space-y-0.5">
+      <a class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium bg-violet-50 text-violet-700" href="#">
+        <i data-lucide="home" class="w-4 h-4"></i> Home
+      </a>
+      <a class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-zinc-600 hover:bg-zinc-50 transition" href="#">
+        <i data-lucide="message-square" class="w-4 h-4"></i> Threads
+        <span class="ml-auto text-xs bg-zinc-100 text-zinc-600 px-1.5 py-0.5 rounded-full">12</span>
+      </a>
+      <a class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-zinc-600 hover:bg-zinc-50 transition" href="#">
+        <i data-lucide="bookmark" class="w-4 h-4"></i> Saved
+      </a>
+      <a class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-zinc-600 hover:bg-zinc-50 transition" href="#">
+        <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboards
+        <span class="ml-auto text-xs px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">New</span>
+      </a>
+
+      <div class="mt-6 mb-2 px-2.5 text-xs uppercase tracking-wider text-zinc-400 font-medium">Workspace</div>
+      <a class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-zinc-600 hover:bg-zinc-50 transition" href="#">
+        <i data-lucide="database" class="w-4 h-4"></i> Sources
+      </a>
+      <a class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-zinc-600 hover:bg-zinc-50 transition" href="#">
+        <i data-lucide="brain" class="w-4 h-4"></i> Knowledge
+      </a>
+      <a class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-zinc-600 hover:bg-zinc-50 transition" href="#">
+        <i data-lucide="bot" class="w-4 h-4"></i> Agents
+      </a>
+    </nav>
+
+    <div class="px-3 py-3 border-t border-zinc-200">
+      <button class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-zinc-50 transition">
+        <span class="w-7 h-7 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-xs font-medium text-white">G</span>
+        <div class="flex-1 text-left min-w-0">
+          <div class="text-sm font-medium truncate">Gopal</div>
+          <div class="text-xs text-zinc-500 truncate">admin</div>
+        </div>
+        <i data-lucide="settings" class="w-4 h-4 text-zinc-400"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 flex flex-col overflow-hidden">
+    <!-- Top bar -->
+    <header class="h-16 flex-shrink-0 border-b border-zinc-200 bg-white flex items-center px-8 gap-4">
+      <button class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-zinc-50 hover:bg-zinc-100 transition w-[420px] text-zinc-500 text-sm">
+        <i data-lucide="search" class="w-4 h-4"></i>
+        <span class="flex-1 text-left">Search threads, questions, sources…</span>
+        <span class="text-xs px-1.5 py-0.5 bg-white border border-zinc-200 rounded font-mono">⌘K</span>
+      </button>
+      <div class="flex-1"></div>
+      <button class="px-3 py-1.5 rounded-lg text-sm font-medium text-zinc-700 hover:bg-zinc-50">What's new</button>
+      <button class="w-9 h-9 rounded-lg hover:bg-zinc-50 flex items-center justify-center text-zinc-500"><i data-lucide="bell" class="w-4 h-4"></i></button>
+      <button class="px-3 py-1.5 rounded-lg text-sm font-medium bg-zinc-900 text-white hover:bg-zinc-800 flex items-center gap-1.5"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Upgrade</button>
+    </header>
+
+    <!-- Scroll area -->
+    <div class="flex-1 overflow-auto scrollbar-thin">
+
+      <!-- Hero -->
+      <div class="gradient-hero border-b border-zinc-200/60">
+        <div class="max-w-5xl mx-auto px-10 pt-12 pb-10">
+          <div class="text-xs uppercase tracking-widest text-violet-600 font-semibold mb-3">Your Data Intelligence</div>
+          <h1 class="text-5xl font-semibold tracking-tight leading-[1.05] mb-3">
+            Good morning, Gopal.
+          </h1>
+          <p class="serif text-3xl text-zinc-500 italic font-normal leading-tight mb-8">Ask anything. Your data is ready.</p>
+
+          <!-- Ask box, premium style -->
+          <div class="bg-white rounded-2xl border border-zinc-200/80 shadow-lg shadow-violet-500/5 overflow-hidden ring-1 ring-zinc-900/5">
+            <div class="px-6 pt-5 pb-3 flex items-start gap-4">
+              <i data-lucide="sparkles" class="w-5 h-5 text-violet-500 mt-0.5"></i>
+              <div class="flex-1 text-zinc-400 text-base">Ask about revenue, customers, products, delivery… anything.</div>
+              <button class="text-zinc-400 hover:text-zinc-700"><i data-lucide="mic" class="w-5 h-5"></i></button>
+              <button class="px-3 py-1.5 rounded-lg bg-zinc-900 text-white text-sm font-medium hover:bg-zinc-800 flex items-center gap-1.5">
+                Send <i data-lucide="arrow-up" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+            <div class="px-5 pb-3 pt-1 flex items-center gap-2 border-t border-zinc-100">
+              <span class="text-xs text-zinc-500">Scope:</span>
+              <button class="px-2.5 py-1 rounded-lg text-xs font-medium bg-violet-100 text-violet-700">Auto</button>
+              <button class="px-2.5 py-1 rounded-lg text-xs text-zinc-600 hover:bg-zinc-100">Data</button>
+              <button class="px-2.5 py-1 rounded-lg text-xs text-zinc-600 hover:bg-zinc-100">Docs</button>
+              <button class="px-2.5 py-1 rounded-lg text-xs text-zinc-600 hover:bg-zinc-100">Code</button>
+              <button class="px-2.5 py-1 rounded-lg text-xs text-zinc-600 hover:bg-zinc-100">Web</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI strip -->
+      <div class="max-w-5xl mx-auto px-10 pt-8">
+        <div class="grid grid-cols-4 gap-4">
+          <div class="glow-card rounded-xl border border-zinc-200/60 p-5">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-medium text-zinc-500">Total revenue (YTD)</div>
+              <span class="text-xs px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold">+14.7%</span>
+            </div>
+            <div class="text-3xl font-bold tracking-tight">R$ 14.2M</div>
+            <div class="text-xs text-zinc-500 mt-1">vs R$ 12.4M YoY</div>
+          </div>
+          <div class="glow-card rounded-xl border border-zinc-200/60 p-5">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-medium text-zinc-500">Orders this month</div>
+              <span class="text-xs px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold">+8.3%</span>
+            </div>
+            <div class="text-3xl font-bold tracking-tight">8,412</div>
+            <div class="text-xs text-zinc-500 mt-1">vs 7,768 last month</div>
+          </div>
+          <div class="glow-card rounded-xl border border-zinc-200/60 p-5">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-medium text-zinc-500">Avg review</div>
+              <span class="text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-semibold">−0.1</span>
+            </div>
+            <div class="text-3xl font-bold tracking-tight">4.12<span class="text-zinc-400 text-lg">/5</span></div>
+            <div class="text-xs text-zinc-500 mt-1">99,224 reviews</div>
+          </div>
+          <div class="glow-card rounded-xl border border-zinc-200/60 p-5">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-medium text-zinc-500">Avg delivery</div>
+              <span class="text-xs px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold">−0.6d</span>
+            </div>
+            <div class="text-3xl font-bold tracking-tight">12.4d</div>
+            <div class="text-xs text-zinc-500 mt-1">target: 10d</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick start -->
+      <div class="max-w-5xl mx-auto px-10 mt-12">
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="text-xl font-semibold tracking-tight">Quick start</h2>
+          <a class="text-sm text-violet-600 hover:underline">Browse all questions →</a>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <a class="glow-card rounded-xl border border-zinc-200/60 p-5 hover:border-violet-300 hover:shadow-md transition group" href="#">
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-100 to-violet-50 flex items-center justify-center text-violet-600 ring-1 ring-violet-200/50">
+                <i data-lucide="trending-up" class="w-5 h-5"></i>
+              </div>
+              <div class="flex-1">
+                <div class="font-semibold text-base">Revenue trends</div>
+                <div class="text-sm text-zinc-500 mt-0.5">Monthly, YoY growth, by category</div>
+                <div class="text-sm text-zinc-700 mt-3 group-hover:text-violet-700 truncate">› What was revenue by month?</div>
+              </div>
+            </div>
+          </a>
+          <a class="glow-card rounded-xl border border-zinc-200/60 p-5 hover:border-violet-300 hover:shadow-md transition group" href="#">
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center text-blue-600 ring-1 ring-blue-200/50">
+                <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+              </div>
+              <div class="flex-1">
+                <div class="font-semibold text-base">Top products</div>
+                <div class="text-sm text-zinc-500 mt-0.5">Categories, items, sellers</div>
+                <div class="text-sm text-zinc-700 mt-3 group-hover:text-violet-700 truncate">› Top 10 categories by revenue</div>
+              </div>
+            </div>
+          </a>
+          <a class="glow-card rounded-xl border border-zinc-200/60 p-5 hover:border-violet-300 hover:shadow-md transition group" href="#">
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center text-emerald-600 ring-1 ring-emerald-200/50">
+                <i data-lucide="star" class="w-5 h-5"></i>
+              </div>
+              <div class="flex-1">
+                <div class="font-semibold text-base">Reviews & ratings</div>
+                <div class="text-sm text-zinc-500 mt-0.5">Scores, sentiment, regions</div>
+                <div class="text-sm text-zinc-700 mt-3 group-hover:text-violet-700 truncate">› Average review by state</div>
+              </div>
+            </div>
+          </a>
+          <a class="glow-card rounded-xl border border-zinc-200/60 p-5 hover:border-violet-300 hover:shadow-md transition group" href="#">
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-100 to-amber-50 flex items-center justify-center text-amber-600 ring-1 ring-amber-200/50">
+                <i data-lucide="truck" class="w-5 h-5"></i>
+              </div>
+              <div class="flex-1">
+                <div class="font-semibold text-base">Delivery insights</div>
+                <div class="text-sm text-zinc-500 mt-0.5">Times, lateness, regions</div>
+                <div class="text-sm text-zinc-700 mt-3 group-hover:text-violet-700 truncate">› Avg delivery time by month</div>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <!-- Recent threads (premium style) -->
+      <div class="max-w-5xl mx-auto px-10 mt-12 grid grid-cols-3 gap-6">
+        <div class="col-span-2">
+          <h2 class="text-xl font-semibold tracking-tight mb-5">Recent activity</h2>
+          <div class="glow-card rounded-xl border border-zinc-200/60 overflow-hidden">
+            <a class="flex items-center gap-4 px-5 py-4 hover:bg-zinc-50/60 border-b border-zinc-100 transition" href="#">
+              <div class="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 text-xs font-semibold">G</div>
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-sm">Investigating churn drop in São Paulo region</div>
+                <div class="text-xs text-zinc-500 mt-0.5">6 messages · last reply 12 min ago</div>
+              </div>
+              <span class="text-xs px-2 py-1 rounded bg-violet-50 text-violet-700 font-medium">Active</span>
+            </a>
+            <a class="flex items-center gap-4 px-5 py-4 hover:bg-zinc-50/60 border-b border-zinc-100 transition" href="#">
+              <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-semibold">G</div>
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-sm">Q1 board prep — revenue + delivery KPIs</div>
+                <div class="text-xs text-zinc-500 mt-0.5">11 messages · 1 hour ago</div>
+              </div>
+            </a>
+            <a class="flex items-center gap-4 px-5 py-4 hover:bg-zinc-50/60 transition" href="#">
+              <div class="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-semibold">G</div>
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-sm">CFO question on payment methods</div>
+                <div class="text-xs text-zinc-500 mt-0.5">3 messages · yesterday</div>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="text-xl font-semibold tracking-tight mb-5">Sources</h2>
+          <div class="glow-card rounded-xl border border-zinc-200/60 p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span class="text-sm">PostgreSQL</span>
+              </div>
+              <span class="text-xs text-zinc-500 font-mono">1.5M</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span class="text-sm">Qdrant Vector</span>
+              </div>
+              <span class="text-xs text-zinc-500 font-mono">302</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                <span class="text-sm">Neo4j Graph</span>
+              </div>
+              <span class="text-xs text-zinc-500 font-mono">2.4K</span>
+            </div>
+            <div class="border-t border-zinc-100 pt-3 mt-3">
+              <div class="text-xs text-zinc-500 mb-2">Knowledge layers</div>
+              <div class="flex items-center justify-between text-sm py-1"><span>Glossary</span><span class="font-mono text-zinc-500">12</span></div>
+              <div class="flex items-center justify-between text-sm py-1"><span>Business rules</span><span class="font-mono text-zinc-500">8</span></div>
+              <div class="flex items-center justify-between text-sm py-1"><span>Code context</span><span class="font-mono text-zinc-500">5</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="h-24"></div>
+    </div>
+
+  </main>
+
+</div>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>

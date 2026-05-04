@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Acme RAG · Notion Workspace</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #fbfbfa; color: #37352f; font-size: 14px; }
+  .nav-item:hover { background: #efefee; }
+  .nav-item.active { background: #ebebea; font-weight: 500; }
+  .text-faint { color: #9b9a97; }
+  .text-mid { color: #6b6b65; }
+  .border-soft { border-color: #ececea; }
+  .scrollbar-thin::-webkit-scrollbar { width: 8px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #d3d2cf; border-radius: 4px; }
+</style>
+</head>
+<body class="antialiased min-h-screen">
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-[260px] flex-shrink-0 bg-[#f7f7f5] border-r border-soft flex flex-col">
+    <!-- Workspace switcher -->
+    <div class="px-3 py-3">
+      <button class="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#efefee] transition">
+        <span class="w-5 h-5 rounded flex items-center justify-center text-xs bg-orange-100 text-orange-700">A</span>
+        <span class="text-sm font-medium flex-1 text-left">Acme Corp's Workspace</span>
+        <i data-lucide="chevrons-up-down" class="w-3.5 h-3.5 text-faint"></i>
+      </button>
+    </div>
+
+    <!-- Search -->
+    <div class="px-3 pb-2">
+      <button class="w-full flex items-center gap-2 px-2 py-1 rounded hover:bg-[#efefee] transition text-sm text-mid">
+        <i data-lucide="search" class="w-3.5 h-3.5"></i>
+        <span class="flex-1 text-left">Search</span>
+      </button>
+      <button class="w-full flex items-center gap-2 px-2 py-1 rounded hover:bg-[#efefee] transition text-sm text-mid mt-0.5">
+        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+        <span class="flex-1 text-left">AI</span>
+      </button>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 px-2 overflow-auto scrollbar-thin">
+      <a class="nav-item active flex items-center gap-2 px-2 py-1 rounded text-sm transition" href="#">
+        <i data-lucide="home" class="w-3.5 h-3.5 text-mid"></i> Home
+      </a>
+      <a class="nav-item flex items-center gap-2 px-2 py-1 rounded text-sm transition" href="#">
+        <i data-lucide="message-square" class="w-3.5 h-3.5 text-mid"></i> Threads
+      </a>
+      <a class="nav-item flex items-center gap-2 px-2 py-1 rounded text-sm transition" href="#">
+        <i data-lucide="bookmark" class="w-3.5 h-3.5 text-mid"></i> Saved
+      </a>
+      <a class="nav-item flex items-center gap-2 px-2 py-1 rounded text-sm transition" href="#">
+        <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 text-mid"></i> Dashboards
+      </a>
+
+      <div class="mt-5 mb-1.5 px-2 text-xs uppercase tracking-wider text-faint font-medium">Workspace</div>
+      <a class="nav-item flex items-center gap-2 px-2 py-1 rounded text-sm transition" href="#">
+        <span>📊</span> Sources
+      </a>
+      <a class="nav-item flex items-center gap-2 px-2 py-1 rounded text-sm transition" href="#">
+        <span>🧠</span> Knowledge
+      </a>
+      <a class="nav-item flex items-center gap-2 px-2 py-1 rounded text-sm transition" href="#">
+        <span>🤖</span> Agents
+      </a>
+
+      <div class="mt-5 mb-1.5 px-2 text-xs uppercase tracking-wider text-faint font-medium">Pinned</div>
+      <a class="nav-item flex items-center gap-2 px-2 py-1 rounded text-sm transition" href="#">
+        <span>📌</span> <span class="truncate">Revenue by month last year</span>
+      </a>
+      <a class="nav-item flex items-center gap-2 px-2 py-1 rounded text-sm transition" href="#">
+        <span>📌</span> <span class="truncate">Top 10 sellers Q1</span>
+      </a>
+
+      <div class="mt-5 mb-1.5 px-2 text-xs uppercase tracking-wider text-faint font-medium">Recent</div>
+      <a class="nav-item flex items-center gap-2 px-2 py-1 rounded text-sm transition" href="#">
+        <span>💬</span> <span class="truncate">Investigating churn drop</span>
+      </a>
+      <a class="nav-item flex items-center gap-2 px-2 py-1 rounded text-sm transition" href="#">
+        <span>💬</span> <span class="truncate">Q1 board prep</span>
+      </a>
+      <a class="nav-item flex items-center gap-2 px-2 py-1 rounded text-sm transition" href="#">
+        <span>💬</span> <span class="truncate">CFO question on payments</span>
+      </a>
+    </nav>
+
+    <!-- User -->
+    <div class="px-3 py-3 border-t border-soft">
+      <button class="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#efefee] transition">
+        <span class="w-6 h-6 rounded-full bg-orange-200 flex items-center justify-center text-xs font-medium text-orange-800">G</span>
+        <div class="flex-1 text-left min-w-0">
+          <div class="text-sm font-medium truncate">Gopal</div>
+        </div>
+        <i data-lucide="more-horizontal" class="w-4 h-4 text-faint"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- Top bar -->
+    <header class="h-12 flex-shrink-0 flex items-center px-6 gap-3 border-b border-soft bg-white">
+      <div class="flex items-center gap-1 text-sm text-mid">
+        <i data-lucide="home" class="w-3.5 h-3.5"></i>
+        <span>/</span>
+        <span class="text-[#37352f] font-medium">Home</span>
+      </div>
+      <div class="flex-1"></div>
+      <button class="text-sm text-mid hover:bg-[#efefee] px-2 py-1 rounded">Share</button>
+      <button class="text-mid hover:bg-[#efefee] p-1 rounded"><i data-lucide="message-circle" class="w-4 h-4"></i></button>
+      <button class="text-mid hover:bg-[#efefee] p-1 rounded"><i data-lucide="more-horizontal" class="w-4 h-4"></i></button>
+    </header>
+
+    <!-- Scroll area -->
+    <div class="flex-1 overflow-auto scrollbar-thin">
+      <div class="max-w-3xl mx-auto px-12 py-12">
+
+        <!-- Page hero -->
+        <div class="mb-2 text-4xl">🏠</div>
+        <h1 class="text-4xl font-bold tracking-tight mb-2">Welcome back, Gopal</h1>
+        <p class="text-mid text-base mb-10">Ask anything about your company's data, docs, and code. Your knowledge workspace.</p>
+
+        <!-- Ask box -->
+        <div class="bg-white rounded-lg border border-soft hover:border-[#d3d2cf] transition mb-3 shadow-sm">
+          <div class="px-4 py-3 flex items-start gap-3">
+            <i data-lucide="sparkles" class="w-5 h-5 text-orange-500 mt-0.5"></i>
+            <div class="flex-1 text-mid">Ask anything, or @ to mention a source…</div>
+            <button class="text-faint hover:text-mid"><i data-lucide="mic" class="w-4 h-4"></i></button>
+          </div>
+          <div class="px-3 pb-2.5 flex items-center gap-1.5 border-t border-soft pt-2">
+            <button class="px-2 py-1 rounded text-xs bg-orange-50 text-orange-700 font-medium flex items-center gap-1">✨ Auto</button>
+            <button class="px-2 py-1 rounded text-xs hover:bg-[#efefee] text-mid flex items-center gap-1">📊 Data</button>
+            <button class="px-2 py-1 rounded text-xs hover:bg-[#efefee] text-mid flex items-center gap-1">📄 Docs</button>
+            <button class="px-2 py-1 rounded text-xs hover:bg-[#efefee] text-mid flex items-center gap-1">💻 Code</button>
+            <button class="px-2 py-1 rounded text-xs hover:bg-[#efefee] text-mid flex items-center gap-1">🌐 Web</button>
+          </div>
+        </div>
+
+        <!-- Quick start -->
+        <h2 class="text-xs uppercase tracking-wider text-faint font-medium mt-12 mb-4">Quick start</h2>
+        <div class="grid grid-cols-2 gap-3">
+          <a class="group block bg-white border border-soft rounded-lg p-4 hover:border-[#d3d2cf] transition" href="#">
+            <div class="flex items-start gap-3">
+              <div class="text-2xl">📈</div>
+              <div class="flex-1 min-w-0">
+                <div class="font-semibold text-base">Revenue trends</div>
+                <div class="text-xs text-faint mt-0.5">3 starter questions</div>
+                <div class="text-sm text-mid mt-3 truncate">› What was revenue by month last year?</div>
+              </div>
+            </div>
+          </a>
+          <a class="group block bg-white border border-soft rounded-lg p-4 hover:border-[#d3d2cf] transition" href="#">
+            <div class="flex items-start gap-3">
+              <div class="text-2xl">🛒</div>
+              <div class="flex-1 min-w-0">
+                <div class="font-semibold text-base">Top products</div>
+                <div class="text-xs text-faint mt-0.5">4 starter questions</div>
+                <div class="text-sm text-mid mt-3 truncate">› Top 10 categories by revenue</div>
+              </div>
+            </div>
+          </a>
+          <a class="group block bg-white border border-soft rounded-lg p-4 hover:border-[#d3d2cf] transition" href="#">
+            <div class="flex items-start gap-3">
+              <div class="text-2xl">⭐</div>
+              <div class="flex-1 min-w-0">
+                <div class="font-semibold text-base">Reviews & ratings</div>
+                <div class="text-xs text-faint mt-0.5">3 starter questions</div>
+                <div class="text-sm text-mid mt-3 truncate">› Average review by state</div>
+              </div>
+            </div>
+          </a>
+          <a class="group block bg-white border border-soft rounded-lg p-4 hover:border-[#d3d2cf] transition" href="#">
+            <div class="flex items-start gap-3">
+              <div class="text-2xl">🚚</div>
+              <div class="flex-1 min-w-0">
+                <div class="font-semibold text-base">Delivery insights</div>
+                <div class="text-xs text-faint mt-0.5">3 starter questions</div>
+                <div class="text-sm text-mid mt-3 truncate">› Avg delivery time by month</div>
+              </div>
+            </div>
+          </a>
+        </div>
+
+        <!-- Pinned -->
+        <h2 class="text-xs uppercase tracking-wider text-faint font-medium mt-12 mb-3">📌 Pinned questions</h2>
+        <div class="bg-white border border-soft rounded-lg overflow-hidden">
+          <a class="flex items-center gap-3 px-4 py-3 border-b border-soft hover:bg-[#fbfaf9] transition group" href="#">
+            <i data-lucide="bookmark" class="w-4 h-4 text-orange-500"></i>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium">Revenue by month last year</div>
+              <div class="text-xs text-faint mt-0.5">Last refreshed 2h ago · 12 rows</div>
+            </div>
+            <button class="text-xs text-mid hover:text-[#37352f] opacity-0 group-hover:opacity-100">Re-run</button>
+          </a>
+          <a class="flex items-center gap-3 px-4 py-3 hover:bg-[#fbfaf9] transition group" href="#">
+            <i data-lucide="bookmark" class="w-4 h-4 text-orange-500"></i>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium">Top 10 sellers Q1</div>
+              <div class="text-xs text-faint mt-0.5">Last refreshed 1d ago · 10 rows</div>
+            </div>
+            <button class="text-xs text-mid hover:text-[#37352f] opacity-0 group-hover:opacity-100">Re-run</button>
+          </a>
+        </div>
+
+        <!-- Recent -->
+        <h2 class="text-xs uppercase tracking-wider text-faint font-medium mt-12 mb-3">🕐 Recent threads</h2>
+        <div class="space-y-1">
+          <a class="flex items-center gap-3 px-2 py-2 rounded hover:bg-[#efefee] transition" href="#">
+            <span class="text-lg">💬</span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm">Investigating churn drop in São Paulo region</div>
+              <div class="text-xs text-faint">6 messages · 12 minutes ago</div>
+            </div>
+          </a>
+          <a class="flex items-center gap-3 px-2 py-2 rounded hover:bg-[#efefee] transition" href="#">
+            <span class="text-lg">💬</span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm">Q1 board prep — revenue + delivery KPIs</div>
+              <div class="text-xs text-faint">11 messages · 1 hour ago</div>
+            </div>
+          </a>
+          <a class="flex items-center gap-3 px-2 py-2 rounded hover:bg-[#efefee] transition" href="#">
+            <span class="text-lg">💬</span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm">CFO question on payment methods</div>
+              <div class="text-xs text-faint">3 messages · yesterday</div>
+            </div>
+          </a>
+        </div>
+
+        <!-- Sources callout -->
+        <h2 class="text-xs uppercase tracking-wider text-faint font-medium mt-12 mb-3">📊 Sources & Health</h2>
+        <div class="bg-white border border-soft rounded-lg p-4 grid grid-cols-3 gap-4">
+          <div>
+            <div class="text-xs text-faint">PostgreSQL · Olist</div>
+            <div class="text-2xl font-bold text-[#37352f] mt-1">1.5M</div>
+            <div class="text-xs text-emerald-600 mt-0.5">● fresh</div>
+          </div>
+          <div>
+            <div class="text-xs text-faint">Qdrant · Docs</div>
+            <div class="text-2xl font-bold text-[#37352f] mt-1">302</div>
+            <div class="text-xs text-emerald-600 mt-0.5">● fresh</div>
+          </div>
+          <div>
+            <div class="text-xs text-faint">Neo4j · Graph</div>
+            <div class="text-2xl font-bold text-[#37352f] mt-1">2.4K</div>
+            <div class="text-xs text-amber-600 mt-0.5">● 3h ago</div>
+          </div>
+        </div>
+
+        <div class="h-24"></div>
+      </div>
+    </div>
+
+  </main>
+
+</div>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>

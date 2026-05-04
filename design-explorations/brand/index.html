@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Compass — Brand Identity</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #0a0c14; color: #e7e9f0; }
+  .serif { font-family: 'Source Serif 4', serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .accent-grad-text {
+    background: linear-gradient(135deg, #a99dff 0%, #6fc3ff 100%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .panel {
+    background: rgba(20, 24, 36, 0.55);
+    border: 1px solid rgba(255,255,255,0.06);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+  }
+  .swatch { width: 100%; height: 80px; border-radius: 8px; }
+  .text-faint { color: #6e7488; }
+  .text-mid { color: #9aa0b6; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<header class="max-w-6xl mx-auto px-8 py-12 border-b border-white/5">
+  <div class="text-xs uppercase tracking-widest text-faint mb-3">Brand Identity</div>
+  <h1 class="text-5xl serif italic">compass.</h1>
+  <p class="text-mid mt-3 max-w-xl">Tagline: <span class="text-white">Ask. Verify. Act.</span> · The unified answer-and-action layer for enterprise data. Logo, wordmark, favicon, and usage guidelines below.</p>
+</header>
+
+<main class="max-w-6xl mx-auto px-8 py-12 space-y-16">
+
+  <!-- The mark -->
+  <section>
+    <div class="text-xs uppercase tracking-widest text-faint mb-4">01 · The Mark</div>
+    <h2 class="text-3xl serif font-semibold mb-2">A compass needle that breaks <span class="italic accent-grad-text">the ring</span>.</h2>
+    <p class="text-mid max-w-2xl mb-8">The needle (diagonal arrow) sits inside an open ring. The ring's gap doubles as the implicit <em class="serif italic">"C"</em> of Compass. Together: navigation + grounded direction + brand initial.</p>
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="panel p-12 flex items-center justify-center" style="background: #0a0c14;">
+        <img src="./logo-mark.svg" alt="Compass mark — dark background" class="w-40 h-40">
+      </div>
+      <div class="panel p-12 flex items-center justify-center" style="background: #faf9f5;">
+        <img src="./logo-mark.svg" alt="Compass mark — light background" class="w-40 h-40">
+      </div>
+    </div>
+  </section>
+
+  <!-- Wordmark -->
+  <section>
+    <div class="text-xs uppercase tracking-widest text-faint mb-4">02 · Wordmark</div>
+    <h2 class="text-3xl serif font-semibold mb-2">Mark + lowercase wordmark.</h2>
+    <p class="text-mid max-w-2xl mb-8">Inter Display, weight 600, letter-spacing -0.02em, lowercase. Lowercase signals approachable, not corporate. Mark to the left, 16px gap.</p>
+
+    <div class="space-y-4">
+      <div class="panel p-12 flex items-center justify-center" style="background: #0a0c14;">
+        <img src="./wordmark.svg" alt="Compass wordmark — dark" class="h-16">
+      </div>
+      <div class="panel p-12 flex items-center justify-center" style="background: #faf9f5;">
+        <img src="./wordmark-light.svg" alt="Compass wordmark — light" class="h-16">
+      </div>
+    </div>
+  </section>
+
+  <!-- Favicon / app icon -->
+  <section>
+    <div class="text-xs uppercase tracking-widest text-faint mb-4">03 · Favicon &amp; App Icon</div>
+    <h2 class="text-3xl serif font-semibold mb-2">Simplified for tiny sizes.</h2>
+    <p class="text-mid max-w-2xl mb-8">At 16px and below, the ring becomes a hint. The needle does the heavy lifting. Rounded square (8px corner) with brand-dark fill. Maskable for Android home-screen.</p>
+
+    <div class="panel p-12 flex items-center gap-12 flex-wrap justify-center">
+      <div class="text-center">
+        <img src="./favicon.svg" class="mx-auto" style="width: 16px; height: 16px;">
+        <div class="text-xs text-faint mt-3">16px · favicon</div>
+      </div>
+      <div class="text-center">
+        <img src="./favicon.svg" class="mx-auto" style="width: 32px; height: 32px;">
+        <div class="text-xs text-faint mt-3">32px · favicon</div>
+      </div>
+      <div class="text-center">
+        <img src="./favicon.svg" class="mx-auto" style="width: 64px; height: 64px;">
+        <div class="text-xs text-faint mt-3">64px · home screen</div>
+      </div>
+      <div class="text-center">
+        <img src="./favicon.svg" class="mx-auto" style="width: 128px; height: 128px;">
+        <div class="text-xs text-faint mt-3">128px · app icon</div>
+      </div>
+      <div class="text-center">
+        <img src="./favicon.svg" class="mx-auto" style="width: 256px; height: 256px;">
+        <div class="text-xs text-faint mt-3">256px · marketplace</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Color -->
+  <section>
+    <div class="text-xs uppercase tracking-widest text-faint mb-4">04 · Brand Colors</div>
+    <h2 class="text-3xl serif font-semibold mb-8">Single-hue gradient, one accent.</h2>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="panel p-6">
+        <div class="swatch mb-4" style="background: linear-gradient(135deg, #8b7eff, #5fb4ff);"></div>
+        <div class="font-semibold">Brand Gradient</div>
+        <div class="text-xs text-mid mono mt-1">#8b7eff → #5fb4ff</div>
+        <div class="text-xs text-faint mt-2">Primary accent. CTAs, mark, key moments.</div>
+      </div>
+      <div class="panel p-6">
+        <div class="swatch mb-4" style="background: #8b7eff;"></div>
+        <div class="font-semibold">Indigo</div>
+        <div class="text-xs text-mid mono mt-1">#8b7eff</div>
+        <div class="text-xs text-faint mt-2">Solid accent fallback.</div>
+      </div>
+      <div class="panel p-6">
+        <div class="swatch mb-4" style="background: #5fb4ff;"></div>
+        <div class="font-semibold">Cyan</div>
+        <div class="text-xs text-mid mono mt-1">#5fb4ff</div>
+        <div class="text-xs text-faint mt-2">Data scope, lineage, secondary.</div>
+      </div>
+      <div class="panel p-6">
+        <div class="swatch mb-4 border border-white/10" style="background: #0a0c14;"></div>
+        <div class="font-semibold">Brand Dark</div>
+        <div class="text-xs text-mid mono mt-1">#0a0c14</div>
+        <div class="text-xs text-faint mt-2">Default surface. App + marketing.</div>
+      </div>
+      <div class="panel p-6">
+        <div class="swatch mb-4 border border-white/10" style="background: #faf9f5;"></div>
+        <div class="font-semibold text-zinc-900">Brand Light</div>
+        <div class="text-xs text-mid mono mt-1">#faf9f5</div>
+        <div class="text-xs text-faint mt-2">Light theme surface.</div>
+      </div>
+      <div class="panel p-6">
+        <div class="swatch mb-4" style="background: #5ed4a4;"></div>
+        <div class="font-semibold">Trust Green</div>
+        <div class="text-xs text-mid mono mt-1">#5ed4a4</div>
+        <div class="text-xs text-faint mt-2">Fresh sources, success states.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Typography -->
+  <section>
+    <div class="text-xs uppercase tracking-widest text-faint mb-4">05 · Typography</div>
+    <h2 class="text-3xl serif font-semibold mb-8">Three faces, distinct roles.</h2>
+    <div class="space-y-4">
+      <div class="panel p-8">
+        <div class="text-xs text-faint mb-2 uppercase tracking-wider">Inter · Product chrome &amp; UI</div>
+        <div style="font-family: Inter; font-weight: 600; font-size: 48px; letter-spacing: -0.02em;">The quick brown fox</div>
+        <div class="text-xs text-faint mt-2 mono">Inter Variable · weights 400 / 500 / 600 / 700</div>
+      </div>
+      <div class="panel p-8">
+        <div class="text-xs text-faint mb-2 uppercase tracking-wider">Source Serif 4 · Brand-distinctive moments only</div>
+        <div class="serif italic" style="font-size: 48px;">to know · to trust · to ask</div>
+        <div class="text-xs text-faint mt-2 mono">Source Serif 4 · italic · used sparingly in hero copy</div>
+      </div>
+      <div class="panel p-8">
+        <div class="text-xs text-faint mb-2 uppercase tracking-wider">JetBrains Mono · Code, data, tokens</div>
+        <div class="mono" style="font-size: 28px;">SELECT * FROM trust;</div>
+        <div class="text-xs text-faint mt-2 mono">JetBrains Mono · weights 400 / 500</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Logo usage -->
+  <section>
+    <div class="text-xs uppercase tracking-widest text-faint mb-4">06 · Usage rules</div>
+    <h2 class="text-3xl serif font-semibold mb-8">Do &amp; Don't.</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="panel p-6">
+        <div class="text-emerald-400 text-xs uppercase tracking-wider mb-2 font-semibold">✓ DO</div>
+        <ul class="space-y-2 text-sm text-mid">
+          <li>· Use minimum 24px height for the wordmark</li>
+          <li>· Maintain clear-space equal to the ring width on all sides</li>
+          <li>· Use brand gradient on dark backgrounds</li>
+          <li>· Pair the lockup left of headline copy</li>
+          <li>· Use favicon for sub-32px contexts</li>
+        </ul>
+      </div>
+      <div class="panel p-6">
+        <div class="text-red-400 text-xs uppercase tracking-wider mb-2 font-semibold">✗ DON'T</div>
+        <ul class="space-y-2 text-sm text-mid">
+          <li>· Stretch, skew, or rotate the mark</li>
+          <li>· Place on busy photo backgrounds without scrim</li>
+          <li>· Reverse colors of the ring vs needle</li>
+          <li>· Combine with another emoji or icon</li>
+          <li>· Use marketing red/green/orange for the mark</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="max-w-6xl mx-auto px-8 py-12 border-t border-white/5 text-xs text-faint">
+  Compass · Brand v1.0 · May 2026
+</footer>
+
+</body>
+</html>

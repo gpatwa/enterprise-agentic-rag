@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Acme RAG · Anthropic Warm</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #faf9f5; color: #2c2620; font-size: 14px; }
+  .serif { font-family: 'Source Serif 4', 'Tiempos', Georgia, serif; }
+  .nav-item:hover { background: #f1efe7; }
+  .nav-item.active { background: #ebe8de; color: #2c2620; font-weight: 500; }
+  .text-warm-faint { color: #8a8378; }
+  .text-warm-mid { color: #5d5750; }
+  .border-warm { border-color: #e7e3d6; }
+  .border-warm-strong { border-color: #d4cfbf; }
+  .bg-warm-card { background: #fffdf7; }
+  .accent { color: #cd5c0d; }
+  .bg-accent { background: #cd5c0d; }
+  .accent-soft { background: #fbe8d2; color: #8d3f06; }
+  .scrollbar-thin::-webkit-scrollbar { width: 8px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #d4cfbf; border-radius: 4px; }
+</style>
+</head>
+<body class="antialiased min-h-screen">
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-[260px] flex-shrink-0 bg-[#f5f3eb] border-r border-warm flex flex-col">
+    <!-- Workspace -->
+    <div class="px-4 py-4">
+      <button class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-[#ebe8de] transition">
+        <span class="w-7 h-7 rounded-lg bg-accent flex items-center justify-center text-sm font-bold text-white">A</span>
+        <div class="flex-1 text-left min-w-0">
+          <div class="text-sm font-medium truncate">Acme Corp</div>
+          <div class="text-xs text-warm-faint truncate">Workspace</div>
+        </div>
+        <i data-lucide="chevrons-up-down" class="w-3.5 h-3.5 text-warm-faint"></i>
+      </button>
+    </div>
+
+    <!-- Search -->
+    <div class="px-3 pb-3">
+      <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#ebe8de] hover:bg-[#e3dfd0] transition text-sm text-warm-mid">
+        <i data-lucide="search" class="w-3.5 h-3.5"></i>
+        <span class="flex-1 text-left">Search</span>
+        <span class="text-xs px-1.5 py-0.5 bg-warm-card rounded font-mono">⌘K</span>
+      </button>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 px-2 overflow-auto scrollbar-thin space-y-0.5">
+      <a class="nav-item active flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition" href="#">
+        <i data-lucide="home" class="w-4 h-4"></i> Home
+      </a>
+      <a class="nav-item flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm text-warm-mid transition" href="#">
+        <i data-lucide="message-square" class="w-4 h-4"></i> Threads
+        <span class="ml-auto text-xs text-warm-faint">12</span>
+      </a>
+      <a class="nav-item flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm text-warm-mid transition" href="#">
+        <i data-lucide="bookmark" class="w-4 h-4"></i> Saved
+      </a>
+      <a class="nav-item flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm text-warm-mid transition" href="#">
+        <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboards
+      </a>
+
+      <div class="mt-5 mb-2 px-2.5 text-xs uppercase tracking-wider text-warm-faint font-medium">Workspace</div>
+      <a class="nav-item flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm text-warm-mid transition" href="#">
+        <i data-lucide="database" class="w-4 h-4"></i> Sources
+      </a>
+      <a class="nav-item flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm text-warm-mid transition" href="#">
+        <i data-lucide="brain" class="w-4 h-4"></i> Knowledge
+      </a>
+      <a class="nav-item flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm text-warm-mid transition" href="#">
+        <i data-lucide="bot" class="w-4 h-4"></i> Agents
+      </a>
+
+      <div class="mt-5 mb-2 px-2.5 text-xs uppercase tracking-wider text-warm-faint font-medium">Pinned</div>
+      <a class="nav-item flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm text-warm-mid transition" href="#">
+        <i data-lucide="bookmark" class="w-3.5 h-3.5 accent"></i>
+        <span class="truncate">Revenue by month last year</span>
+      </a>
+      <a class="nav-item flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm text-warm-mid transition" href="#">
+        <i data-lucide="bookmark" class="w-3.5 h-3.5 accent"></i>
+        <span class="truncate">Top 10 sellers Q1</span>
+      </a>
+    </nav>
+
+    <!-- User -->
+    <div class="px-3 py-3 border-t border-warm">
+      <button class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-[#ebe8de] transition">
+        <span class="w-7 h-7 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-xs font-medium text-white">G</span>
+        <div class="flex-1 text-left min-w-0">
+          <div class="text-sm font-medium truncate">Gopal</div>
+          <div class="text-xs text-warm-faint truncate">admin · acme-prod</div>
+        </div>
+        <i data-lucide="settings" class="w-4 h-4 text-warm-faint"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- Top bar (minimal, breadcrumb only) -->
+    <header class="h-12 flex-shrink-0 flex items-center px-8 border-b border-warm bg-[#faf9f5]">
+      <div class="flex items-center gap-1.5 text-sm text-warm-mid">
+        <i data-lucide="home" class="w-3.5 h-3.5"></i>
+        <span>Home</span>
+      </div>
+      <div class="flex-1"></div>
+      <button class="text-warm-mid hover:text-[#2c2620] p-1.5 rounded hover:bg-[#ebe8de]"><i data-lucide="bell" class="w-4 h-4"></i></button>
+      <button class="text-warm-mid hover:text-[#2c2620] p-1.5 rounded hover:bg-[#ebe8de]"><i data-lucide="help-circle" class="w-4 h-4"></i></button>
+    </header>
+
+    <!-- Scroll area -->
+    <div class="flex-1 overflow-auto scrollbar-thin">
+      <div class="max-w-3xl mx-auto px-12 py-16">
+
+        <!-- Hero -->
+        <div class="mb-12">
+          <div class="serif italic text-3xl text-warm-mid mb-3">Hello, Gopal.</div>
+          <h1 class="serif text-6xl font-normal tracking-tight leading-[1.05] text-[#2c2620] mb-4">
+            What would you like<br/>
+            <span class="italic accent">to know</span> today?
+          </h1>
+          <p class="text-warm-mid text-base leading-relaxed max-w-xl">
+            Ask anything about your company's data, documents, and code. I'll search across your sources,
+            apply business rules, and ground every answer in evidence.
+          </p>
+        </div>
+
+        <!-- Ask box (warm, paper) -->
+        <div class="bg-warm-card rounded-2xl border border-warm-strong overflow-hidden mb-3">
+          <div class="px-6 py-5 flex items-start gap-4">
+            <div class="w-8 h-8 rounded-lg accent-soft flex items-center justify-center flex-shrink-0">
+              <i data-lucide="sparkles" class="w-4 h-4 accent"></i>
+            </div>
+            <div class="flex-1">
+              <div class="text-warm-faint text-base">Ask anything…</div>
+              <div class="serif italic text-warm-faint text-sm mt-2">e.g. "What was the revenue trend by month last year?"</div>
+            </div>
+            <button class="text-warm-faint hover:accent transition"><i data-lucide="mic" class="w-5 h-5"></i></button>
+          </div>
+          <div class="px-6 pb-3 pt-2 flex items-center gap-2 border-t border-warm">
+            <span class="text-xs text-warm-faint">Search in:</span>
+            <button class="px-2.5 py-1 rounded-md text-xs accent-soft font-medium">Auto</button>
+            <button class="px-2.5 py-1 rounded-md text-xs text-warm-mid hover:bg-[#f1efe7]">Data</button>
+            <button class="px-2.5 py-1 rounded-md text-xs text-warm-mid hover:bg-[#f1efe7]">Docs</button>
+            <button class="px-2.5 py-1 rounded-md text-xs text-warm-mid hover:bg-[#f1efe7]">Code</button>
+            <button class="px-2.5 py-1 rounded-md text-xs text-warm-mid hover:bg-[#f1efe7]">Web</button>
+            <div class="flex-1"></div>
+            <button class="px-3 py-1 rounded-md bg-accent text-white text-xs font-medium hover:bg-orange-700 transition flex items-center gap-1">
+              Send <i data-lucide="arrow-right" class="w-3 h-3"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick start -->
+        <div class="mt-16">
+          <h2 class="serif text-xl text-[#2c2620] mb-1">A few places to start</h2>
+          <p class="text-warm-mid text-sm mb-6">Curated questions across your data — pick one to begin.</p>
+
+          <div class="grid grid-cols-2 gap-3">
+            <a class="bg-warm-card border border-warm rounded-xl p-5 hover:border-warm-strong transition group" href="#">
+              <div class="flex items-start gap-4">
+                <div class="w-9 h-9 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+                  <i data-lucide="trending-up" class="w-4 h-4 accent"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="serif font-medium text-base">Revenue trends</div>
+                  <div class="text-xs text-warm-faint mt-0.5">3 starter questions</div>
+                  <div class="text-sm text-warm-mid mt-3 italic group-hover:accent transition truncate">"What was revenue by month?"</div>
+                </div>
+              </div>
+            </a>
+            <a class="bg-warm-card border border-warm rounded-xl p-5 hover:border-warm-strong transition group" href="#">
+              <div class="flex items-start gap-4">
+                <div class="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <i data-lucide="shopping-bag" class="w-4 h-4 text-blue-700"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="serif font-medium text-base">Top products</div>
+                  <div class="text-xs text-warm-faint mt-0.5">4 starter questions</div>
+                  <div class="text-sm text-warm-mid mt-3 italic group-hover:accent transition truncate">"Top 10 categories by revenue"</div>
+                </div>
+              </div>
+            </a>
+            <a class="bg-warm-card border border-warm rounded-xl p-5 hover:border-warm-strong transition group" href="#">
+              <div class="flex items-start gap-4">
+                <div class="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <i data-lucide="star" class="w-4 h-4 text-emerald-700"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="serif font-medium text-base">Reviews & ratings</div>
+                  <div class="text-xs text-warm-faint mt-0.5">3 starter questions</div>
+                  <div class="text-sm text-warm-mid mt-3 italic group-hover:accent transition truncate">"Average review by state"</div>
+                </div>
+              </div>
+            </a>
+            <a class="bg-warm-card border border-warm rounded-xl p-5 hover:border-warm-strong transition group" href="#">
+              <div class="flex items-start gap-4">
+                <div class="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                  <i data-lucide="truck" class="w-4 h-4 text-amber-700"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="serif font-medium text-base">Delivery insights</div>
+                  <div class="text-xs text-warm-faint mt-0.5">3 starter questions</div>
+                  <div class="text-sm text-warm-mid mt-3 italic group-hover:accent transition truncate">"Avg delivery time by month"</div>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <!-- Recent threads -->
+        <div class="mt-16">
+          <h2 class="serif text-xl text-[#2c2620] mb-1">Recently</h2>
+          <p class="text-warm-mid text-sm mb-6">Pick up where you left off.</p>
+
+          <div class="space-y-1">
+            <a class="block px-4 py-3 rounded-lg hover:bg-[#f1efe7] transition group" href="#">
+              <div class="flex items-baseline gap-3">
+                <i data-lucide="message-square" class="w-3.5 h-3.5 text-warm-faint relative top-0.5"></i>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm text-[#2c2620] truncate">Investigating churn drop in São Paulo region</div>
+                  <div class="text-xs text-warm-faint mt-0.5">6 messages · 12 minutes ago</div>
+                </div>
+                <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-warm-faint opacity-0 group-hover:opacity-100"></i>
+              </div>
+            </a>
+            <a class="block px-4 py-3 rounded-lg hover:bg-[#f1efe7] transition group" href="#">
+              <div class="flex items-baseline gap-3">
+                <i data-lucide="message-square" class="w-3.5 h-3.5 text-warm-faint relative top-0.5"></i>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm text-[#2c2620] truncate">Q1 board prep — revenue + delivery KPIs</div>
+                  <div class="text-xs text-warm-faint mt-0.5">11 messages · 1 hour ago</div>
+                </div>
+                <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-warm-faint opacity-0 group-hover:opacity-100"></i>
+              </div>
+            </a>
+            <a class="block px-4 py-3 rounded-lg hover:bg-[#f1efe7] transition group" href="#">
+              <div class="flex items-baseline gap-3">
+                <i data-lucide="message-square" class="w-3.5 h-3.5 text-warm-faint relative top-0.5"></i>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm text-[#2c2620] truncate">CFO question on payment methods</div>
+                  <div class="text-xs text-warm-faint mt-0.5">3 messages · yesterday</div>
+                </div>
+                <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-warm-faint opacity-0 group-hover:opacity-100"></i>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <!-- Sources card -->
+        <div class="mt-16 mb-12">
+          <h2 class="serif text-xl text-[#2c2620] mb-1">Your knowledge sources</h2>
+          <p class="text-warm-mid text-sm mb-6">What I'm reading from, and how fresh it is.</p>
+
+          <div class="bg-warm-card border border-warm rounded-xl divide-y divide-[#e7e3d6]">
+            <div class="flex items-center gap-3 px-5 py-3.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span class="text-sm font-medium flex-1">PostgreSQL · Olist</span>
+              <span class="text-xs text-warm-faint font-mono">1,550,851 rows</span>
+              <span class="text-xs accent-soft px-2 py-0.5 rounded font-medium">fresh</span>
+            </div>
+            <div class="flex items-center gap-3 px-5 py-3.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span class="text-sm font-medium flex-1">Qdrant · Documents</span>
+              <span class="text-xs text-warm-faint font-mono">302 chunks</span>
+              <span class="text-xs accent-soft px-2 py-0.5 rounded font-medium">fresh</span>
+            </div>
+            <div class="flex items-center gap-3 px-5 py-3.5">
+              <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+              <span class="text-sm font-medium flex-1">Neo4j · Knowledge graph</span>
+              <span class="text-xs text-warm-faint font-mono">2,412 nodes</span>
+              <span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-medium">3h ago</span>
+            </div>
+            <div class="px-5 py-3.5">
+              <div class="grid grid-cols-3 gap-4">
+                <div>
+                  <div class="text-xs text-warm-faint mb-1">Glossary</div>
+                  <div class="serif text-2xl text-[#2c2620]">12</div>
+                </div>
+                <div>
+                  <div class="text-xs text-warm-faint mb-1">Business rules</div>
+                  <div class="serif text-2xl text-[#2c2620]">8</div>
+                </div>
+                <div>
+                  <div class="text-xs text-warm-faint mb-1">Code context</div>
+                  <div class="serif text-2xl text-[#2c2620]">5</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Governance footnote -->
+        <div class="text-xs text-warm-faint flex items-center gap-3 pb-12">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+          <span>PII redaction <strong class="text-warm-mid">on</strong> · audit log <strong class="text-warm-mid">on</strong> · data residency <strong class="text-warm-mid">us-east-1</strong> · query timeout <strong class="text-warm-mid">10s</strong></span>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+</div>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>
