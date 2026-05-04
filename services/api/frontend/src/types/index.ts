@@ -41,6 +41,38 @@ export interface ThreadMessage {
   metadata?: Record<string, unknown>;
 }
 
+export interface Annotation {
+  id: number;
+  tenant_id: string;
+  annotation_type: string;
+  key: string;
+  value: string;
+  created_by?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface BusinessRule {
+  id: number;
+  tenant_id: string;
+  context_type: string;
+  key: string;
+  value: string;
+  applies_to_roles?: string[];
+  priority?: number;
+  created_at: string;
+}
+
+export interface CodeContextEntry {
+  id: number;
+  tenant_id: string;
+  context_type: string;
+  name: string;
+  description: string;
+  source_code?: string;
+  created_at: string;
+}
+
 export interface SavedQuestionDetail {
   id: string;
   title: string;

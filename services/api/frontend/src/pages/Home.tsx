@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLanding } from '@/lib/queries';
+import { useLanding, useSourcesHealth } from '@/lib/queries';
 import { useAsk } from '@/lib/useAsk';
 import { AskBox } from '@/components/home/AskBox';
 import { QuickStart } from '@/components/home/QuickStart';
@@ -92,6 +92,7 @@ const MOCK: LandingResponse = {
 
 export function HomePage() {
   const { data, isLoading, error } = useLanding();
+  const { data: liveHealth } = useSourcesHealth();
   const { turn, ask } = useAsk();
 
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -169,7 +170,8 @@ export function HomePage() {
         <SourcesReasoningRail turn={turn} />
       ) : (
         <RightRail
-          sources={view.sources}
+          /* prefer live probe data; fall back to landing payload */
+          sources={liveHealth?.sources ?? view.sources}
           knowledge={view.knowledge_counts}
           governance={view.governance}
           tenant={view.tenant}

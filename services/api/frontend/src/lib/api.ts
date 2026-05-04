@@ -73,6 +73,68 @@ export const api = {
     return res.json();
   },
 
+  // ── Sources ──────────────────────────────────────────────────────
+  async getSourcesHealth(): Promise<{ sources: import('@/types').SourceHealth[]; probed_at: string }> {
+    const res = await authedFetch('/sources/health');
+    if (!res.ok) throw new Error(`getSourcesHealth failed: ${res.status}`);
+    return res.json();
+  },
+
+  // ── Context layers (Knowledge admin) ─────────────────────────────
+  async listAnnotations(annotationType?: string) {
+    const q = annotationType ? `?annotation_type=${encodeURIComponent(annotationType)}` : '';
+    const res = await authedFetch(`/context/annotations${q}`);
+    if (!res.ok) throw new Error(`listAnnotations failed: ${res.status}`);
+    return res.json();
+  },
+  async createAnnotation(body: { annotation_type: string; key: string; value: string; created_by?: string }) {
+    const res = await authedFetch('/context/annotations', { method: 'POST', body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(`createAnnotation failed: ${res.status}`);
+    return res.json();
+  },
+  async updateAnnotation(id: number, body: Partial<{ key: string; value: string }>) {
+    const res = await authedFetch(`/context/annotations/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(`updateAnnotation failed: ${res.status}`);
+    return res.json();
+  },
+  async deleteAnnotation(id: number) {
+    const res = await authedFetch(`/context/annotations/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`deleteAnnotation failed: ${res.status}`);
+    return res.json();
+  },
+
+  async listBusinessRules() {
+    const res = await authedFetch('/context/business-rules');
+    if (!res.ok) throw new Error(`listBusinessRules failed: ${res.status}`);
+    return res.json();
+  },
+  async createBusinessRule(body: { context_type: string; key: string; value: string; applies_to_roles?: string[]; priority?: number }) {
+    const res = await authedFetch('/context/business-rules', { method: 'POST', body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(`createBusinessRule failed: ${res.status}`);
+    return res.json();
+  },
+  async deleteBusinessRule(id: number) {
+    const res = await authedFetch(`/context/business-rules/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`deleteBusinessRule failed: ${res.status}`);
+    return res.json();
+  },
+
+  async listCodeContext() {
+    const res = await authedFetch('/context/code-context');
+    if (!res.ok) throw new Error(`listCodeContext failed: ${res.status}`);
+    return res.json();
+  },
+  async createCodeContext(body: { context_type: string; name: string; description: string; source_code?: string }) {
+    const res = await authedFetch('/context/code-context', { method: 'POST', body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(`createCodeContext failed: ${res.status}`);
+    return res.json();
+  },
+  async deleteCodeContext(id: number) {
+    const res = await authedFetch(`/context/code-context/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`deleteCodeContext failed: ${res.status}`);
+    return res.json();
+  },
+
   // ── Saved questions ──────────────────────────────────────────────
   async listSavedQuestions(opts: { limit?: number; pinnedOnly?: boolean } = {}): Promise<SavedQuestionsResponse> {
     const params = new URLSearchParams();

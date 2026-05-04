@@ -5,11 +5,11 @@ import { ThreadsPage } from '@/pages/Threads';
 import { ThreadDetailPage } from '@/pages/ThreadDetail';
 import { SavedPage } from '@/pages/Saved';
 import { SolutionsPage } from '@/pages/Solutions';
+import { SourcesPage } from '@/pages/Sources';
+import { KnowledgePage } from '@/pages/Knowledge';
 import { StubPage } from '@/pages/StubPage';
 import {
   LayoutDashboard,
-  Database,
-  Brain,
   Bot,
 } from 'lucide-react';
 
@@ -68,12 +68,7 @@ export const router = createBrowserRouter([
     path: '/sources',
     element: (
       <RootLayout>
-        <StubPage
-          icon={Database}
-          title="Sources"
-          description="Connect data sources, monitor freshness and ingestion health, and configure sync schedules."
-          ship="W2"
-        />
+        <SourcesPage />
       </RootLayout>
     ),
   },
@@ -81,12 +76,7 @@ export const router = createBrowserRouter([
     path: '/knowledge',
     element: (
       <RootLayout>
-        <StubPage
-          icon={Brain}
-          title="Knowledge layers"
-          description="Manage glossary, business rules, and code lineage entries. Token-budgeted assembly, role-scoped, version-controlled."
-          ship="W2"
-        />
+        <KnowledgePage />
       </RootLayout>
     ),
   },

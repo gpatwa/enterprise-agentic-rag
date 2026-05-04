@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { BottomTabBar } from './BottomTabBar';
+import { CommandPalette } from './CommandPalette';
 
 /**
  * Responsive shell.
@@ -22,6 +23,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         {/* Bottom tab bar — visible only under md */}
         <BottomTabBar />
       </div>
+
+      {/* Global ⌘K command palette */}
+      <CommandPalette />
     </div>
   );
 }

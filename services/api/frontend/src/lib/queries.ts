@@ -4,7 +4,16 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
-import type { LandingResponse, SavedQuestionDetail, Thread, ThreadMessage } from '@/types';
+import type {
+  Annotation,
+  BusinessRule,
+  CodeContextEntry,
+  LandingResponse,
+  SavedQuestionDetail,
+  SourceHealth,
+  Thread,
+  ThreadMessage,
+} from '@/types';
 
 export const queryKeys = {
   landing: ['home', 'landing'] as const,
@@ -109,6 +118,126 @@ export function useDeleteSavedQuestion() {
     mutationFn: (id: string | number) => api.deleteSavedQuestion(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['saved-questions'] });
+      qc.invalidateQueries({ queryKey: queryKeys.landing });
+    },
+  });
+}
+
+// ── Sources health ──────────────────────────────────────────────────
+
+export function useSourcesHealth() {
+  return useQuery<{ sources: SourceHealth[]; probed_at: string }>({
+    queryKey: queryKeys.sourceHealth,
+    queryFn: () => api.getSourcesHealth(),
+    // Probes are slow-ish — cache 60s, auto-refresh every 5min
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+}
+
+// ── Knowledge: glossary (annotations) ───────────────────────────────
+
+export function useGlossary() {
+  return useQuery<Annotation[]>({
+    queryKey: ['context', 'annotations', 'glossary'],
+    queryFn: () => api.listAnnotations('glossary'),
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateGlossaryTerm() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { key: string; value: string }) =>
+      api.createAnnotation({ ...body, annotation_type: 'glossary' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['context'] });
+      qc.invalidateQueries({ queryKey: queryKeys.landing });
+    },
+  });
+}
+
+export function useDeleteAnnotation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.deleteAnnotation(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['context'] });
+      qc.invalidateQueries({ queryKey: queryKeys.landing });
+    },
+  });
+}
+
+// ── Knowledge: business rules ───────────────────────────────────────
+
+export function useBusinessRules() {
+  return useQuery<BusinessRule[]>({
+    queryKey: ['context', 'business-rules'],
+    queryFn: () => api.listBusinessRules(),
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateBusinessRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      context_type: string;
+      key: string;
+      value: string;
+      applies_to_roles?: string[];
+      priority?: number;
+    }) => api.createBusinessRule(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['context'] });
+      qc.invalidateQueries({ queryKey: queryKeys.landing });
+    },
+  });
+}
+
+export function useDeleteBusinessRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.deleteBusinessRule(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['context'] });
+      qc.invalidateQueries({ queryKey: queryKeys.landing });
+    },
+  });
+}
+
+// ── Knowledge: code context ─────────────────────────────────────────
+
+export function useCodeContext() {
+  return useQuery<CodeContextEntry[]>({
+    queryKey: ['context', 'code-context'],
+    queryFn: () => api.listCodeContext(),
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateCodeContext() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      context_type: string;
+      name: string;
+      description: string;
+      source_code?: string;
+    }) => api.createCodeContext(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['context'] });
+      qc.invalidateQueries({ queryKey: queryKeys.landing });
+    },
+  });
+}
+
+export function useDeleteCodeContext() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.deleteCodeContext(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['context'] });
       qc.invalidateQueries({ queryKey: queryKeys.landing });
     },
   });

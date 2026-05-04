@@ -3,6 +3,8 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from './router';
 import { ThemeProvider } from '@/lib/theme';
 import { Toaster } from '@/components/ui/toaster';
+// CommandPalette must live INSIDE the RouterProvider tree because it uses
+// useNavigate(). It's mounted via a route-level wrapper instead — see router.tsx.
 
 const queryClient = new QueryClient({
   defaultOptions: {
