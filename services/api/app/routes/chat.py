@@ -20,6 +20,29 @@ from app.agents.state import AgentState
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+
+# ── Thread persistence helper ────────────────────────────────────────
+async def _upsert_thread_safe(
+    tenant_id: str, user_id: str, session_id: str, first_user_message: str
+) -> None:
+    """
+    Touch the threads row for this session: create if missing (using the
+    first user message as title), increment message count, bump updated_at.
+    Best-effort — never raises; failures are logged.
+    """
+    try:
+        from app.threads.manager import derive_title, upsert_thread
+
+        await upsert_thread(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            thread_id=session_id,
+            title=derive_title(first_user_message),
+            increment_count=True,
+        )
+    except Exception as e:
+        logger.warning("thread upsert failed for session %s: %s", session_id, e)
+
 # --- Dependency Providers (DI) ---
 # These wrappers allow us to override dependencies easily in pytest
 # e.g., app.dependency_overrides[get_llm_client] = MockLLMClient
@@ -103,6 +126,7 @@ async def chat_stream(
         background_tasks.add_task(
             memory.add_message, session_id, "assistant", cached_ans, user_id, tenant_id
         )
+        background_tasks.add_task(_upsert_thread_safe, tenant_id, user_id, session_id, req.message)
 
         return StreamingResponse(stream_cache(), media_type="application/x-ndjson")
 
@@ -317,6 +341,7 @@ async def chat_stream(
                         memory.add_message(session_id, "user", req.message, user_id, tenant_id),
                         memory.add_message(session_id, "assistant", final_answer, user_id, tenant_id),
                         cache.set_cached_response(req.message, final_answer, tenant_id=tenant_id),
+                        _upsert_thread_safe(tenant_id, user_id, session_id, req.message),
                         return_exceptions=True,
                     )
                 except Exception as post_err:

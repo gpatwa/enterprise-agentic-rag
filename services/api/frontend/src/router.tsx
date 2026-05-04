@@ -1,10 +1,11 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { HomePage } from '@/pages/Home';
+import { ThreadsPage } from '@/pages/Threads';
+import { SavedPage } from '@/pages/Saved';
 import { StubPage } from '@/pages/StubPage';
 import {
   MessageSquare,
-  Bookmark,
   LayoutDashboard,
   Database,
   Brain,
@@ -30,12 +31,7 @@ export const router = createBrowserRouter([
     path: '/threads',
     element: (
       <RootLayout>
-        <StubPage
-          icon={MessageSquare}
-          title="Threads"
-          description="Persistent conversations with full context, evidence, and audit. Pick up where you left off, share with teammates, and pin recurring questions."
-          ship="W2"
-        />
+        <ThreadsPage />
       </RootLayout>
     ),
   },
@@ -56,12 +52,7 @@ export const router = createBrowserRouter([
     path: '/saved',
     element: (
       <RootLayout>
-        <StubPage
-          icon={Bookmark}
-          title="Saved questions"
-          description="Bookmarked questions you re-run on a schedule. Each saved question keeps its last result, freshness, and a one-click re-run."
-          ship="W2"
-        />
+        <SavedPage />
       </RootLayout>
     ),
   },

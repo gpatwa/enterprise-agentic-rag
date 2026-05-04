@@ -6,6 +6,7 @@ import type {
   Tenant,
   User,
 } from '@/types';
+import { formatCount } from '@/lib/format';
 
 interface Props {
   sources: SourceHealth[];
@@ -125,8 +126,3 @@ function Row({
   );
 }
 
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}

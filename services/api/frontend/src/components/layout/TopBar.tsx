@@ -1,5 +1,6 @@
 import { Search, Bell, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from './ThemeToggle';
 
 export function TopBar() {
   return (
@@ -10,6 +11,7 @@ export function TopBar() {
         <span className="font-mono text-xs px-1.5 py-0.5 bg-white/5 rounded border">⌘K</span>
       </button>
       <div className="flex-1" />
+      <ThemeToggle />
       <Button variant="ghost" size="icon" aria-label="Notifications">
         <Bell className="w-4 h-4" />
       </Button>

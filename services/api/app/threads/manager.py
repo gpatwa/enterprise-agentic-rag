@@ -247,6 +247,18 @@ async def update_saved_question(
         return _saved_to_dict(q) if q else None
 
 
+def derive_title(message: str, max_len: int = 60) -> str:
+    """
+    Auto-derive a thread title from the first user message.
+    Trim, drop trailing punctuation, cap length.
+    """
+    title = (message or "").strip().split("\n", 1)[0]
+    title = title.rstrip(" .?!,:;")
+    if len(title) > max_len:
+        title = title[: max_len - 1].rstrip() + "…"
+    return title or "Untitled thread"
+
+
 async def delete_saved_question(tenant_id: str, user_id: str, question_id: int) -> bool:
     if _pg.AsyncSessionLocal is None:
         return False

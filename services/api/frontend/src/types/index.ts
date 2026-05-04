@@ -30,6 +30,17 @@ export interface Thread {
   updated_at: string;
   message_count: number;
   active?: boolean;
+  pinned?: boolean;
+}
+
+export interface SavedQuestionDetail {
+  id: string;
+  title: string;
+  question_text: string;
+  scope: string;
+  pinned: boolean;
+  last_run_at: string | null;
+  last_result_preview: string | null;
 }
 
 export interface QuickStartCategory {

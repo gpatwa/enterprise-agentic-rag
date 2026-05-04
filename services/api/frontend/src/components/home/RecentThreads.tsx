@@ -1,5 +1,6 @@
 import { MessageSquare } from 'lucide-react';
 import type { Thread } from '@/types';
+import { formatRelative } from '@/lib/format';
 
 interface Props {
   threads: Thread[];
@@ -44,14 +45,3 @@ export function RecentThreads({ threads }: Props) {
   );
 }
 
-function formatRelative(iso: string): string {
-  const then = new Date(iso).getTime();
-  const diffMs = Date.now() - then;
-  const min = Math.round(diffMs / 60000);
-  if (min < 1) return 'just now';
-  if (min < 60) return `${min}m ago`;
-  const h = Math.round(min / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.round(h / 24);
-  return `${d}d ago`;
-}

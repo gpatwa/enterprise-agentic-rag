@@ -30,11 +30,75 @@ async function authedFetch(path: string, init: RequestInit = {}) {
   return fetch(`${API_BASE}${path}`, { ...init, headers });
 }
 
+interface ThreadsResponse {
+  threads: import('@/types').Thread[];
+}
+interface SavedQuestionsResponse {
+  saved_questions: import('@/types').SavedQuestionDetail[];
+}
+
 export const api = {
   /** Get the full Home page bundle in a single request. */
   async getLanding() {
     const res = await authedFetch('/home/landing');
     if (!res.ok) throw new Error(`landing failed: ${res.status}`);
+    return res.json();
+  },
+
+  // ── Threads ─────────────────────────────────────────────────────
+  async listThreads(opts: { limit?: number; pinnedOnly?: boolean } = {}): Promise<ThreadsResponse> {
+    const params = new URLSearchParams();
+    if (opts.limit) params.set('limit', String(opts.limit));
+    if (opts.pinnedOnly) params.set('pinned_only', 'true');
+    const res = await authedFetch(`/threads?${params}`);
+    if (!res.ok) throw new Error(`listThreads failed: ${res.status}`);
+    return res.json();
+  },
+  async pinThread(threadId: string, pinned: boolean) {
+    const res = await authedFetch(`/threads/${threadId}/pin`, {
+      method: 'POST',
+      body: JSON.stringify({ pinned }),
+    });
+    if (!res.ok) throw new Error(`pinThread failed: ${res.status}`);
+    return res.json();
+  },
+
+  // ── Saved questions ──────────────────────────────────────────────
+  async listSavedQuestions(opts: { limit?: number; pinnedOnly?: boolean } = {}): Promise<SavedQuestionsResponse> {
+    const params = new URLSearchParams();
+    if (opts.limit) params.set('limit', String(opts.limit));
+    if (opts.pinnedOnly) params.set('pinned_only', 'true');
+    const res = await authedFetch(`/saved-questions?${params}`);
+    if (!res.ok) throw new Error(`listSavedQuestions failed: ${res.status}`);
+    return res.json();
+  },
+  async createSavedQuestion(body: {
+    title: string;
+    question_text: string;
+    scope?: string;
+    pinned?: boolean;
+  }) {
+    const res = await authedFetch('/saved-questions', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`createSavedQuestion failed: ${res.status}`);
+    return res.json();
+  },
+  async updateSavedQuestion(
+    id: string | number,
+    patch: { title?: string; pinned?: boolean; last_result_preview?: string }
+  ) {
+    const res = await authedFetch(`/saved-questions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) throw new Error(`updateSavedQuestion failed: ${res.status}`);
+    return res.json();
+  },
+  async deleteSavedQuestion(id: string | number) {
+    const res = await authedFetch(`/saved-questions/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`deleteSavedQuestion failed: ${res.status}`);
     return res.json();
   },
 };
