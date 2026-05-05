@@ -9,6 +9,9 @@ import type {
   BusinessRule,
   CodeContextEntry,
   LandingResponse,
+  MCPCatalogResponse,
+  MCPConnectionsResponse,
+  MCPTestResponse,
   SavedQuestionDetail,
   SourceHealth,
   Thread,
@@ -23,6 +26,8 @@ export const queryKeys = {
   savedQuestions: (opts: { pinnedOnly?: boolean } = {}) =>
     ['saved-questions', opts] as const,
   sourceHealth: ['sources', 'health'] as const,
+  mcpCatalog: ['mcp', 'catalog'] as const,
+  mcpConnections: ['mcp', 'connections'] as const,
 };
 
 export function useLanding() {
@@ -239,6 +244,67 @@ export function useDeleteCodeContext() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['context'] });
       qc.invalidateQueries({ queryKey: queryKeys.landing });
+    },
+  });
+}
+
+// ── MCP connectors ──────────────────────────────────────────────────
+
+export function useMcpCatalog() {
+  return useQuery<MCPCatalogResponse>({
+    queryKey: queryKeys.mcpCatalog,
+    queryFn: () => api.getMcpCatalog(),
+    // Static catalog — refresh sparingly
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useMcpConnections() {
+  return useQuery<MCPConnectionsResponse>({
+    queryKey: queryKeys.mcpConnections,
+    queryFn: () => api.getMcpConnections(),
+    staleTime: 30_000,
+  });
+}
+
+export function useEnableMcp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { server_name: string; credentials: Record<string, string> }) =>
+      api.enableMcp(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.mcpConnections });
+    },
+  });
+}
+
+export function useDisableMcp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (serverName: string) => api.disableMcp(serverName),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.mcpConnections });
+    },
+  });
+}
+
+export function useRemoveMcp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (serverName: string) => api.removeMcp(serverName),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.mcpConnections });
+    },
+  });
+}
+
+export function useTestMcp() {
+  const qc = useQueryClient();
+  return useMutation<MCPTestResponse, Error, string>({
+    mutationFn: (serverName: string) => api.testMcp(serverName),
+    onSuccess: () => {
+      // status / last_health_check change — invalidate the connection list.
+      qc.invalidateQueries({ queryKey: queryKeys.mcpConnections });
     },
   });
 }

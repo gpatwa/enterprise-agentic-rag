@@ -25,6 +25,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatCount, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { McpConnectorsSection } from '@/components/sources/McpConnectorsSection';
 import type { SourceHealth, SourceType } from '@/types';
 
 const SOURCE_ICONS: Record<SourceType, LucideIcon> = {
@@ -123,6 +124,9 @@ export function SourcesPage() {
             ))}
           </ul>
         )}
+
+        {/* MCP / SaaS connectors — hidden when the backend reports MCP off */}
+        <McpConnectorsSection />
       </div>
     </div>
   );

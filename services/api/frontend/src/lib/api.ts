@@ -173,4 +173,58 @@ export const api = {
     if (!res.ok) throw new Error(`deleteSavedQuestion failed: ${res.status}`);
     return res.json();
   },
+
+  // ── MCP connectors ───────────────────────────────────────────────
+  async getMcpCatalog(): Promise<import('@/types').MCPCatalogResponse> {
+    const res = await authedFetch('/mcp/catalog');
+    if (!res.ok) throw new Error(`getMcpCatalog failed: ${res.status}`);
+    return res.json();
+  },
+  async getMcpConnections(): Promise<import('@/types').MCPConnectionsResponse> {
+    const res = await authedFetch('/mcp/connections');
+    if (!res.ok) throw new Error(`getMcpConnections failed: ${res.status}`);
+    return res.json();
+  },
+  async enableMcp(body: { server_name: string; credentials: Record<string, string> }) {
+    const res = await authedFetch('/mcp/connections', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      // Forward the structured detail body so the UI can surface a useful message.
+      let detail: unknown;
+      try {
+        detail = await res.json();
+      } catch {
+        detail = null;
+      }
+      const err = new Error(`enableMcp failed: ${res.status}`) as Error & {
+        status?: number;
+        detail?: unknown;
+      };
+      err.status = res.status;
+      err.detail = detail;
+      throw err;
+    }
+    return res.json();
+  },
+  async disableMcp(serverName: string) {
+    const res = await authedFetch(`/mcp/connections/${serverName}/disable`, {
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error(`disableMcp failed: ${res.status}`);
+    return res.json();
+  },
+  async removeMcp(serverName: string) {
+    const res = await authedFetch(`/mcp/connections/${serverName}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`removeMcp failed: ${res.status}`);
+    return res.json();
+  },
+  async testMcp(serverName: string): Promise<import('@/types').MCPTestResponse> {
+    const res = await authedFetch(`/mcp/connections/${serverName}/test`, {
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error(`testMcp failed: ${res.status}`);
+    return res.json();
+  },
 };

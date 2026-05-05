@@ -122,3 +122,52 @@ export interface LandingResponse {
   knowledge_counts: KnowledgeCounts;
   governance: Governance;
 }
+
+// ── MCP (Model Context Protocol) connectors ──────────────────────────
+
+export type MCPConnectionStatus =
+  | 'pending'
+  | 'enabled'
+  | 'disabled'
+  | 'error';
+
+export interface MCPCatalogEntry {
+  server_name: string;
+  display_name: string;
+  description: string;
+  required_credentials: string[];
+  oauth_flow: 'oauth2' | null;
+  docs_url: string | null;
+}
+
+export interface MCPCatalogResponse {
+  catalog: MCPCatalogEntry[];
+  mcp_enabled: boolean;
+}
+
+export interface MCPConnection {
+  server_name: string;
+  status: MCPConnectionStatus;
+  last_health_check: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MCPConnectionsResponse {
+  connections: MCPConnection[];
+  mcp_enabled: boolean;
+}
+
+export interface MCPTestResponse {
+  ok: boolean;
+  error_message: string | null;
+}
+
+export interface MCPToolDescriptor {
+  server_name: string;
+  tool_name: string;
+  qualified_name: string;
+  description: string;
+  input_schema: Record<string, unknown>;
+}
