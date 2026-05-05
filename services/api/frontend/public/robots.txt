@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# In-app surfaces require auth — let crawlers skip them
+Disallow: /threads
+Disallow: /threads/
+Disallow: /saved
+Disallow: /dashboards
+Disallow: /sources
+Disallow: /knowledge
+Disallow: /agents
+Disallow: /api/
+Disallow: /auth/
+
+Sitemap: https://compass.example.com/sitemap.xml

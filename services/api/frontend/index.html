@@ -3,15 +3,65 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/compass-favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Compass — Ask. Verify. Act. The unified answer-and-action layer for enterprise data." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0a0f" />
+    <meta name="color-scheme" content="dark light" />
+
+    <!-- Default SEO — overridden per route via useSEO(). VITE_SITE_URL is
+         injected at build time from .env / CI env. -->
+    <title>Compass — Ask. Verify. Act. The enterprise data agent.</title>
+    <meta name="description" content="Compass is the unified answer-and-action layer for enterprise data. Ask questions in plain English across your warehouse, docs, and SaaS — with cited sources, audit trail, and built-in security." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="%VITE_SITE_URL%/welcome" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Compass" />
+    <meta property="og:title" content="Compass — Ask. Verify. Act." />
+    <meta property="og:description" content="The unified answer-and-action layer for enterprise data." />
+    <meta property="og:url" content="%VITE_SITE_URL%/welcome" />
+    <meta property="og:image" content="%VITE_SITE_URL%/compass-og.svg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Compass — Ask. Verify. Act. The unified answer-and-action layer for enterprise data." />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Compass — Ask. Verify. Act." />
+    <meta name="twitter:description" content="The unified answer-and-action layer for enterprise data." />
+    <meta name="twitter:image" content="%VITE_SITE_URL%/compass-og.svg" />
+
+    <!-- Structured data: Organization + WebSite (page-level FAQ/SoftwareApp injected by useSEO) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Compass",
+        "url": "%VITE_SITE_URL%",
+        "logo": "%VITE_SITE_URL%/compass-mark.svg",
+        "slogan": "Ask. Verify. Act."
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Compass",
+        "url": "%VITE_SITE_URL%",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "%VITE_SITE_URL%/?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <title>Compass</title>
   </head>
   <body>
     <div id="root"></div>

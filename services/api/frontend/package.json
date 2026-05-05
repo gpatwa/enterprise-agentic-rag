@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && npm run seo:template && npm run seo:prerender",
+    "build:fast": "tsc -b && vite build && npm run seo:template",
+    "seo:template": "node scripts/seo-template.mjs",
+    "seo:prerender": "node scripts/prerender.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",

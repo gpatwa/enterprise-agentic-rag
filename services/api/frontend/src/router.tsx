@@ -7,9 +7,11 @@ import { LayoutDashboard, Bot } from 'lucide-react';
 /**
  * Route-level code splitting.
  * Each page is a separate Vite chunk; only the active route's code is fetched.
- * The HomePage stays eager (it's the landing) to avoid an initial Suspense flash.
+ * HomePage and LandingPage stay eager — both are entry surfaces and we want
+ * zero Suspense flash for first paint on either.
  */
 import { HomePage } from '@/pages/Home';
+import { LandingPage } from '@/pages/Landing';
 const ThreadsPage = lazy(() =>
   import('@/pages/Threads').then((m) => ({ default: m.ThreadsPage }))
 );
@@ -59,6 +61,12 @@ function RouteSkeleton() {
 }
 
 export const router = createBrowserRouter([
+  // Public marketing landing — no AppShell, no auth. Mounts its own
+  // PublicLayout (header + footer only). SEO entry point.
+  {
+    path: '/welcome',
+    element: <LandingPage />,
+  },
   {
     path: '/',
     element: (
