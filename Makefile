@@ -125,6 +125,12 @@ seed-context:
 seed-olist:
 	python3 scripts/seed_olist.py
 
+# Internal-alpha seed: sample threads, saved questions, glossary, and a
+# demo MCP connection. Idempotent. Set MCP_ENCRYPTION_KEY to also seed
+# the MCP demo connection (otherwise the rest still seeds and MCP is skipped).
+seed-alpha:
+	python3 scripts/seed_alpha.py
+
 # Generic dataset loader — works with any CSV dataset
 # Usage:
 #   make seed-dataset NAME=olist PATH=data/olist/
