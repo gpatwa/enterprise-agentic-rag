@@ -62,7 +62,10 @@ export function FeedbackWidget() {
     <>
       <button
         type="button"
-        aria-label="Send feedback"
+        // Avoid the word "Send" in the accessible name — the in-modal
+        // submit button uses "Send", and Playwright tests scoped on
+        // role+name=/Send/ shouldn't match this trigger.
+        aria-label="Give feedback"
         onClick={() => setOpen(true)}
         className={cn(
           'fixed bottom-4 right-4 z-30',
