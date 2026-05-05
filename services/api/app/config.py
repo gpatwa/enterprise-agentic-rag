@@ -161,6 +161,29 @@ class Settings(BaseSettings):
     PII_REDACTION_ENABLED: bool = True         # Scrub PII from prompts/output
 
     # -----------------------------------------------------------------
+    # In-app feedback widget (B.1)
+    # -----------------------------------------------------------------
+    # Slack incoming webhook URL. When unset, /api/v1/feedback still
+    # accepts submissions and audit-logs them, but doesn't relay to Slack.
+    # Get one at https://api.slack.com/apps → Incoming Webhooks.
+    FEEDBACK_SLACK_WEBHOOK_URL: Optional[str] = None
+
+    # -----------------------------------------------------------------
+    # Sentry observability (B.3)
+    # -----------------------------------------------------------------
+    # When SENTRY_DSN is set, lifespan initialises sentry-sdk[fastapi].
+    # Frontend has its own VITE_SENTRY_DSN env var (separate project).
+    SENTRY_DSN: Optional[str] = None
+    # Fraction of requests instrumented for performance traces. 0.0 disables
+    # tracing while keeping error capture; 1.0 traces everything (chatty + $$).
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.0
+    # Tag every event with the deployment name (alpha / staging / prod) so
+    # the Sentry project's Releases view groups them clearly.
+    SENTRY_ENVIRONMENT: Optional[str] = None
+    # Optional release identifier (e.g. git SHA). Set in CI.
+    SENTRY_RELEASE: Optional[str] = None
+
+    # -----------------------------------------------------------------
     # Model Context Protocol (MCP) — Tier-1 SaaS connectors
     # -----------------------------------------------------------------
     # Master switch. Default off so deployments without Node.js or with

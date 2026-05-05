@@ -21,6 +21,7 @@ from app.clients.vectordb.factory import create_vectordb_client
 from app.config import settings
 from app.routes import audit as audit_routes
 from app.routes import auth, chat, context, documents, health, home, privacy, system, upload
+from app.routes import feedback as feedback_routes
 from app.routes import mcp as mcp_routes
 from app.routes import sources as sources_routes
 from app.routes import threads as threads_routes
@@ -196,6 +197,40 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Observability setup skipped (optional deps missing): {e}")
 
+    # Sentry — error tracking for the FastAPI side. Opt-in via SENTRY_DSN.
+    # Soft import keeps deploys without sentry-sdk runnable (the SDK is
+    # listed as optional in requirements.txt).
+    if settings.SENTRY_DSN:
+        try:
+            import sentry_sdk
+            from sentry_sdk.integrations.fastapi import FastApiIntegration
+            from sentry_sdk.integrations.starlette import StarletteIntegration
+
+            sentry_sdk.init(
+                dsn=settings.SENTRY_DSN,
+                environment=settings.SENTRY_ENVIRONMENT or settings.ENV,
+                release=settings.SENTRY_RELEASE,
+                # Errors always; tracing only when explicitly enabled (chatty + $$).
+                traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
+                send_default_pii=False,  # never ship request bodies / cookies
+                integrations=[
+                    StarletteIntegration(transaction_style="endpoint"),
+                    FastApiIntegration(transaction_style="endpoint"),
+                ],
+            )
+            logger.info(
+                "Sentry initialised (env=%s, traces=%.2f)",
+                settings.SENTRY_ENVIRONMENT or settings.ENV,
+                settings.SENTRY_TRACES_SAMPLE_RATE,
+            )
+        except ImportError:
+            logger.warning(
+                "SENTRY_DSN set but sentry-sdk not installed — "
+                "pip install 'sentry-sdk[fastapi]>=2.0' to enable"
+            )
+        except Exception as e:
+            logger.warning("Sentry init failed (continuing): %s", e)
+
     # MCP — Tier-1 SaaS connectors. Lazy: stays off unless MCP_ENABLED.
     # If the master key isn't reachable from the vault, log loudly but
     # don't crash boot — we don't want a missing optional dep to take
@@ -292,6 +327,7 @@ app.include_router(sources_routes.router, prefix="/api/v1/sources", tags=["Sourc
 app.include_router(audit_routes.router, prefix="/api/v1/audit", tags=["Audit"])
 app.include_router(privacy.router, prefix="/api/v1/privacy", tags=["Privacy"])
 app.include_router(mcp_routes.router, prefix="/api/v1/mcp", tags=["MCP"])
+app.include_router(feedback_routes.router, prefix="/api/v1/feedback", tags=["Feedback"])
 
 # Serve Chat UI at root "/"
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")

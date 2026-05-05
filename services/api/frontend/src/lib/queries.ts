@@ -8,6 +8,8 @@ import type {
   Annotation,
   BusinessRule,
   CodeContextEntry,
+  FeedbackRequest,
+  FeedbackResponse,
   LandingResponse,
   MCPCatalogResponse,
   MCPConnectionsResponse,
@@ -306,5 +308,13 @@ export function useTestMcp() {
       // status / last_health_check change — invalidate the connection list.
       qc.invalidateQueries({ queryKey: queryKeys.mcpConnections });
     },
+  });
+}
+
+// ── Feedback widget ──────────────────────────────────────────────────
+
+export function useSubmitFeedback() {
+  return useMutation<FeedbackResponse, Error, FeedbackRequest>({
+    mutationFn: (body) => api.submitFeedback(body),
   });
 }

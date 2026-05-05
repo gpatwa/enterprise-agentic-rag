@@ -171,3 +171,19 @@ export interface MCPToolDescriptor {
   description: string;
   input_schema: Record<string, unknown>;
 }
+
+// ── Feedback widget ───────────────────────────────────────────────────
+
+export type FeedbackCategory = 'bug' | 'idea' | 'comment';
+
+export interface FeedbackRequest {
+  message: string;
+  category: FeedbackCategory;
+  current_url?: string;
+  user_agent?: string;
+}
+
+export interface FeedbackResponse {
+  ok: boolean;
+  relayed_to_slack: boolean;
+}

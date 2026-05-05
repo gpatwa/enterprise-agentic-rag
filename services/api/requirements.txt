@@ -43,6 +43,13 @@ langgraph==0.0.21  # pulls in langchain-core automatically
 # mcp>=1.18,<2.0
 
 # Observability & Ops
+# Sentry (B.3) — frontend + backend error tracking.
+# OPTIONAL — install only when SENTRY_DSN is set in your deploy.
+# The lifespan soft-imports `sentry_sdk` so the API boots cleanly without
+# this dep; uncomment to enable backend error capture.
+#
+# sentry-sdk[fastapi]>=2.0,<3.0
+
 opentelemetry-api==1.22.0
 opentelemetry-sdk==1.22.0
 opentelemetry-exporter-otlp==1.22.0

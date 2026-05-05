@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { BottomTabBar } from './BottomTabBar';
 import { CommandPalette } from './CommandPalette';
+import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { track } from '@/lib/analytics';
 
 /**
@@ -42,6 +43,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Global ⌘K command palette */}
       <CommandPalette />
+
+      {/* Floating "Send feedback" button — alpha-only; mounted globally so
+          stakeholders can give feedback from any page. Hidden by setting
+          VITE_FEEDBACK_DISABLED=1 (e.g. in production). */}
+      <FeedbackWidget />
     </div>
   );
 }

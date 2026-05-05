@@ -227,4 +227,30 @@ export const api = {
     if (!res.ok) throw new Error(`testMcp failed: ${res.status}`);
     return res.json();
   },
+
+  // ── Feedback widget ──────────────────────────────────────────────
+  async submitFeedback(
+    body: import('@/types').FeedbackRequest
+  ): Promise<import('@/types').FeedbackResponse> {
+    const res = await authedFetch('/feedback', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      let detail: unknown;
+      try {
+        detail = await res.json();
+      } catch {
+        detail = null;
+      }
+      const err = new Error(`submitFeedback failed: ${res.status}`) as Error & {
+        status?: number;
+        detail?: unknown;
+      };
+      err.status = res.status;
+      err.detail = detail;
+      throw err;
+    }
+    return res.json();
+  },
 };
