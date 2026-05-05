@@ -8,7 +8,9 @@ resource "azurerm_kubernetes_cluster" "aks" {
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
   dns_prefix          = var.cluster_name
-  kubernetes_version  = "1.32"
+  # 1.32 became LTS-only (Premium tier). Default non-LTS in eastus is
+  # 1.34 (`az aks get-versions -l eastus`). Bump in lock-step with that.
+  kubernetes_version = "1.34"
 
   # System node pool — runs CoreDNS, metrics-server, etc.
   default_node_pool {

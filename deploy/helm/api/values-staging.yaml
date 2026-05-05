@@ -7,38 +7,49 @@ replicaCount: 1
 image:
   pullPolicy: Always  # Always pull to get latest staging build
 
+# Alpha: expose a public IP via Azure LoadBalancer. No HTTPS yet — fine
+# for internal stakeholder traffic. Add ingress + cert-manager when we
+# move past alpha.
+service:
+  type: LoadBalancer
+  port: 8080
+
 env:
   ENV: "staging"
   LOG_LEVEL: "DEBUG"
-  # Embedding — dedicated model (not the generative LLM)
-  EMBED_MODEL: "nomic-embed-text"
-  # Re-ranking — LLM-based scoring for staging (no extra infra needed)
-  RERANKER_PROVIDER: "llm"
-  RERANKER_SCORE_THRESHOLD: "0.3"
-  # Multimodal RAG (Gemini embeddings)
-  MULTIMODAL_ENABLED: "true"
-  GEMINI_EMBED_MODEL: "gemini-embedding-2-preview"
-  GEMINI_EMBED_DIMENSIONS: "768"
-  # GOOGLE_API_KEY: loaded from Key Vault via app-env-secret
-  # Context Layer Architecture (enterprise knowledge enrichment)
-  CONTEXT_LAYERS_ENABLED: "true"
-  CONTEXT_LAYER1_ENABLED: "true"   # Document metadata & usage
-  CONTEXT_LAYER2_ENABLED: "true"   # Annotations & glossary
-  CONTEXT_LAYER3_ENABLED: "true"   # Code & pipeline context
-  CONTEXT_LAYER4_ENABLED: "true"   # Business context
-  CONTEXT_LAYERS_MAX_TOKENS: "1500"
-  # Data Analytics Agent (text-to-SQL with tables + charts)
-  DATA_ANALYTICS_ENABLED: "true"
-  ANALYTICS_QUERY_TIMEOUT: "10"
-  ANALYTICS_MAX_ROWS: "1000"
-  # ANALYTICS_DB_URL: falls back to DATABASE_URL if not set (acceptable for staging)
-  # Override K8s auto-injected service env vars (they conflict with Pydantic int parsing)
+  # Alpha: serve the new Compass SPA at root (legacy UI stays at /v1).
+  # The Dockerfile builds frontend/dist/ during image build; main.py
+  # auto-detects and mounts at /.
+  NEW_UI_ENABLED: "true"
+  # Alpha CORS: open enough for the public hostname plus localhost dev
+  # work. Tighten when the hostname is finalised.
+  CORS_ORIGINS: "*"
+
+  # ── Alpha posture ─────────────────────────────────────────────
+  # Disable features that need external API keys we don't have wired
+  # yet. Stakeholders can navigate the UI, hit /sources / /welcome /
+  # /threads, and use the feedback widget. Agent question-answering
+  # (LLM call) is degraded until LLM_PROVIDER+OPENAI_API_KEY are set
+  # in the Key Vault.
+  RERANKER_PROVIDER: "none"
+  MULTIMODAL_ENABLED: "false"
+  CONTEXT_LAYERS_ENABLED: "false"
+  DATA_ANALYTICS_ENABLED: "false"
+  MCP_ENABLED: "false"  # flip to true once stakeholders add a real connector
+
+  # Override K8s auto-injected service env vars (they conflict with
+  # Pydantic int parsing on the QDRANT_PORT side)
   QDRANT_HOST: "qdrant"
   QDRANT_PORT: "6333"
   NEO4J_URI: "bolt://neo4j:7687"
-  # Agentic pipeline — tool endpoints
-  SANDBOX_URL: "http://sandbox-service:8080/execute"
-  # TAVILY_API_KEY: loaded from Key Vault via app-env-secret
+
+  # B.1 feedback widget — unset by default; can be added at deploy
+  # time via `--set env.FEEDBACK_SLACK_WEBHOOK_URL=https://hooks…`.
+
+  # B.3 Sentry — unset by default; same deploy-time pattern.
+
+  # GOOGLE_API_KEY / TAVILY_API_KEY / OPENAI_API_KEY — loaded from
+  # Key Vault via app-env-secret when present.
 
 resources:
   requests:
