@@ -81,3 +81,17 @@ class MCPCatalog:
     @classmethod
     def names(cls) -> frozenset[str]:
         return frozenset(_ENTRIES.keys())
+
+    # ── Test seam ────────────────────────────────────────────────────
+    # Underscore-prefixed: never call from app code. Integration tests use
+    # this to register the credential-free `@modelcontextprotocol/server-everything`
+    # demo server so they can exercise the full spawn → tool-call flow against
+    # a real subprocess without needing real SaaS tokens.
+
+    @classmethod
+    def _register(cls, entry: MCPCatalogEntry) -> None:
+        _ENTRIES[entry.server_name] = entry
+
+    @classmethod
+    def _unregister(cls, server_name: str) -> None:
+        _ENTRIES.pop(server_name, None)

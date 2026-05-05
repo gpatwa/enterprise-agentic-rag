@@ -250,7 +250,9 @@ class MCPManager:
                     session, tenant_id, conn["server_name"], decrypt=True
                 )
                 creds = (full or {}).get("credentials")
-                if not creds:
+                # Empty-dict {} is valid for credential-free servers (e.g.
+                # our test `everything` server). Only skip when decrypt failed.
+                if creds is None:
                     continue
                 fetched = await self._fetch_tools(
                     tenant_id, conn["server_name"], creds
