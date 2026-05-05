@@ -61,6 +61,12 @@ try:
 except ImportError:
     pass
 
+# Import MCP connection model so its table is auto-created
+try:
+    from app.mcp.models import MCPConnection  # noqa: F401
+except ImportError:
+    pass
+
 # 3. Async Engine & Session
 #    The engine is lazily initialised so that secrets injected via
 #    Key Vault during the lifespan hook are available before the first

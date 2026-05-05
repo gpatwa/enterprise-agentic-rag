@@ -190,10 +190,56 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Observability setup skipped (optional deps missing): {e}")
 
+    # MCP — Tier-1 SaaS connectors. Lazy: stays off unless MCP_ENABLED.
+    # If the master key isn't reachable from the vault, log loudly but
+    # don't crash boot — we don't want a missing optional dep to take
+    # down the whole API.
+    if settings.MCP_ENABLED:
+        try:
+            from app.mcp.crypto import init_cipher
+            from app.mcp.process_pool import MCPProcessPool
+            from app.mcp.manager import mcp_manager
+
+            mcp_key = settings.MCP_ENCRYPTION_KEY
+            if not mcp_key:
+                # Try the secrets vault (matches the rest of the secret-injection style)
+                mcp_key = await secrets_client.get_secret("MCP_ENCRYPTION_KEY")
+            if not mcp_key:
+                logger.warning(
+                    "MCP_ENABLED but no MCP_ENCRYPTION_KEY available — MCP stays disabled"
+                )
+            else:
+                init_cipher(mcp_key)
+                pool = MCPProcessPool(
+                    max_processes=settings.MCP_MAX_PROCESSES,
+                    idle_seconds=settings.MCP_IDLE_REAP_SECONDS,
+                    tool_timeout_seconds=settings.MCP_TOOL_TIMEOUT_SECONDS,
+                )
+                pool.start()
+                mcp_manager.configure(
+                    enabled=True,
+                    pool=pool,
+                    tool_timeout_seconds=settings.MCP_TOOL_TIMEOUT_SECONDS,
+                )
+                logger.info(
+                    "MCP enabled — pool max=%d idle=%ds timeout=%ds",
+                    settings.MCP_MAX_PROCESSES,
+                    settings.MCP_IDLE_REAP_SECONDS,
+                    settings.MCP_TOOL_TIMEOUT_SECONDS,
+                )
+        except Exception as e:
+            logger.warning("MCP init failed (continuing without MCP): %s", e)
+
     yield
 
     # Shutdown
     logger.info("Closing clients...")
+    # Drain MCP pool first so its child subprocesses don't outlive their parents.
+    try:
+        from app.mcp.manager import mcp_manager as _mgr
+        await _mgr.shutdown()
+    except Exception as e:
+        logger.warning(f"MCP shutdown error (non-fatal): {e}")
     await secrets_client.close()
     await vectordb_client.close()
     await graphdb_client.close()

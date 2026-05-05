@@ -26,6 +26,22 @@ qdrant-client==1.7.3
 # Agent Framework
 langgraph==0.0.21  # pulls in langchain-core automatically
 
+# Model Context Protocol (MCP) — Tier-1 SaaS connectors via Anthropic's
+# stdio subprocess model.
+#
+# OPTIONAL — install only when MCP_ENABLED=true is intended in your deploy.
+# Recent mcp wheels pull in starlette>=1.0, which conflicts with the
+# fastapi 0.109 pin above. If you need MCP, either bump fastapi to a
+# release that allows starlette 1.x, or pin mcp to a version compatible
+# with starlette 0.35.x. The pool/manager soft-import the SDK so the API
+# boots cleanly without it; MCP_ENABLED stays off until the dep is resolved.
+#
+# To enable in your environment, install separately:
+#     pip install 'mcp>=1.1.0,<2.0.0'
+# (and ensure starlette/fastapi versions are aligned)
+#
+# mcp>=1.1.0,<2.0.0
+
 # Observability & Ops
 opentelemetry-api==1.22.0
 opentelemetry-sdk==1.22.0

@@ -160,6 +160,28 @@ class Settings(BaseSettings):
     PII_REDACTION_ENABLED: bool = True         # Scrub PII from prompts/output
 
     # -----------------------------------------------------------------
+    # Model Context Protocol (MCP) — Tier-1 SaaS connectors
+    # -----------------------------------------------------------------
+    # Master switch. Default off so deployments without Node.js or with
+    # no MCP servers configured don't pay any boot cost.
+    MCP_ENABLED: bool = False
+    # Master encryption key (32-byte URL-safe base64). Pulled from secrets
+    # vault at boot via secret name MCP_ENCRYPTION_KEY. Required when
+    # MCP_ENABLED=true; without it, the manager refuses to enable connections.
+    MCP_ENCRYPTION_KEY: Optional[str] = None
+    # Idle subprocess reap window in seconds. After this much wall time
+    # without a tool call, a tenant's server subprocess is torn down to
+    # bound resident memory. Cold-start overhead is ~1–2s on next call.
+    MCP_IDLE_REAP_SECONDS: int = 600
+    # Hard cap on simultaneously-live (tenant, server) subprocesses across
+    # the pod. Excess requests fail fast with a structured error rather
+    # than silently OOM-ing. 0 disables the cap.
+    MCP_MAX_PROCESSES: int = 200
+    # Per-tool-call timeout. Bounds long-running MCP server tools so a
+    # single hung call can't pin an event loop slot.
+    MCP_TOOL_TIMEOUT_SECONDS: int = 30
+
+    # -----------------------------------------------------------------
     # Security & Authentication
     # -----------------------------------------------------------------
     JWT_SECRET_KEY: Optional[str] = None  # Fetched from Key Vault at runtime
