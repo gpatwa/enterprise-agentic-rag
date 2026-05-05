@@ -2,12 +2,22 @@
 """
 System information endpoint — exposes environment, model, and data-source
 configuration to the Chat UI.  No secrets are returned.
+
+Also hosts the lightweight client-events sink (`POST /events`). The frontend
+analytics layer batches `track()` calls and flushes them via sendBeacon to
+this endpoint. We currently just log them — when a real analytics provider
+(PostHog / Segment / etc.) is wired up this becomes the relay point.
 """
+import logging
+from typing import Any
+
 from fastapi import APIRouter
+from pydantic import BaseModel, Field
 
 from app.config import settings
 
 router = APIRouter()
+logger = logging.getLogger("client-events")
 
 
 @router.get("/info")
@@ -53,3 +63,36 @@ async def system_info():
             "stream_response": settings.LLM_STREAM_RESPONSE,
         },
     }
+
+
+# ── Client analytics events ───────────────────────────────────────────
+
+
+class ClientEvent(BaseModel):
+    """One frontend event. Permissive shape — schema is owned by the client."""
+    name: str = Field(..., max_length=80)
+    ts: int | None = None
+    props: dict[str, Any] = Field(default_factory=dict)
+
+
+class ClientEventBatch(BaseModel):
+    events: list[ClientEvent] = Field(default_factory=list, max_length=100)
+
+
+@router.post("/events")
+async def ingest_client_events(batch: ClientEventBatch) -> dict[str, Any]:
+    """
+    Sink for the frontend's `track()` analytics. The client batches events
+    and flushes them via sendBeacon — we accept the batch and just log it
+    for now. When a real analytics provider (PostHog / Segment / Snowplow)
+    is wired in, this becomes the relay point.
+
+    No auth required: events are anonymous in nature; richer attribution
+    happens at the route level via audit_log.
+    """
+    if batch.events:
+        # One log line per event keeps the existing log-aggregation pattern
+        # ingestion-friendly (Azure Log Analytics, Datadog Logs, etc.).
+        for e in batch.events:
+            logger.info("event=%s ts=%s props=%s", e.name, e.ts, e.props)
+    return {"received": len(batch.events)}

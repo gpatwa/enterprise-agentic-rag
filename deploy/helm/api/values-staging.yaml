@@ -26,14 +26,19 @@ env:
   CORS_ORIGINS: "*"
 
   # ── Alpha posture ─────────────────────────────────────────────
-  # Disable features that need external API keys we don't have wired
-  # yet. Stakeholders can navigate the UI, hit /sources / /welcome /
-  # /threads, and use the feedback widget. Agent question-answering
-  # (LLM call) is degraded until LLM_PROVIDER+OPENAI_API_KEY are set
-  # in the Key Vault.
+  # Now that the OpenAI key is wired, turn on the LLM-dependent features
+  # that only need the seeded data we already have:
+  #   - Context layers: lets the agent see the glossary terms (ARR, NRR,
+  #     Churn, MQL) seeded by `make seed-alpha`. Answers grounded in our
+  #     definitions instead of generic SaaS speak.
+  # Still off (need external infra we haven't deployed):
+  #   - Multimodal (Gemini embeddings) → would need GOOGLE_API_KEY
+  #   - Data analytics (text-to-SQL) → would need a real warehouse
+  #   - Reranker (LLM cross-encoder) → low ROI without retrieval
+  #   - MCP → flip to true once a real Slack/GitHub/Notion token lands
   RERANKER_PROVIDER: "none"
   MULTIMODAL_ENABLED: "false"
-  CONTEXT_LAYERS_ENABLED: "false"
+  CONTEXT_LAYERS_ENABLED: "true"
   DATA_ANALYTICS_ENABLED: "false"
   MCP_ENABLED: "false"  # flip to true once stakeholders add a real connector
 
