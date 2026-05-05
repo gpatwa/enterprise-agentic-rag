@@ -65,14 +65,23 @@ async def retrieve_node(state: AgentState, config: RunnableConfig) -> Dict:
     # Build tenant filter (disabled in single-tenant data plane mode)
     tenant_filter = {} if settings.SINGLE_TENANT_MODE else {"tenant_id": tenant_id}
 
-    # Task A: Vector Search (Semantic Similarity) — filtered by tenant_id
+    # Task A: Vector Search (Semantic Similarity) — filtered by tenant_id.
+    # Wrapped in try/except so a missing / unreachable vector store doesn't
+    # crash the whole chat stream — matches the graph-search pattern below.
+    # Alpha deploys without Qdrant installed will hit this path and continue
+    # to the answer step with no retrieved docs (LLM will respond from prior
+    # context only).
     async def run_vector_search():
-        results = await _vectordb_client.search(
-            collection=settings.QDRANT_COLLECTION,
-            vector=query_vector,
-            limit=15,
-            filters=tenant_filter,
-        )
+        try:
+            results = await _vectordb_client.search(
+                collection=settings.QDRANT_COLLECTION,
+                vector=query_vector,
+                limit=15,
+                filters=tenant_filter,
+            )
+        except Exception as e:
+            logger.warning(f"Vector search failed (continuing without docs): {e}")
+            return []
         # Deduplicate by text content
         seen_texts = set()
         unique_docs = []
