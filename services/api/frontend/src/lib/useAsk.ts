@@ -7,11 +7,12 @@ import { chatStream } from './chatStream';
 import { getToken } from './api';
 import { useQueryClient } from '@tanstack/react-query';
 import { redactForAnalytics, track } from './analytics';
+import { randomUUID } from './uuid';
 import type { AskTurn, ChatEvent } from '@/types/chat';
 
 function emptyTurn(question: string, sessionId?: string | null): AskTurn {
   return {
-    turnId: crypto.randomUUID(),
+    turnId: randomUUID(),
     question,
     sessionId: sessionId ?? null,
     steps: [],
