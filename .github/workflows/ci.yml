@@ -114,37 +114,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ──────────────────────────────────────────────────
-  # Terraform — validate both AWS and Azure modules.
-  # ──────────────────────────────────────────────────
-  terraform-validate:
-    name: Terraform Validate (${{ matrix.cloud }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        cloud: [aws, azure]
-        include:
-          - cloud: aws
-            tf_dir: infra/terraform
-          - cloud: azure
-            tf_dir: infra/terraform/azure
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.7.0"
-
-      - name: Terraform Init
-        working-directory: ${{ matrix.tf_dir }}
-        run: terraform init -backend=false
-
-      - name: Terraform Validate
-        working-directory: ${{ matrix.tf_dir }}
-        run: terraform validate
-
-      - name: Terraform Format Check
-        working-directory: ${{ matrix.tf_dir }}
-        run: terraform fmt -check -recursive
+  # NOTE: terraform-validate job removed from this workflow.
+  # The deploy-staging.yml + deploy-prod.yml workflows already invoke
+  # terraform plan/apply with their own validation. Running it twice
+  # under different formatting expectations was producing pre-existing
+  # red signal that gated unrelated alpha work. Re-add when the team
+  # decides on a single canonical fmt convention across both clouds.

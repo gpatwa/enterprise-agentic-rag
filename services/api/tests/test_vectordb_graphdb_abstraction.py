@@ -4,10 +4,10 @@ Unit tests for Milestone 3: VectorDB & GraphDB Abstraction.
 Tests Protocol compliance, factory routing, Qdrant implementation,
 Neo4j implementation, NullGraphClient, and late-init injection.
 """
-import pytest
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
-from dataclasses import dataclass
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 
 # ---------------------------------------------------------------
@@ -82,8 +82,9 @@ class TestQdrantFilterBuilder:
         assert QdrantVectorClient._build_filter({}) is None
 
     def test_build_filter_single(self):
-        from app.clients.vectordb.qdrant_impl import QdrantVectorClient
         from qdrant_client.http import models
+
+        from app.clients.vectordb.qdrant_impl import QdrantVectorClient
         f = QdrantVectorClient._build_filter({"tenant_id": "acme"})
         assert isinstance(f, models.Filter)
         assert len(f.must) == 1
