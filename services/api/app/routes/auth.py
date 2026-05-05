@@ -47,10 +47,14 @@ class RefreshRequest(BaseModel):
 @router.post("/token", response_model=TokenResponse)
 async def issue_dev_token(req: TokenRequest = TokenRequest()):
     """
-    Dev-only mint. ENV=prod returns 403. Returns short-lived access (1h) +
-    long-lived refresh (14d) — clients refresh with /auth/refresh.
+    Dev/staging-only mint. ENV=prod always returns 403. Returns short-lived
+    access (1h) + long-lived refresh (14d) — clients refresh with /auth/refresh.
+
+    Staging is included so internal-alpha stakeholders can sign in without
+    needing an OIDC provider wired up. Tighten to {"dev","test"} only when
+    real auth (Okta / Entra ID / Google Workspace) lands.
     """
-    if settings.ENV not in ("dev", "test"):
+    if settings.ENV not in ("dev", "test", "staging"):
         raise HTTPException(status_code=403, detail="Dev token endpoint disabled")
     access = create_token(
         user_id=req.user_id,
