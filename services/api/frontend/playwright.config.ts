@@ -37,7 +37,10 @@ export default defineConfig({
 
   webServer: process.env.CI
     ? {
-        command: 'npm run dev',
+        // Vite defaults to 5173 (set in vite.config.ts) but baseURL above
+        // is 5174 to leave 5173 free for ad-hoc dev. Pass --port explicitly
+        // so the auto-started server matches.
+        command: 'npm run dev -- --port 5174',
         port: 5174,
         reuseExistingServer: false,
         timeout: 60_000,

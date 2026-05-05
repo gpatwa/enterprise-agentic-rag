@@ -1,19 +1,40 @@
 # .github/workflows/ci.yml
-# Continuous Integration — Lint, Test, Build for every PR and push to main.
-name: CI
+# Continuous Integration — Lint + Test + Docker Build for backend on every
+# PR and push to main. Frontend CI lives in ci-frontend.yml.
+name: CI (backend)
 
 on:
   push:
     branches: [main]
+    paths:
+      - "services/api/**"
+      - "services/control-plane/**"
+      - "services/data-plane/**"
+      - "infra/**"
+      - "pyproject.toml"
+      - ".github/workflows/ci.yml"
   pull_request:
     branches: [main]
+    paths:
+      - "services/api/**"
+      - "services/control-plane/**"
+      - "services/data-plane/**"
+      - "infra/**"
+      - "pyproject.toml"
+      - ".github/workflows/ci.yml"
 
 env:
-  PYTHON_VERSION: "3.11"
+  PYTHON_VERSION: "3.12"
+
+# Cancel superseded runs on the same branch / PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # ──────────────────────────────────────────────────
-  # Job 1: Lint + Unit Tests (cloud-agnostic)
+  # Lint + unit tests. Cloud-agnostic, no infra needed.
+  # All ~330 tests use mocks; no real Postgres/Redis required.
   # ──────────────────────────────────────────────────
   test:
     name: Lint & Test
@@ -35,7 +56,13 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio ruff
+          # Test-only deps. We deliberately do NOT install the optional `mcp`
+          # SDK here: the MCP unit + route + e2e tests soft-import the SDK
+          # and use a test seam (24 + 22 + 20 = 66 tests pass without it).
+          # The 4 integration tests in test_mcp_integration.py auto-skip
+          # when the SDK is missing — so CI green is not gated on a heavy
+          # optional dependency.
+          pip install pytest pytest-asyncio pytest-cov ruff
 
       - name: Lint (ruff)
         working-directory: .
@@ -43,15 +70,26 @@ jobs:
 
       - name: Run tests
         env:
-          DATABASE_URL: "sqlite+aiosqlite:///test.db"
-          REDIS_URL: "redis://localhost:6379/0"
+          # Tests use mocks — no real DB/Redis needed. JWT secret is required
+          # by Settings validation when ENV != "dev"; pass a CI-only value.
+          # Feature-flag env vars (DATA_ANALYTICS_ENABLED, MCP_ENABLED, etc.)
+          # are deliberately NOT pre-set: individual test modules use
+          # os.environ.setdefault(...) to pick the value they need, and a
+          # CI override here would block their setdefault and break the suite.
           JWT_SECRET_KEY: "ci-test-secret-key-not-for-production"
-          S3_BUCKET_NAME: "test-bucket"
-          NEO4J_PASSWORD: "testpass"
+          ENV: "test"
         run: pytest tests/ -v --tb=short
 
+      - name: Test summary
+        if: always()
+        run: |
+          echo "::group::Test counts"
+          pytest tests/ --collect-only -q 2>&1 | tail -3 || true
+          echo "::endgroup::"
+
   # ──────────────────────────────────────────────────
-  # Job 2: Docker Build (verify Dockerfile compiles)
+  # Docker image builds (verify Dockerfile compiles).
+  # Doesn't push — just validates the build chain.
   # ──────────────────────────────────────────────────
   docker-build:
     name: Docker Build
@@ -74,12 +112,13 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ──────────────────────────────────────────────────
-  # Job 3: Terraform Validate (both clouds)
+  # Terraform — validate both AWS and Azure modules.
   # ──────────────────────────────────────────────────
   terraform-validate:
     name: Terraform Validate (${{ matrix.cloud }})
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         cloud: [aws, azure]
         include:
