@@ -111,7 +111,9 @@ jobs:
       - name: Build Docker image (no push)
         uses: docker/build-push-action@v5
         with:
-          context: .
+          # Dockerfile uses paths like `COPY requirements.txt .` relative to
+          # services/api — set context there, not the repo root.
+          context: services/api
           file: services/api/Dockerfile
           push: false
           tags: rag-backend-api:ci-${{ github.sha }}
