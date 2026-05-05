@@ -8,26 +8,49 @@ const API_BASE = '/api/v1';
 
 let cachedToken: string | null = null;
 
-export async function getToken(): Promise<string> {
-  if (cachedToken) return cachedToken;
+/**
+ * Get a JWT for the current session. Caches in module scope.
+ *
+ * Pass `force=true` to bust the cache and re-mint — used by the
+ * authedFetch retry path when a request comes back 401 (token expired).
+ */
+export async function getToken(force = false): Promise<string> {
+  if (cachedToken && !force) return cachedToken;
+  cachedToken = null;
   const res = await fetch('/auth/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: 'ui-user', role: 'admin' }),
   });
+  if (!res.ok) {
+    throw new Error(`Failed to mint token: ${res.status}`);
+  }
   const data = await res.json();
   cachedToken = data.access_token;
   return cachedToken!;
 }
 
+/**
+ * fetch wrapper that retries once on 401 with a fresh-minted token.
+ * Handles the "JWT expired (1h TTL) — page has been open longer than that"
+ * case without forcing the user to hard-reload.
+ */
 async function authedFetch(path: string, init: RequestInit = {}) {
-  const token = await getToken();
-  const headers = new Headers(init.headers);
-  headers.set('Authorization', `Bearer ${token}`);
-  if (init.body && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
+  const doFetch = async (token: string) => {
+    const headers = new Headers(init.headers);
+    headers.set('Authorization', `Bearer ${token}`);
+    if (init.body && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
+    return fetch(`${API_BASE}${path}`, { ...init, headers });
+  };
+
+  let res = await doFetch(await getToken());
+  if (res.status === 401) {
+    // Token rejected — bust cache, re-mint, retry exactly once.
+    res = await doFetch(await getToken(true));
   }
-  return fetch(`${API_BASE}${path}`, { ...init, headers });
+  return res;
 }
 
 interface ThreadsResponse {

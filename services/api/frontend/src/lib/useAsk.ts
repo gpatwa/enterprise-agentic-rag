@@ -103,8 +103,11 @@ export function useAsk() {
         is_continuation: Boolean(opts.sessionId),
       });
 
-      try {
-        const token = await getToken();
+      // Stream once with a token. If we get a 401 (typical: page open
+      // longer than the 1h JWT TTL, so the cached token expired), bust
+      // the cache and retry once with a fresh mint. Anything else
+      // bubbles to the catch below.
+      const streamOnce = async (token: string) => {
         let acc = initial;
         for await (const ev of chatStream({
           message,
@@ -115,6 +118,26 @@ export function useAsk() {
           acc = applyEvent(acc, ev);
           setTurn(acc);
           setLastUpdate(Date.now());
+        }
+        return acc;
+      };
+
+      try {
+        let acc: AskTurn;
+        try {
+          acc = await streamOnce(await getToken());
+        } catch (err) {
+          if (
+            (err as Error).message?.includes('401') &&
+            (err as Error).name !== 'AbortError'
+          ) {
+            // Reset turn so the streamed-but-rejected acc doesn't show
+            // partial state, then retry with a freshly-minted token.
+            setTurn(initial);
+            acc = await streamOnce(await getToken(true));
+          } else {
+            throw err;
+          }
         }
         // Finalize
         setTurn((prev) => (prev ? { ...prev, streaming: false } : prev));
