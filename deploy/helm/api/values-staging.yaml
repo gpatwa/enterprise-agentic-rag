@@ -39,7 +39,14 @@ env:
   RERANKER_PROVIDER: "none"
   MULTIMODAL_ENABLED: "false"
   CONTEXT_LAYERS_ENABLED: "true"
-  DATA_ANALYTICS_ENABLED: "false"
+  # OLIST e-commerce dataset (~550K rows, 7 tables) was loaded into the
+  # alpha Postgres via scripts/seed_olist.py. With analytics on, the
+  # planner routes data questions to the text-to-SQL pipeline against
+  # the same DB. Stakeholder demo questions:
+  #   - "Avg delivery time by month"
+  #   - "Top 10 product categories by revenue"
+  #   - "Cancellation rate by state"
+  DATA_ANALYTICS_ENABLED: "true"
   MCP_ENABLED: "false"  # flip to true once stakeholders add a real connector
 
   # Override K8s auto-injected service env vars (they conflict with
