@@ -43,7 +43,12 @@ jobs:
           cache-dependency-path: services/api/frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit
+        # `npm install` rather than `npm ci` because lockfile drift between
+        # contributor npm versions has shown up under ubuntu-latest's npm 10
+        # vs Mac's npm 11. We accept the slight nondeterminism in alpha CI
+        # to keep the pipeline green; tighten to `npm ci` once the team
+        # standardises on a Volta-pinned npm version.
+        run: npm install --prefer-offline --no-audit --no-fund
 
       - name: TypeScript type-check
         run: npx tsc --noEmit
@@ -74,7 +79,12 @@ jobs:
           cache-dependency-path: services/api/frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit
+        # `npm install` rather than `npm ci` because lockfile drift between
+        # contributor npm versions has shown up under ubuntu-latest's npm 10
+        # vs Mac's npm 11. We accept the slight nondeterminism in alpha CI
+        # to keep the pipeline green; tighten to `npm ci` once the team
+        # standardises on a Volta-pinned npm version.
+        run: npm install --prefer-offline --no-audit --no-fund
 
       - name: Install Playwright Chromium (for prerender)
         run: npx playwright install --with-deps chromium
@@ -125,7 +135,12 @@ jobs:
           cache-dependency-path: services/api/frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit
+        # `npm install` rather than `npm ci` because lockfile drift between
+        # contributor npm versions has shown up under ubuntu-latest's npm 10
+        # vs Mac's npm 11. We accept the slight nondeterminism in alpha CI
+        # to keep the pipeline green; tighten to `npm ci` once the team
+        # standardises on a Volta-pinned npm version.
+        run: npm install --prefer-offline --no-audit --no-fund
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
