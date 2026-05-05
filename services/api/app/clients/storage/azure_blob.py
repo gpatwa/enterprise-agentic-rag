@@ -10,11 +10,14 @@ from datetime import datetime, timedelta, timezone
 logger = logging.getLogger(__name__)
 
 try:
-    from azure.storage.blob import (
-        BlobServiceClient,
-        generate_blob_sas,
+    # Azure SDK availability probe. We import the public symbols here so a
+    # missing dependency surfaces clearly via _AZURE_AVAILABLE; specific
+    # call sites import what they need from azure.storage.blob directly.
+    from azure.storage.blob import (  # noqa: F401
         BlobSasPermissions,
+        BlobServiceClient,
         ContentSettings,
+        generate_blob_sas,
     )
 
     _AZURE_AVAILABLE = True

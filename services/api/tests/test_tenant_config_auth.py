@@ -4,12 +4,10 @@ Unit tests for Milestone 7: Per-Tenant Config & Production Auth.
 Tests TenantConfig model, TenantRegistry, JWKS fetcher,
 rate limiter, per-tenant factory overrides, and JWT RS256 support.
 """
-import pytest
-import asyncio
-import time
-from unittest.mock import AsyncMock, MagicMock, patch
 from dataclasses import FrozenInstanceError
+from unittest.mock import MagicMock, patch
 
+import pytest
 
 # ---------------------------------------------------------------
 # Test: TenantConfig model
@@ -75,8 +73,8 @@ class TestTenantRegistry:
 
     @pytest.mark.asyncio
     async def test_get_unknown_tenant_returns_default(self):
-        from app.tenants.registry import TenantRegistry
         from app.tenants.config import DEFAULT_TENANT_CONFIG
+        from app.tenants.registry import TenantRegistry
         registry = TenantRegistry()
         await registry.load(source="static")
         config = registry.get("nonexistent-tenant")
@@ -84,8 +82,8 @@ class TestTenantRegistry:
 
     @pytest.mark.asyncio
     async def test_register_new_tenant(self):
-        from app.tenants.registry import TenantRegistry
         from app.tenants.config import TenantConfig
+        from app.tenants.registry import TenantRegistry
         registry = TenantRegistry()
         await registry.load(source="static")
 
@@ -206,7 +204,7 @@ class TestPerTenantFactory:
         assert result is default
 
     def test_get_tenant_llm_client_with_override(self):
-        from app.clients.factory import get_tenant_llm_client, _tenant_llm_cache
+        from app.clients.factory import _tenant_llm_cache, get_tenant_llm_client
         # Clear cache
         _tenant_llm_cache.clear()
 
@@ -221,7 +219,7 @@ class TestPerTenantFactory:
             mock_create.assert_called_once_with("openai", "gpt-4o")
 
     def test_get_tenant_llm_client_caches(self):
-        from app.clients.factory import get_tenant_llm_client, _tenant_llm_cache
+        from app.clients.factory import _tenant_llm_cache, get_tenant_llm_client
         _tenant_llm_cache.clear()
 
         default = MagicMock()

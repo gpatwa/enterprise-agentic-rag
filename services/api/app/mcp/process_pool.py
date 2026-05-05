@@ -58,8 +58,9 @@ logger = logging.getLogger(__name__)
 # unit tests mock the pool out). Import errors are deferred to spawn time
 # so a missing dep surfaces as a clean spawn failure with a fix-it message.
 try:
-    from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
+
+    from mcp import ClientSession, StdioServerParameters
 
     _SDK_IMPORT_ERROR: Optional[Exception] = None
 except Exception as e:  # pragma: no cover — exercised via _SDK_IMPORT_ERROR test

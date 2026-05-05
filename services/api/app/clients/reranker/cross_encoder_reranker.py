@@ -16,9 +16,11 @@ Expected endpoint API:
   }
   → {"results": [{"index": 0, "score": 0.95}, {"index": 2, "score": 0.82}, ...]}
 """
-import httpx
 import logging
 from typing import Optional
+
+import httpx
+
 from app.clients.reranker.base import ScoredDocument
 from app.config import settings
 

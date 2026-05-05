@@ -1,9 +1,11 @@
 # services/api/app/clients/ray_llm.py
 import json
-import httpx
 import logging
+from typing import AsyncGenerator, Dict, List, Optional
+
 import backoff
-from typing import AsyncGenerator, List, Dict, Optional
+import httpx
+
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -13,7 +15,7 @@ class RayLLMClient:
     Async Client with proper Connection Pooling.
     """
     def __init__(self):
-        self.endpoint = settings.RAY_LLM_ENDPOINT 
+        self.endpoint = settings.RAY_LLM_ENDPOINT
         # Client is initialized in startup_event
         self.client: Optional[httpx.AsyncClient] = None
 
@@ -22,7 +24,7 @@ class RayLLMClient:
         # Limits: prevent opening too many connections to Ray
         limits = httpx.Limits(max_keepalive_connections=20, max_connections=50)
         self.client = httpx.AsyncClient(
-            timeout=120.0, 
+            timeout=120.0,
             limits=limits
         )
         logger.info("Ray LLM Client initialized.")
@@ -44,7 +46,7 @@ class RayLLMClient:
             "max_tokens": 1024,
             "stream": False
         }
-        
+
         response = await self.client.post(self.endpoint, json=payload)
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
@@ -83,5 +85,7 @@ class RayLLMClient:
 # Global Instance — created via factory based on LLM_PROVIDER env var.
 # Consumers import `llm_client` from this module; the factory decides
 # whether it's a RayLLMClient, OpenAILLMClient, etc.
-from app.clients.factory import create_llm_client as _create_llm
+# Late import is intentional: the factory references this module's class.
+from app.clients.factory import create_llm_client as _create_llm  # noqa: E402
+
 llm_client = _create_llm(settings.LLM_PROVIDER)

@@ -13,7 +13,6 @@ from sqlalchemy.exc import IntegrityError
 import app.memory.postgres as _pg
 from app.threads.models import SavedQuestion, Thread
 
-
 # ── Helpers ──────────────────────────────────────────────────────────
 
 

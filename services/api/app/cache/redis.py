@@ -1,5 +1,6 @@
 # services/api/app/cache/redis.py
 import redis.asyncio as redis
+
 from app.config import settings
 
 DEFAULT_TENANT_ID = "default"

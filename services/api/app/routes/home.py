@@ -18,11 +18,11 @@ from fastapi import APIRouter, Depends
 from app.auth.tenant import TenantContext, get_tenant_context
 from app.config import settings
 from app.routes.sources import (
+    PROBE_TIMEOUT_SECONDS,
     _probe_neo4j,
     _probe_postgres,
     _probe_qdrant,
     _with_timeout,
-    PROBE_TIMEOUT_SECONDS,
 )
 from app.threads import manager as threads_manager
 
@@ -163,8 +163,9 @@ async def _count_knowledge_layers(tenant_id: str) -> dict[str, int]:
         return {"glossary": 0, "business_rules": 0, "code_context": 0}
 
     try:
-        import app.memory.postgres as _pg
         from sqlalchemy import func, select
+
+        import app.memory.postgres as _pg
 
         if _pg.AsyncSessionLocal is None:
             return {"glossary": 0, "business_rules": 0, "code_context": 0}

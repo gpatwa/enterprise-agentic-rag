@@ -1,7 +1,8 @@
 # services/api/app/config.py
-from pydantic_settings import BaseSettings
 from typing import Optional
 from urllib.parse import quote_plus
+
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):

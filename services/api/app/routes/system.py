@@ -4,6 +4,7 @@ System information endpoint — exposes environment, model, and data-source
 configuration to the Chat UI.  No secrets are returned.
 """
 from fastapi import APIRouter
+
 from app.config import settings
 
 router = APIRouter()

@@ -1,9 +1,11 @@
 # services/api/app/clients/ray_embed.py
 import asyncio
-import httpx
 import logging
-import backoff
 from typing import Optional
+
+import backoff
+import httpx
+
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -70,5 +72,7 @@ class RayEmbedClient:
 # Global Instance — created via factory based on EMBED_PROVIDER env var.
 # Consumers import `embed_client` from this module; the factory decides
 # whether it's a RayEmbedClient, OpenAIEmbedClient, etc.
-from app.clients.factory import create_embed_client as _create_embed
+# Late import is intentional: the factory references this module's class.
+from app.clients.factory import create_embed_client as _create_embed  # noqa: E402
+
 embed_client = _create_embed(settings.EMBED_PROVIDER)

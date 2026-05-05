@@ -1,11 +1,13 @@
 # services/api/app/agents/nodes/retriever.py
 import asyncio
-from typing import Dict, List
+import logging
+from typing import Dict
+
 from langchain_core.runnables import RunnableConfig
+
 from app.agents.state import AgentState
 from app.clients.ray_embed import embed_client
 from app.config import settings
-import logging
 
 logger = logging.getLogger(__name__)
 

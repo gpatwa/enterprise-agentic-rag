@@ -23,7 +23,7 @@ import logging
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import select, update, delete
+from sqlalchemy import delete, select, update
 
 from app.mcp.crypto import get_cipher
 from app.mcp.errors import MCPCryptoError

@@ -1,7 +1,9 @@
 # services/api/app/clients/neo4j.py
-from neo4j import GraphDatabase, AsyncGraphDatabase
-from app.config import settings
 import logging
+
+from neo4j import AsyncGraphDatabase
+
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 

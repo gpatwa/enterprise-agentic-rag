@@ -9,8 +9,10 @@ Layer 4: BusinessContext   — institutional terminology, business rules, role-b
 
 All tables are tenant-scoped and auto-created on startup via Base.metadata.create_all().
 """
-from sqlalchemy import Column, String, Integer, Text, DateTime, JSON, Float
 from datetime import datetime
+
+from sqlalchemy import JSON, Column, DateTime, Float, Integer, String, Text
+
 from app.memory.postgres import Base
 
 

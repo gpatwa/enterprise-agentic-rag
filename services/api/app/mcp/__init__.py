@@ -30,22 +30,23 @@ module). Internal modules stay private.
 """
 from __future__ import annotations
 
-# Public manager singleton — initialised by lifespan, used by agents/routes.
-from app.mcp.manager import mcp_manager  # noqa: F401
-from app.mcp.types import (  # noqa: F401
-    ToolCallResult,
-    MCPToolDescriptor,
-    MCPCatalogEntry,
-    MCPConnectionStatus,
-)
+from app.mcp.catalog import MCPCatalog  # noqa: F401
 from app.mcp.errors import (  # noqa: F401
+    MCPCapacityError,
+    MCPConnectionNotFoundError,
+    MCPCryptoError,
     MCPError,
     MCPNotEnabledError,
-    MCPConnectionNotFoundError,
     MCPServerSpawnError,
     MCPToolCallError,
     MCPToolTimeoutError,
-    MCPCapacityError,
-    MCPCryptoError,
 )
-from app.mcp.catalog import MCPCatalog  # noqa: F401
+
+# Public manager singleton — initialised by lifespan, used by agents/routes.
+from app.mcp.manager import mcp_manager  # noqa: F401
+from app.mcp.types import (  # noqa: F401
+    MCPCatalogEntry,
+    MCPConnectionStatus,
+    MCPToolDescriptor,
+    ToolCallResult,
+)

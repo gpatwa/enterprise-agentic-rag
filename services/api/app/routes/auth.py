@@ -11,7 +11,6 @@ In production, /auth/token is disabled; access tokens are minted by the IdP
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.config import settings
 from app.auth.jwt import (
     DEFAULT_ACCESS_TTL,
     DEFAULT_REFRESH_TTL,
@@ -20,6 +19,7 @@ from app.auth.jwt import (
     create_token,
     verify_refresh_token,
 )
+from app.config import settings
 
 router = APIRouter()
 

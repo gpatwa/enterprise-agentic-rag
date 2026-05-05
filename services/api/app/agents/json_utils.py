@@ -1,8 +1,8 @@
 # services/api/app/agents/json_utils.py
 """Robust JSON extraction from LLM responses."""
 import json
-import re
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 

@@ -4,9 +4,9 @@ Unit tests for Milestone 4: Cloud Storage Abstraction.
 Tests Protocol compliance, factory routing, S3 implementation,
 and upload route integration with StorageClient.
 """
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
 
 # ---------------------------------------------------------------
 # Test: StorageClient Protocol

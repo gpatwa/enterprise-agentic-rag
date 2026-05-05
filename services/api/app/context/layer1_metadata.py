@@ -11,10 +11,11 @@ import math
 from datetime import datetime
 from typing import List
 
-from sqlalchemy import select, and_, update
-from app.context.models import DocumentMetadata
+from sqlalchemy import and_, select, update
+
 import app.memory.postgres as _pg
 from app.config import settings
+from app.context.models import DocumentMetadata
 
 logger = logging.getLogger(__name__)
 

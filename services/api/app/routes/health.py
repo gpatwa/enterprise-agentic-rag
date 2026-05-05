@@ -1,5 +1,6 @@
 # services/api/app/routes/health.py
 from fastapi import APIRouter, Response, status
+
 from app.cache.redis import redis_client
 
 router = APIRouter()
@@ -42,8 +43,9 @@ async def readiness(response: Response):
 
     # 1. Postgres
     try:
-        import app.memory.postgres as _pg
         from sqlalchemy import text
+
+        import app.memory.postgres as _pg
 
         if _pg.AsyncSessionLocal is not None:
             async with _pg.AsyncSessionLocal() as s:
@@ -112,8 +114,9 @@ async def deep_health(response: Response):
             return label, "error", int((time.perf_counter() - t0) * 1000)
 
     async def pg():
-        import app.memory.postgres as _pg
         from sqlalchemy import text
+
+        import app.memory.postgres as _pg
         if _pg.AsyncSessionLocal is None:
             raise RuntimeError("not initialised")
         async with _pg.AsyncSessionLocal() as s:

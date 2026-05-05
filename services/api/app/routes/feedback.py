@@ -2,8 +2,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import text
-from app.memory.postgres import AsyncSessionLocal
+
 from app.auth.jwt import get_current_user
+from app.memory.postgres import AsyncSessionLocal
 
 router = APIRouter()
 
@@ -40,6 +41,6 @@ async def submit_feedback(
             )
             await session.commit()
             return {"status": "recorded"}
-            
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -8,9 +8,10 @@ This module provides:
   - get_tenant_context(): FastAPI Depends() that extracts it from the token
 """
 from dataclasses import dataclass
-from fastapi import Depends
-from app.auth.jwt import get_current_user
 
+from fastapi import Depends
+
+from app.auth.jwt import get_current_user
 
 # ── Default tenant for backward compatibility ────────────────────────────────
 DEFAULT_TENANT_ID = "default"

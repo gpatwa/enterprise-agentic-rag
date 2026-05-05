@@ -7,9 +7,11 @@ a JSON array of relevance scores (1-10). Normalizes to 0.0-1.0.
 
 Used when RERANKER_PROVIDER=llm (recommended for staging).
 """
-import httpx
 import logging
 from typing import Optional
+
+import httpx
+
 from app.clients.reranker.base import ScoredDocument
 from app.config import settings
 

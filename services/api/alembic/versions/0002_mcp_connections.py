@@ -11,9 +11,8 @@ The table is also created opportunistically by `Base.metadata.create_all()`
 on first boot (see app/memory/postgres.py), but the migration ensures
 schema-managed environments get the explicit DDL + indexes.
 """
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "0002_mcp_connections"
 down_revision = "0001_baseline"

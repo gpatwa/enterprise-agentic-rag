@@ -1,6 +1,6 @@
 # services/api/app/context/base.py
 """Protocol for context layer providers."""
-from typing import Protocol, List
+from typing import List, Protocol
 
 
 class ContextLayerProvider(Protocol):

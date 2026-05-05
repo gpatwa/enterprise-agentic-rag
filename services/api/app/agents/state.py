@@ -1,6 +1,6 @@
 # services/api/app/agents/state.py
-from typing import TypedDict, Annotated, List, Union
 import operator
+from typing import Annotated, List, TypedDict, Union
 
 
 class AgentState(TypedDict):

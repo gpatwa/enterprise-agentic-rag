@@ -1,7 +1,8 @@
 # services/api/app/cache/semantic.py
-import uuid
 import logging
+import uuid
 from typing import List, Optional, Tuple
+
 from app.clients.ray_embed import embed_client
 from app.config import settings
 

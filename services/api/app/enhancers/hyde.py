@@ -2,9 +2,9 @@
 from app.clients.ray_llm import llm_client
 
 SYSTEM_PROMPT = """
-You are a helpful assistant. 
-Write a hypothetical paragraph that answers the user's question. 
-It does not need to be factually correct, but it must use the correct vocabulary and structure 
+You are a helpful assistant.
+Write a hypothetical paragraph that answers the user's question.
+It does not need to be factually correct, but it must use the correct vocabulary and structure
 that a relevant document would have.
 
 Question: {question}

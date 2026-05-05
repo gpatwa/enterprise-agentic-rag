@@ -1,8 +1,10 @@
 # services/api/app/memory/postgres.py
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy import Column, String, JSON, DateTime, Integer, Text, select, and_, func, true
 from datetime import datetime
+
+from sqlalchemy import JSON, Column, DateTime, Integer, String, Text, and_, func, select
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+
 from app.config import settings
 
 # Single-tenant mode flag — when True, skip tenant_id filtering
@@ -45,13 +47,13 @@ class UserMemory(Base):
 
 # Import context layer models so Base.metadata.create_all() creates their tables
 try:
-    from app.context.models import DocumentMetadata, Annotation, CodeContext, BusinessContext  # noqa: F401
+    from app.context.models import Annotation, BusinessContext, CodeContext, DocumentMetadata  # noqa: F401
 except ImportError:
     pass  # Context layer not installed (optional)
 
 # Import threads + saved_questions models so their tables are auto-created
 try:
-    from app.threads.models import Thread, SavedQuestion  # noqa: F401
+    from app.threads.models import SavedQuestion, Thread  # noqa: F401
 except ImportError:
     pass
 
@@ -252,8 +254,12 @@ postgres_memory = PostgresMemory()
 
 # --- Long-term memory extraction (background task) ---
 
-import logging
-from app.agents.json_utils import extract_json
+# Late imports are intentional: this section adds an optional helper that
+# depends on the agent layer, which would create a circular import if
+# loaded at module top.
+import logging  # noqa: E402
+
+from app.agents.json_utils import extract_json  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

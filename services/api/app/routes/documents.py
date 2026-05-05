@@ -4,9 +4,11 @@ Lists ingested documents by querying distinct filenames from the vector DB.
 Used by the Chat UI header to show what data is available for querying.
 """
 import logging
+
 from fastapi import APIRouter, Depends
-from app.config import settings
+
 from app.auth.tenant import TenantContext, get_tenant_context
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +22,9 @@ async def list_documents(ctx: TenantContext = Depends(get_tenant_context)):
     Queries the vector DB (Qdrant) payload metadata.
     """
     try:
+        from qdrant_client.http.models import FieldCondition, Filter, MatchValue
+
         from app.clients.qdrant import qdrant_client
-        from qdrant_client.http.models import Filter, FieldCondition, MatchValue
 
         tenant_filter = Filter(
             must=[FieldCondition(key="tenant_id", match=MatchValue(value=ctx.tenant_id))]

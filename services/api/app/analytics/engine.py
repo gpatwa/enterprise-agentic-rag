@@ -10,7 +10,6 @@ Orchestrates:
 5. Result formatting
 """
 import asyncio
-import json
 import logging
 import re
 import time
@@ -19,9 +18,9 @@ from typing import Optional
 import sqlalchemy as sa
 from sqlalchemy import text
 
-from app.config import settings
+from app.analytics.safety import check_cost_guard, sanitize_result, validate_sql
 from app.analytics.schema_context import build_schema_prompt
-from app.analytics.safety import validate_sql, check_cost_guard, sanitize_result
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 

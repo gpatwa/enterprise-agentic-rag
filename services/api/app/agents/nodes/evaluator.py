@@ -1,7 +1,8 @@
 # services/api/app/agents/nodes/evaluator.py
 import logging
-from app.agents.state import AgentState
+
 from app.agents.json_utils import extract_json
+from app.agents.state import AgentState
 from app.clients.ray_llm import llm_client
 
 logger = logging.getLogger(__name__)

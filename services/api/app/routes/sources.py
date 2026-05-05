@@ -28,8 +28,9 @@ def _now_iso() -> str:
 async def _probe_postgres() -> dict[str, Any]:
     """Counts rows in the chat_history table as a liveness signal."""
     try:
-        import app.memory.postgres as _pg
         from sqlalchemy import text
+
+        import app.memory.postgres as _pg
 
         if _pg.AsyncSessionLocal is None:
             return {"type": "postgres", "name": "PostgreSQL", "status": "not_connected"}

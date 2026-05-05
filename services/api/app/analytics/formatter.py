@@ -8,9 +8,7 @@ Converts raw SQL query results into:
 - Vega-Lite chart specs for browser rendering
 """
 import re
-from datetime import datetime, date
-from typing import List, Dict, Optional
-
+from typing import Dict, List, Optional
 
 # Max rows to display in chat UI table
 _MAX_DISPLAY_ROWS = 20

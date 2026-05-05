@@ -15,8 +15,7 @@ admin guard, the test that calls a mutation as a non-admin will fail.
 from __future__ import annotations
 
 import os
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import HTTPException
@@ -149,7 +148,7 @@ class TestListConnections:
 class TestEnableConnection:
     @pytest.mark.asyncio
     async def test_non_admin_rejected(self, manager_enabled):
-        from app.routes.mcp import enable_connection, EnableConnectionRequest
+        from app.routes.mcp import EnableConnectionRequest, enable_connection
 
         req = EnableConnectionRequest(
             server_name="slack",

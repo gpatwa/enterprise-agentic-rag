@@ -11,7 +11,7 @@ CRUD endpoints for managing:
 All endpoints are tenant-scoped via TenantContext.
 """
 import logging
-from typing import Optional, List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field

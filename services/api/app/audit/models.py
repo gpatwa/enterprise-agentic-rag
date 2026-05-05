@@ -14,7 +14,7 @@ Fields:
 """
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Index, Integer, JSON, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, Index, Integer, String, Text
 
 from app.memory.postgres import Base
 

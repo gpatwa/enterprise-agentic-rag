@@ -23,7 +23,6 @@ the fast logic-coverage layer.
 from __future__ import annotations
 
 import os
-from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
@@ -64,9 +63,9 @@ def _user_context():
 @pytest.fixture
 def admin_client(monkeypatch):
     """TestClient with TenantContext = admin and a manager+storage stub."""
+    import app.memory.postgres as pg
     from app.auth.tenant import get_tenant_context
     from app.mcp import mcp_manager
-    import app.memory.postgres as pg
 
     # Manager is "enabled" with no real pool needed — every method we hit
     # is monkeypatched per-test below.
@@ -240,8 +239,8 @@ class TestEnableConnectionE2E:
 
     def test_manager_error_maps_to_400(self, admin_client, monkeypatch):
         client, _ = admin_client
-        from app.mcp.errors import MCPError
         from app.mcp import mcp_manager
+        from app.mcp.errors import MCPError
 
         async def boom(*a, **k):
             raise MCPError(
@@ -282,8 +281,8 @@ class TestTestConnectionE2E:
 
     def test_capacity_error_maps_to_429(self, admin_client, monkeypatch):
         client, _ = admin_client
-        from app.mcp.errors import MCPCapacityError
         from app.mcp import mcp_manager
+        from app.mcp.errors import MCPCapacityError
 
         async def boom(*a, **k):
             raise MCPCapacityError("pool full")
@@ -294,8 +293,8 @@ class TestTestConnectionE2E:
 
     def test_crypto_error_does_not_leak_internal(self, admin_client, monkeypatch):
         client, _ = admin_client
-        from app.mcp.errors import MCPCryptoError
         from app.mcp import mcp_manager
+        from app.mcp.errors import MCPCryptoError
 
         async def boom(*a, **k):
             raise MCPCryptoError("very specific internal detail")

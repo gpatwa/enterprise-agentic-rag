@@ -19,9 +19,8 @@ To create a new schema change:
     alembic revision --autogenerate -m "add foo column"
     alembic upgrade head
 """
-from alembic import op  # noqa: F401
 import sqlalchemy as sa  # noqa: F401
-
+from alembic import op  # noqa: F401
 
 revision = "0001_baseline"
 down_revision = None

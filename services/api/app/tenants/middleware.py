@@ -7,7 +7,9 @@ the TenantConfig from the registry. Attaches it to request.state
 for downstream handlers.
 """
 import logging
-from fastapi import Depends, HTTPException, Request
+
+from fastapi import Depends, HTTPException
+
 from app.auth.tenant import TenantContext, get_tenant_context
 from app.tenants.config import TenantConfig
 from app.tenants.registry import tenant_registry

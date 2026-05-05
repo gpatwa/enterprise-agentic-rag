@@ -38,8 +38,9 @@ class TestJWT:
 
     def test_create_token_includes_tenant_id(self):
         """Token payload should contain the tenant_id claim."""
-        from app.auth.jwt import create_token
         from jose import jwt
+
+        from app.auth.jwt import create_token
         from app.config import settings
 
         token = create_token(
@@ -57,8 +58,9 @@ class TestJWT:
 
     def test_create_token_default_tenant(self):
         """When tenant_id is omitted, it should default to 'default'."""
-        from app.auth.jwt import create_token, DEFAULT_TENANT_ID
         from jose import jwt
+
+        from app.auth.jwt import DEFAULT_TENANT_ID, create_token
         from app.config import settings
 
         token = create_token(user_id="bob")
@@ -85,7 +87,8 @@ class TestJWT:
     async def test_get_current_user_backward_compat(self):
         """Tokens without tenant_id claim should fall back to 'default'."""
         from jose import jwt as jose_jwt
-        from app.auth.jwt import get_current_user, DEFAULT_TENANT_ID
+
+        from app.auth.jwt import DEFAULT_TENANT_ID, get_current_user
         from app.config import settings
 
         # Manually create a token WITHOUT tenant_id (simulates pre-M1 tokens)
@@ -108,6 +111,7 @@ class TestJWT:
     async def test_expired_token_rejected(self):
         """Expired tokens should raise 401."""
         from fastapi import HTTPException
+
         from app.auth.jwt import create_token, get_current_user
 
         token = create_token(user_id="expired-user", expires_in=-10)
@@ -135,7 +139,7 @@ class TestTenantContext:
     @pytest.mark.asyncio
     async def test_get_tenant_context_from_user_dict(self):
         """get_tenant_context should build from the user dict."""
-        from app.auth.tenant import get_tenant_context, TenantContext
+        from app.auth.tenant import TenantContext, get_tenant_context
 
         # Simulate the dict that get_current_user() returns
         user_dict = {
@@ -156,7 +160,7 @@ class TestTenantContext:
     @pytest.mark.asyncio
     async def test_get_tenant_context_defaults(self):
         """Missing tenant_id in user dict should default to 'default'."""
-        from app.auth.tenant import get_tenant_context, DEFAULT_TENANT_ID
+        from app.auth.tenant import DEFAULT_TENANT_ID, get_tenant_context
 
         user_dict = {"id": "bob", "role": "user", "permissions": []}
 
@@ -178,8 +182,8 @@ class TestAuthRoute:
 
     def test_token_request_default_tenant(self):
         """TokenRequest should default tenant_id to 'default'."""
-        from app.routes.auth import TokenRequest
         from app.auth.jwt import DEFAULT_TENANT_ID
+        from app.routes.auth import TokenRequest
 
         req = TokenRequest()
         assert req.tenant_id == DEFAULT_TENANT_ID

@@ -17,8 +17,6 @@ Run with:
 import os
 import sys
 
-import pytest
-
 # Ensure services/api is on the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -39,6 +37,7 @@ class TestQdrantTenantFilter:
     def test_qdrant_search_accepts_tenant_id(self):
         """VectorDBClient.search() should accept tenant_id parameter."""
         import inspect
+
         from app.clients.qdrant import VectorDBClient
 
         sig = inspect.signature(VectorDBClient.search)
@@ -59,6 +58,7 @@ class TestSemanticCacheTenantIsolation:
     def test_get_cached_response_accepts_tenant_id(self):
         """get_cached_response should accept tenant_id parameter."""
         import inspect
+
         from app.cache.semantic import SemanticCache
 
         sig = inspect.signature(SemanticCache.get_cached_response)
@@ -68,6 +68,7 @@ class TestSemanticCacheTenantIsolation:
     def test_set_cached_response_accepts_tenant_id(self):
         """set_cached_response should accept tenant_id parameter."""
         import inspect
+
         from app.cache.semantic import SemanticCache
 
         sig = inspect.signature(SemanticCache.set_cached_response)
@@ -83,6 +84,7 @@ class TestNeo4jTenantIsolation:
     def test_query_accepts_tenant_id(self):
         """Neo4jClient.query() should accept tenant_id parameter."""
         import inspect
+
         from app.clients.neo4j import Neo4jClient
 
         sig = inspect.signature(Neo4jClient.query)
@@ -126,8 +128,9 @@ class TestRedisKeyNamespacing:
 
     def test_redis_client_has_tenant_methods(self):
         """RedisClient should expose tenant-scoped get/set/delete/incr/expire."""
-        from app.cache.redis import RedisClient
         import inspect
+
+        from app.cache.redis import RedisClient
 
         for method_name in ["get", "set", "delete", "incr", "expire"]:
             method = getattr(RedisClient, method_name)
@@ -143,6 +146,7 @@ class TestRetrieverTenantIsolation:
     def test_retriever_accepts_config_param(self):
         """retrieve_node should accept (state, config) for LangGraph config."""
         import inspect
+
         from app.agents.nodes.retriever import retrieve_node
 
         sig = inspect.signature(retrieve_node)
@@ -195,7 +199,7 @@ class TestIngestionTenantTagging:
         sys.path.insert(0, os.path.join(
             os.path.dirname(__file__), "..", "..", ".."
         ))
-        from pipelines.ingestion.indexing.qdrant import QdrantIndexer, DEFAULT_TENANT_ID
+        from pipelines.ingestion.indexing.qdrant import DEFAULT_TENANT_ID, QdrantIndexer
 
         assert DEFAULT_TENANT_ID == "default"
 
@@ -206,7 +210,7 @@ class TestIngestionTenantTagging:
 
     def test_neo4j_indexer_accepts_tenant_id(self):
         """Neo4jIndexer should accept tenant_id in constructor."""
-        from pipelines.ingestion.indexing.neo4j import Neo4jIndexer, DEFAULT_TENANT_ID
+        from pipelines.ingestion.indexing.neo4j import DEFAULT_TENANT_ID, Neo4jIndexer
 
         assert DEFAULT_TENANT_ID == "default"
 
@@ -224,6 +228,7 @@ class TestChatRouteTenantPropagation:
     def test_chat_route_passes_tenant_to_cache(self):
         """Verify chat.py source code passes tenant_id to semantic cache calls."""
         import inspect
+
         from app.routes import chat
 
         source = inspect.getsource(chat.chat_stream)

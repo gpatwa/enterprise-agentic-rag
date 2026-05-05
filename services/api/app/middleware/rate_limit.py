@@ -9,12 +9,13 @@ Uses a simple fixed-window counter in Redis:
 
 Can be used as a FastAPI dependency or as ASGI middleware.
 """
-import time
 import logging
+import time
+
 from fastapi import Depends, HTTPException
 
-from app.cache.redis import redis_client
 from app.auth.tenant import TenantContext, get_tenant_context
+from app.cache.redis import redis_client
 from app.tenants.config import TenantConfig
 from app.tenants.middleware import get_tenant_config
 

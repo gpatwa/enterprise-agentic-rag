@@ -9,13 +9,14 @@ Handles create/read/update/delete for:
 - Document Metadata (Layer 1, read-only)
 """
 import logging
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
 
-from sqlalchemy import select, and_, delete
-from app.context.models import Annotation, BusinessContext, CodeContext, DocumentMetadata
+from sqlalchemy import and_, delete, select
+
 import app.memory.postgres as _pg
 from app.config import settings
+from app.context.models import Annotation, BusinessContext, CodeContext, DocumentMetadata
 
 logger = logging.getLogger(__name__)
 

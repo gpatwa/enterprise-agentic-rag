@@ -9,11 +9,11 @@ Enforces:
 - Cost guard for large tables without WHERE/LIMIT
 - Result row cap
 """
-import re
 import logging
-from typing import Tuple, List
+import re
+from typing import List, Tuple
 
-from app.analytics.schema_context import get_all_table_names, OLIST_SCHEMA
+from app.analytics.schema_context import OLIST_SCHEMA, get_all_table_names
 
 logger = logging.getLogger(__name__)
 

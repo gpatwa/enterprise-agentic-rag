@@ -4,6 +4,7 @@ Neo4j implementation of the GraphDBClient protocol.
 Wraps the AsyncGraphDatabase driver with a provider-agnostic interface.
 """
 import logging
+
 from neo4j import AsyncGraphDatabase
 
 logger = logging.getLogger(__name__)

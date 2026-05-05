@@ -8,10 +8,11 @@ and data lineage information that matches the user's query.
 import logging
 from typing import List
 
-from sqlalchemy import select, and_, or_
-from app.context.models import CodeContext
+from sqlalchemy import and_, or_, select
+
 import app.memory.postgres as _pg
 from app.config import settings
+from app.context.models import CodeContext
 
 logger = logging.getLogger(__name__)
 

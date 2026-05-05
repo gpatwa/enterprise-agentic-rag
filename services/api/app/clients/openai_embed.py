@@ -18,7 +18,7 @@ import logging
 from typing import Optional
 
 import backoff
-from openai import AsyncOpenAI, APIError
+from openai import APIError, AsyncOpenAI
 
 from app.config import settings
 

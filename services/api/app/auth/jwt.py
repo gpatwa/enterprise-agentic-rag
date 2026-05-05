@@ -1,9 +1,11 @@
 # services/api/app/auth/jwt.py
 import logging
 import time
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+
 from app.config import settings
 
 logger = logging.getLogger(__name__)

@@ -75,8 +75,9 @@ async def forget_user(
 async def _wipe_postgres_memory(tenant_id: str, user_id: str) -> tuple[int, int]:
     """Delete chat_history + user_memories rows. Returns (chat_count, memory_count)."""
     try:
-        import app.memory.postgres as _pg
         from sqlalchemy import delete
+
+        import app.memory.postgres as _pg
         from app.memory.postgres import ChatHistory, UserMemory
 
         if _pg.AsyncSessionLocal is None:
@@ -104,8 +105,9 @@ async def _wipe_postgres_memory(tenant_id: str, user_id: str) -> tuple[int, int]
 async def _wipe_threads(tenant_id: str, user_id: str) -> tuple[int, int]:
     """Delete threads + saved_questions for the user."""
     try:
-        import app.memory.postgres as _pg
         from sqlalchemy import delete
+
+        import app.memory.postgres as _pg
         from app.threads.models import SavedQuestion, Thread
 
         if _pg.AsyncSessionLocal is None:

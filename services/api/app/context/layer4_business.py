@@ -9,10 +9,11 @@ Filtered by user role at query time.
 import logging
 from typing import List
 
-from sqlalchemy import select, and_, or_
-from app.context.models import BusinessContext
+from sqlalchemy import and_, or_, select
+
 import app.memory.postgres as _pg
 from app.config import settings
+from app.context.models import BusinessContext
 
 logger = logging.getLogger(__name__)
 

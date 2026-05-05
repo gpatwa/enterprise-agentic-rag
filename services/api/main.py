@@ -1,24 +1,30 @@
 # services/api/main.py
-import os
 import logging
+import os
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
-from app.clients.ray_llm import llm_client
-from app.clients.ray_embed import embed_client
-from app.clients.vectordb.factory import create_vectordb_client
-from app.clients.graphdb.factory import create_graphdb_client
-from app.clients.secrets.factory import create_secrets_client
-from app.clients.reranker.factory import create_reranker_client
-from app.clients.storage.factory import create_storage_client
+from fastapi.staticfiles import StaticFiles
+
+from app.agents.nodes.retriever import set_clients as set_retriever_clients
 from app.cache.redis import redis_client
 from app.cache.semantic import set_vectordb_client as set_semantic_vectordb
-from app.agents.nodes.retriever import set_clients as set_retriever_clients
-from app.routes import chat, upload, health, auth, system, documents, context, home, threads as threads_routes, sources as sources_routes, audit as audit_routes, privacy, mcp as mcp_routes
-from app.routes.health import set_clients as set_health_clients
+from app.clients.graphdb.factory import create_graphdb_client
+from app.clients.ray_embed import embed_client
+from app.clients.ray_llm import llm_client
+from app.clients.reranker.factory import create_reranker_client
+from app.clients.secrets.factory import create_secrets_client
+from app.clients.storage.factory import create_storage_client
+from app.clients.vectordb.factory import create_vectordb_client
 from app.config import settings
+from app.routes import audit as audit_routes
+from app.routes import auth, chat, context, documents, health, home, privacy, system, upload
+from app.routes import mcp as mcp_routes
+from app.routes import sources as sources_routes
+from app.routes import threads as threads_routes
+from app.routes.health import set_clients as set_health_clients
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +111,7 @@ async def lifespan(app: FastAPI):
     await _inject_secrets_from_vault()
 
     # 2. Initialise Postgres engine (now that DB_PASSWORD is available)
-    from app.memory.postgres import init_engine, engine, Base
+    from app.memory.postgres import Base, init_engine
     init_engine()
     # Auto-create tables (chat_history, user_memories) if they don't exist
     from app.memory.postgres import engine as db_engine
@@ -159,15 +165,15 @@ async def lifespan(app: FastAPI):
 
     # 5. Context Layers — init assembler if enabled
     if settings.CONTEXT_LAYERS_ENABLED:
-        from app.context.assembler import ContextAssembler
         from app.agents.nodes.context_enricher import set_assembler
+        from app.context.assembler import ContextAssembler
         set_assembler(ContextAssembler())
         logger.info("Context layers enabled — assembler initialized")
 
     # 6. Data Analytics — init engine if enabled
     if settings.DATA_ANALYTICS_ENABLED:
-        from app.analytics.engine import init_analytics_engine
         from app.agents.nodes.data_analytics import set_analytics_llm
+        from app.analytics.engine import init_analytics_engine
         init_analytics_engine()
         set_analytics_llm(llm_client)
         logger.info("Data analytics enabled — engine initialized")
@@ -197,8 +203,8 @@ async def lifespan(app: FastAPI):
     if settings.MCP_ENABLED:
         try:
             from app.mcp.crypto import init_cipher
-            from app.mcp.process_pool import MCPProcessPool
             from app.mcp.manager import mcp_manager
+            from app.mcp.process_pool import MCPProcessPool
 
             mcp_key = settings.MCP_ENCRYPTION_KEY
             if not mcp_key:

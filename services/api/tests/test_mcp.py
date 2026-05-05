@@ -25,7 +25,7 @@ import time
 import types
 from dataclasses import dataclass
 from typing import Any, Optional
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -227,8 +227,8 @@ class TestProcessPool:
 
     @pytest.mark.asyncio
     async def test_capacity_cap(self):
-        from app.mcp.process_pool import MCPProcessPool
         from app.mcp.errors import MCPCapacityError
+        from app.mcp.process_pool import MCPProcessPool
 
         s = _FakeSession()
         pool = MCPProcessPool(
@@ -388,7 +388,7 @@ class _FakeStorage:
 def _manager_with_pool(monkeypatch):
     """Configured MCPManager wired to a fake pool + storage."""
     from app.mcp import storage as storage_mod
-    from app.mcp.crypto import init_cipher, reset_cipher, generate_key
+    from app.mcp.crypto import generate_key, init_cipher, reset_cipher
     from app.mcp.manager import MCPManager
     from app.mcp.process_pool import MCPProcessPool
 
@@ -426,8 +426,8 @@ def _manager_with_pool(monkeypatch):
 class TestManagerStateOps:
     @pytest.mark.asyncio
     async def test_disabled_manager_refuses(self, monkeypatch):
-        from app.mcp.manager import MCPManager
         from app.mcp.errors import MCPNotEnabledError
+        from app.mcp.manager import MCPManager
 
         mgr = MCPManager()  # never .configure()
         with pytest.raises(MCPNotEnabledError):
@@ -526,7 +526,7 @@ class TestManagerDispatch:
     async def test_call_tool_timeout_evicts_entry(self, monkeypatch):
         """Timeout must both raise AND tear down the stuck subprocess."""
         from app.mcp import storage as storage_mod
-        from app.mcp.crypto import init_cipher, reset_cipher, generate_key
+        from app.mcp.crypto import generate_key, init_cipher, reset_cipher
         from app.mcp.errors import MCPToolTimeoutError
         from app.mcp.manager import MCPManager
         from app.mcp.process_pool import MCPProcessPool
@@ -579,10 +579,9 @@ class TestManagerDispatch:
 class TestTenantToolRegistry:
     @pytest.mark.asyncio
     async def test_static_only_when_mcp_disabled(self, monkeypatch):
-        from app.tools.registry import TOOL_REGISTRY, get_tools_for_tenant
-
         # Force disabled
         from app.mcp import mcp_manager
+        from app.tools.registry import TOOL_REGISTRY, get_tools_for_tenant
 
         monkeypatch.setattr(type(mcp_manager), "enabled", property(lambda _self: False))
         tools = await get_tools_for_tenant("t1")
@@ -590,11 +589,10 @@ class TestTenantToolRegistry:
 
     @pytest.mark.asyncio
     async def test_merges_mcp_tools_when_enabled(self, monkeypatch):
-        from app.tools.registry import get_tools_for_tenant
-
         # Stub mcp_manager.list_tools to return one MCP descriptor
         from app.mcp import mcp_manager
         from app.mcp.types import MCPToolDescriptor
+        from app.tools.registry import get_tools_for_tenant
 
         monkeypatch.setattr(type(mcp_manager), "enabled", property(lambda _self: True))
         async def fake_list_tools(_session, *, tenant_id, cache=True):

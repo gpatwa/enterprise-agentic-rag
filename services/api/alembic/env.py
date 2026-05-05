@@ -9,9 +9,9 @@ Key choices:
   - target_metadata = Base.metadata so 'alembic revision --autogenerate'
     catches new tables defined in the codebase.
 """
-from logging.config import fileConfig
 import os
 import sys
+from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
@@ -19,13 +19,13 @@ from sqlalchemy import engine_from_config, pool
 # Add project root to sys.path so we can import the app package
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.config import settings  # noqa: E402
-from app.memory.postgres import Base  # noqa: E402
+import app.audit.models  # noqa: F401, E402
 
 # Importing these registers their tables on Base.metadata
 import app.context.models  # noqa: F401, E402
 import app.threads.models  # noqa: F401, E402
-import app.audit.models    # noqa: F401, E402
+from app.config import settings  # noqa: E402
+from app.memory.postgres import Base  # noqa: E402
 
 config = context.config
 if config.config_file_name is not None:

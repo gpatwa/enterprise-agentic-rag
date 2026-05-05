@@ -1,6 +1,7 @@
 # services/api/app/clients/qdrant.py
-from qdrant_client import QdrantClient, AsyncQdrantClient
+from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models
+
 from app.config import settings
 
 DEFAULT_TENANT_ID = "default"

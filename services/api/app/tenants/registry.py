@@ -10,11 +10,9 @@ Source is selected via TENANT_CONFIG_SOURCE env var:
   "database" — PostgreSQL tenant_configs table (future)
   "redis"    — Redis hash (future)
 """
-import json
 import logging
-from typing import Optional
 
-from app.tenants.config import TenantConfig, DEFAULT_TENANT_CONFIG
+from app.tenants.config import DEFAULT_TENANT_CONFIG, TenantConfig
 
 logger = logging.getLogger(__name__)
 

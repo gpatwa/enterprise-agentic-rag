@@ -3,6 +3,7 @@
 AWS S3 / MinIO implementation of the StorageClient protocol.
 """
 import logging
+
 import boto3
 
 logger = logging.getLogger(__name__)

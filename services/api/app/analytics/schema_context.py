@@ -6,7 +6,7 @@ Provides schema descriptions, column metadata, table relationships,
 and common business metrics so the LLM generates correct SQL without
 hallucinating column names or join paths.
 """
-from typing import List, Dict
+from typing import Dict, List
 
 # ── Olist Schema ──────────────────────────────────────────────────────
 

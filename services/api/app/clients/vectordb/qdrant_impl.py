@@ -3,8 +3,9 @@
 Qdrant implementation of the VectorDBClient protocol.
 Wraps the AsyncQdrantClient with a provider-agnostic interface.
 """
-import uuid
 import logging
+import uuid
+
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models
 

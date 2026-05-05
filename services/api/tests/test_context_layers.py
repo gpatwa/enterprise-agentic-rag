@@ -13,14 +13,12 @@ Tests cover:
 Run with:
     cd services/api && python -m pytest tests/test_context_layers.py -v
 """
-import os
-import sys
 import asyncio
 import inspect
-from unittest.mock import AsyncMock, MagicMock, patch
+import os
+import sys
 from datetime import datetime, timedelta
-
-import pytest
+from unittest.mock import MagicMock
 
 # Ensure services/api is on the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -88,7 +86,10 @@ class TestContextModels:
     def test_tenant_id_indexed(self):
         """All context models have tenant_id indexed for performance."""
         from app.context.models import (
-            DocumentMetadata, Annotation, CodeContext, BusinessContext,
+            Annotation,
+            BusinessContext,
+            CodeContext,
+            DocumentMetadata,
         )
 
         for model in [DocumentMetadata, Annotation, CodeContext, BusinessContext]:
@@ -98,7 +99,10 @@ class TestContextModels:
     def test_all_models_use_shared_base(self):
         """All models use the same Base for auto table creation."""
         from app.context.models import (
-            DocumentMetadata, Annotation, CodeContext, BusinessContext,
+            Annotation,
+            BusinessContext,
+            CodeContext,
+            DocumentMetadata,
         )
         from app.memory.postgres import Base
 
@@ -295,8 +299,8 @@ class TestFreshnessComputation:
 
     def test_freshness_half_life(self):
         """Document at half-life age should have freshness ≈ 0.5."""
-        from app.context.layer1_metadata import _compute_freshness
         from app.config import settings
+        from app.context.layer1_metadata import _compute_freshness
 
         score = _compute_freshness(
             datetime.utcnow() - timedelta(days=settings.CONTEXT_FRESHNESS_DECAY_DAYS)
@@ -459,7 +463,10 @@ class TestContextTenantIsolation:
     def test_model_tenant_id_not_nullable(self):
         """tenant_id column must be non-nullable on all models."""
         from app.context.models import (
-            DocumentMetadata, Annotation, CodeContext, BusinessContext,
+            Annotation,
+            BusinessContext,
+            CodeContext,
+            DocumentMetadata,
         )
 
         for model in [DocumentMetadata, Annotation, CodeContext, BusinessContext]:
@@ -547,7 +554,7 @@ class TestContextLayerConfig:
             os.path.dirname(__file__), "..", "app", "agents", "graph.py"
         )
         source = open(graph_path).read()
-        tree = ast.parse(source)
+        ast.parse(source)
 
         # Check that CONTEXT_LAYERS_ENABLED is referenced
         assert "CONTEXT_LAYERS_ENABLED" in source

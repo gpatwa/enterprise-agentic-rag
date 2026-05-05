@@ -1,10 +1,12 @@
 # services/api/app/routes/upload.py
-from fastapi import APIRouter, HTTPException, Depends
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from app.config import settings
+
 from app.auth.tenant import TenantContext, get_tenant_context
 from app.clients.storage.factory import create_storage_client
-import uuid
+from app.config import settings
 
 router = APIRouter()
 

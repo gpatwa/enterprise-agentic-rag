@@ -13,7 +13,6 @@ from typing import Optional
 
 from app.mcp.types import MCPCatalogEntry
 
-
 # Tier-1 servers per the A1 plan. PAT-style first; Drive (OAuth2) lands in Phase 4.
 _ENTRIES: dict[str, MCPCatalogEntry] = {
     "slack": MCPCatalogEntry(

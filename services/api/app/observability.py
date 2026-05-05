@@ -15,7 +15,6 @@ Usage:
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from fastapi import FastAPI
 
@@ -33,8 +32,6 @@ def setup_observability(app: FastAPI) -> None:
         return
 
     # Common OTel setup
-    from opentelemetry import trace
-    from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.resources import Resource
 
     resource = Resource.create(
@@ -69,11 +66,11 @@ def setup_observability(app: FastAPI) -> None:
 def _setup_otlp(resource, settings) -> None:
     """Standard OTLP gRPC exporter (Jaeger, Datadog Agent, OTel Collector)."""
     from opentelemetry import trace
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor
     from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
         OTLPSpanExporter,
     )
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
     endpoint = settings.OTEL_ENDPOINT or "http://localhost:4317"
     exporter = OTLPSpanExporter(endpoint=endpoint)
@@ -86,11 +83,11 @@ def _setup_otlp(resource, settings) -> None:
 def _setup_xray(resource, settings) -> None:
     """AWS X-Ray via OTLP exporter with X-Ray-compatible ID generator."""
     from opentelemetry import trace
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor
     from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
         OTLPSpanExporter,
     )
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
     try:
         from opentelemetry.sdk.extension.aws.trace import AwsXRayIdGenerator

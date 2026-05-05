@@ -3,8 +3,8 @@
 Audit log writer. Best-effort, never raises into the request path.
 Falls back to stdout logging if the DB is unavailable.
 """
-from datetime import datetime
 import logging
+from datetime import datetime
 from typing import Any, Optional
 
 import app.memory.postgres as _pg

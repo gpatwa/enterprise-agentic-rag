@@ -43,11 +43,9 @@ from __future__ import annotations
 import asyncio
 import os
 import shutil
-import time
 from typing import Any
 
 import pytest
-
 
 # ── Skip detection ────────────────────────────────────────────────────
 
@@ -156,7 +154,7 @@ async def real_manager(monkeypatch):
     setup, body, and teardown on the same task.
     """
     from app.mcp import storage as storage_mod
-    from app.mcp.crypto import init_cipher, reset_cipher, generate_key
+    from app.mcp.crypto import generate_key, init_cipher, reset_cipher
     from app.mcp.manager import MCPManager
     from app.mcp.process_pool import MCPProcessPool
 

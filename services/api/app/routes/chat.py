@@ -1,22 +1,26 @@
 # services/api/app/routes/chat.py
 import asyncio
-import uuid
 import json
 import logging
+import uuid
 from typing import AsyncGenerator, Optional
 
-from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from app.auth.tenant import TenantContext, get_tenant_context
-from app.middleware.rate_limit import check_rate_limit
-# Import classes for type hinting
-from app.cache.semantic import SemanticCache, semantic_cache as global_cache
-from app.memory.postgres import PostgresMemory, postgres_memory as global_memory
-from app.clients.ray_llm import RayLLMClient, llm_client as global_llm
 from app.agents.graph import agent_app
 from app.agents.state import AgentState
+from app.auth.tenant import TenantContext, get_tenant_context
+
+# Import classes for type hinting
+from app.cache.semantic import SemanticCache
+from app.cache.semantic import semantic_cache as global_cache
+from app.clients.ray_llm import RayLLMClient
+from app.clients.ray_llm import llm_client as global_llm
+from app.memory.postgres import PostgresMemory
+from app.memory.postgres import postgres_memory as global_memory
+from app.middleware.rate_limit import check_rate_limit
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -448,7 +452,8 @@ async def chat_stream(
                     if result_json:
                         try:
                             from app.analytics.formatter import (
-                                format_as_table_html, suggest_chart_spec,
+                                format_as_table_html,
+                                suggest_chart_spec,
                             )
                             result_data = json.loads(result_json)
                             chart_spec = suggest_chart_spec(

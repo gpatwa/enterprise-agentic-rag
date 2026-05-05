@@ -151,6 +151,7 @@ class TestAuditLog:
 
     def test_manager_log_event_signature(self):
         import inspect
+
         from app.audit import manager
 
         sig = inspect.signature(manager.log_event)
@@ -175,6 +176,7 @@ class TestClarifyNode:
 
     def test_returns_no_clarification_when_disabled(self):
         import asyncio
+
         from app.agents.nodes.clarify import clarify_node
 
         # Default is disabled

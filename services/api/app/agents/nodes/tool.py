@@ -36,8 +36,8 @@ from langchain_core.runnables import RunnableConfig
 from app.agents.state import AgentState
 from app.tools.calculator import calculate
 from app.tools.graph_search import search_graph_tool
-from app.tools.vector_search import search_vector_tool
 from app.tools.sandbox import run_python_code
+from app.tools.vector_search import search_vector_tool
 from app.tools.web_search import web_search_tool
 
 logger = logging.getLogger(__name__)
@@ -121,13 +121,13 @@ async def _dispatch_mcp(
       - any other string falls back to `{"query": "<input>"}`
     Servers that need different field names will surface a clear error.
     """
+    from app.audit import manager as audit_mgr  # local import to avoid cycle
+    from app.auth.tenant import DEFAULT_TENANT_ID
     from app.mcp import (
         MCPError,
         mcp_manager,
     )
-    from app.audit import manager as audit_mgr  # local import to avoid cycle
     from app.memory.postgres import AsyncSessionLocal
-    from app.auth.tenant import DEFAULT_TENANT_ID
 
     configurable = config.get("configurable", {}) if config else {}
     tenant_id = configurable.get("tenant_id") or DEFAULT_TENANT_ID

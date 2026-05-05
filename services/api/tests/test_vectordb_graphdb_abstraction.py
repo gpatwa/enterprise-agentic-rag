@@ -4,11 +4,9 @@ Unit tests for Milestone 3: VectorDB & GraphDB Abstraction.
 Tests Protocol compliance, factory routing, Qdrant implementation,
 Neo4j implementation, NullGraphClient, and late-init injection.
 """
-import asyncio
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
-
 
 # ---------------------------------------------------------------
 # Test: VectorDB Protocol

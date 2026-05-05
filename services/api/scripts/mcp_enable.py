@@ -36,7 +36,6 @@ import asyncio
 import getpass
 import os
 import sys
-from typing import Optional
 
 
 def _resolve_credentials(
@@ -70,8 +69,8 @@ def _resolve_credentials(
 
 async def _bootstrap_mcp() -> None:
     """Init secrets vault → cipher → pool → manager (mirrors lifespan)."""
-    from app.config import settings
     from app.clients.secrets.factory import create_secrets_client
+    from app.config import settings
     from app.mcp.crypto import init_cipher
     from app.mcp.manager import mcp_manager
     from app.mcp.process_pool import MCPProcessPool
@@ -107,8 +106,8 @@ async def _bootstrap_mcp() -> None:
 
 
 async def _do_enable(tenant: str, server: str, creds: dict[str, str]) -> None:
-    from app.memory.postgres import AsyncSessionLocal
     from app.mcp.manager import mcp_manager
+    from app.memory.postgres import AsyncSessionLocal
 
     if AsyncSessionLocal is None:
         sys.exit("DB engine not initialized (set DATABASE_URL)")
@@ -123,8 +122,8 @@ async def _do_enable(tenant: str, server: str, creds: dict[str, str]) -> None:
 
 
 async def _do_disable(tenant: str, server: str) -> None:
-    from app.memory.postgres import AsyncSessionLocal
     from app.mcp.manager import mcp_manager
+    from app.memory.postgres import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
         ok = await mcp_manager.disable_connection(
@@ -134,8 +133,8 @@ async def _do_disable(tenant: str, server: str) -> None:
 
 
 async def _do_list(tenant: str) -> None:
-    from app.memory.postgres import AsyncSessionLocal
     from app.mcp.manager import mcp_manager
+    from app.memory.postgres import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
         rows = await mcp_manager.list_connections(session, tenant_id=tenant)

@@ -9,10 +9,11 @@ import logging
 import re
 from typing import List
 
-from sqlalchemy import select, and_, or_
-from app.context.models import Annotation
+from sqlalchemy import and_, or_, select
+
 import app.memory.postgres as _pg
 from app.config import settings
+from app.context.models import Annotation
 
 logger = logging.getLogger(__name__)
 

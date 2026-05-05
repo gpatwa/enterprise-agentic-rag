@@ -9,12 +9,13 @@ instead of the local symmetric JWT_SECRET_KEY.
 The JWKS is fetched once and cached (with periodic refresh) to avoid
 hitting the IdP on every request.
 """
-import time
 import logging
+import time
 from typing import Optional
 
 import httpx
-from jose import jwt as jose_jwt, JWTError, jwk
+from jose import JWTError
+from jose import jwt as jose_jwt
 
 logger = logging.getLogger(__name__)
 
@@ -109,8 +110,7 @@ class JWKSFetcher:
                 f"Available: {[k.get('kid') for k in self._keys]}"
             )
 
-        # Build decode options
-        options: dict = {}
+        # Build decode kwargs (audience + issuer are added below if provided)
         kwargs: dict = {
             "algorithms": ["RS256"],
         }

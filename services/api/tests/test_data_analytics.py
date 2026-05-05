@@ -6,9 +6,8 @@ Covers: schema context, SQL safety validation, formatter,
 planner routing, graph wiring, and state fields.
 """
 import ast
-import json
 import os
-import re
+
 import pytest
 
 # Ensure DATA_ANALYTICS_ENABLED is set before importing app modules
@@ -321,6 +320,7 @@ class TestAnalyticsConfig:
 class TestDataAnalyticsNode:
     def test_node_is_async(self):
         import asyncio
+
         from app.agents.nodes.data_analytics import data_analytics_node
         assert asyncio.iscoroutinefunction(data_analytics_node)
 
@@ -331,8 +331,6 @@ class TestDataAnalyticsNode:
     def test_engine_module_imports(self):
         from app.analytics.engine import (
             init_analytics_engine,
-            generate_sql,
-            execute_sql,
             run_data_query,
         )
         assert callable(init_analytics_engine)

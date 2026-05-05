@@ -4,7 +4,8 @@ No-op re-ranker — passes documents through in their original order.
 Used when RERANKER_PROVIDER=none (default for local dev).
 """
 import logging
-from app.clients.reranker.base import RerankerClient, ScoredDocument
+
+from app.clients.reranker.base import ScoredDocument
 
 logger = logging.getLogger(__name__)
 

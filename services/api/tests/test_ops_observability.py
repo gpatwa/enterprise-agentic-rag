@@ -11,12 +11,11 @@ Covers:
   - Observability exporter routing
   - Config settings for M8
 """
-import asyncio
 import json
 import os
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
+import pytest
 
 # ----------------------------------------------------------------
 # SecretsClient Protocol & Factory
@@ -33,8 +32,8 @@ class TestSecretsProtocol:
         assert isinstance(client, SecretsClient)
 
     def test_aws_client_satisfies_protocol(self):
-        from app.clients.secrets.base import SecretsClient
         from app.clients.secrets.aws_sm import AWSSecretsManagerClient
+        from app.clients.secrets.base import SecretsClient
 
         with patch("boto3.client"):
             client = AWSSecretsManagerClient(region="us-east-1")
@@ -52,15 +51,15 @@ class TestSecretsFactory:
     """Secrets factory routing."""
 
     def test_factory_creates_env_client(self):
-        from app.clients.secrets.factory import create_secrets_client
         from app.clients.secrets.env import EnvSecretsClient
+        from app.clients.secrets.factory import create_secrets_client
 
         client = create_secrets_client("env")
         assert isinstance(client, EnvSecretsClient)
 
     def test_factory_creates_aws_client(self):
-        from app.clients.secrets.factory import create_secrets_client
         from app.clients.secrets.aws_sm import AWSSecretsManagerClient
+        from app.clients.secrets.factory import create_secrets_client
 
         with patch("boto3.client"):
             client = create_secrets_client("aws_sm", region="us-east-1")
@@ -79,8 +78,8 @@ class TestSecretsFactory:
             create_secrets_client("gcp_sm")
 
     def test_factory_case_insensitive(self):
-        from app.clients.secrets.factory import create_secrets_client
         from app.clients.secrets.env import EnvSecretsClient
+        from app.clients.secrets.factory import create_secrets_client
 
         client = create_secrets_client("  ENV  ")
         assert isinstance(client, EnvSecretsClient)
@@ -271,8 +270,9 @@ class TestObservability:
 
     def test_setup_none_exporter_skips(self):
         """OTEL_EXPORTER=none should log and return without instrumenting."""
-        from app.observability import setup_observability
         from fastapi import FastAPI
+
+        from app.observability import setup_observability
 
         mock_app = FastAPI()
         with patch("app.config.settings") as mock_settings:
@@ -282,11 +282,12 @@ class TestObservability:
 
     def test_setup_otlp_calls_setup_otlp(self):
         """OTEL_EXPORTER=otlp should call _setup_otlp."""
-        from app.observability import setup_observability
         from fastapi import FastAPI
 
+        from app.observability import setup_observability
+
         mock_app = FastAPI()
-        with patch("app.observability._setup_otlp") as mock_otlp, \
+        with patch("app.observability._setup_otlp"), \
              patch("app.config.settings") as mock_settings, \
              patch("app.observability.FastAPIInstrumentor", create=True):
             mock_settings.OTEL_EXPORTER = "otlp"
@@ -302,11 +303,12 @@ class TestObservability:
 
     def test_setup_xray_calls_setup_xray(self):
         """OTEL_EXPORTER=xray should call _setup_xray."""
-        from app.observability import setup_observability
         from fastapi import FastAPI
 
+        from app.observability import setup_observability
+
         mock_app = FastAPI()
-        with patch("app.observability._setup_xray") as mock_xray, \
+        with patch("app.observability._setup_xray"), \
              patch("app.config.settings") as mock_settings, \
              patch("app.observability.FastAPIInstrumentor", create=True):
             mock_settings.OTEL_EXPORTER = "xray"
@@ -320,11 +322,12 @@ class TestObservability:
 
     def test_setup_azure_monitor_calls_setup_azure_monitor(self):
         """OTEL_EXPORTER=azure_monitor should call _setup_azure_monitor."""
-        from app.observability import setup_observability
         from fastapi import FastAPI
 
+        from app.observability import setup_observability
+
         mock_app = FastAPI()
-        with patch("app.observability._setup_azure_monitor") as mock_az, \
+        with patch("app.observability._setup_azure_monitor"), \
              patch("app.config.settings") as mock_settings, \
              patch("app.observability.FastAPIInstrumentor", create=True):
             mock_settings.OTEL_EXPORTER = "azure_monitor"

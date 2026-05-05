@@ -1,6 +1,7 @@
 # services/api/app/tools/calculator.py
 from simpleeval import simple_eval
 
+
 def calculate(expression: str) -> str:
     """
     Safely evaluates a mathematical expression using simpleeval.
