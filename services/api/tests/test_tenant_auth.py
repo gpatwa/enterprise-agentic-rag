@@ -185,16 +185,20 @@ class TestAuthRoute:
         assert req.tenant_id == DEFAULT_TENANT_ID
 
     def test_token_response_has_tenant_id_field(self):
-        """TokenResponse model should include tenant_id."""
+        """TokenResponse model should include tenant_id (and refresh fields after T1.6)."""
         from app.routes.auth import TokenResponse
 
         resp = TokenResponse(
             access_token="abc",
+            refresh_token="xyz",
             user_id="alice",
             tenant_id="acme",
             expires_in=3600,
+            refresh_expires_in=14 * 86400,
         )
         assert resp.tenant_id == "acme"
+        assert resp.refresh_token == "xyz"
+        assert resp.refresh_expires_in == 14 * 86400
 
 
 # ── Upload Namespace Tests ────────────────────────────────────────────────────

@@ -15,12 +15,16 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 DEFAULT_TENANT_ID = "default"
 
 
+DEFAULT_ACCESS_TTL = 3600           # 1 hour
+DEFAULT_REFRESH_TTL = 14 * 86400    # 14 days
+
+
 def create_token(
     user_id: str = "dev-user",
     role: str = "admin",
     tenant_id: str = DEFAULT_TENANT_ID,
     permissions: list = None,
-    expires_in: int = 86400,  # 24 hours
+    expires_in: int = DEFAULT_ACCESS_TTL,
 ) -> str:
     """
     Creates a signed JWT token using the local HS256 secret.
@@ -41,6 +45,43 @@ def create_token(
         "exp": int(time.time()) + expires_in,
     }
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm="HS256")
+
+
+def create_refresh_token(
+    user_id: str,
+    role: str,
+    tenant_id: str,
+    expires_in: int = DEFAULT_REFRESH_TTL,
+) -> str:
+    """
+    Long-lived refresh token. Carries a 'type=refresh' claim so it can't be
+    used as an access token by mistake.
+    """
+    payload = {
+        "sub": user_id,
+        "role": role,
+        "tenant_id": tenant_id,
+        "type": "refresh",
+        "iat": int(time.time()),
+        "exp": int(time.time()) + expires_in,
+    }
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm="HS256")
+
+
+def verify_refresh_token(token: str) -> dict:
+    """
+    Decode + validate a refresh token. Raises HTTPException(401) on any
+    failure: bad signature, expiry, or wrong token type.
+    """
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=["HS256"])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Refresh token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    if payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Not a refresh token")
+    return payload
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:

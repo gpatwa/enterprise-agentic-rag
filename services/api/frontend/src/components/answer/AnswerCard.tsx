@@ -22,14 +22,17 @@ import { SqlBlock } from './SqlBlock';
 import { DataResultCard } from './DataResultCard';
 import { AnswerText } from './AnswerText';
 import { ContextLayersBlock } from './ContextLayersBlock';
+import { StreamHealthBadge } from './StreamHealthBadge';
 
 interface Props {
   turn: AskTurn;
   onSave?: (q: string) => void;
   onFollowUp?: (q: string) => void;
+  /** Last stream-event timestamp (epoch ms) — used for stall detection. */
+  lastUpdate?: number;
 }
 
-export function AnswerCard({ turn, onSave, onFollowUp }: Props) {
+export function AnswerCard({ turn, onSave, onFollowUp, lastUpdate }: Props) {
   return (
     <article className="glass-strong rounded-xl border border-border/60 p-5 space-y-4">
       {/* Header — user question + pipeline */}
@@ -39,8 +42,11 @@ export function AnswerCard({ turn, onSave, onFollowUp }: Props) {
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-fg font-medium text-base leading-snug">{turn.question}</h3>
-          <div className="mt-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <PipelineStatus steps={turn.steps} streaming={turn.streaming} />
+            {turn.streaming && lastUpdate !== undefined && (
+              <StreamHealthBadge streaming={turn.streaming} lastUpdate={lastUpdate} />
+            )}
           </div>
         </div>
       </header>

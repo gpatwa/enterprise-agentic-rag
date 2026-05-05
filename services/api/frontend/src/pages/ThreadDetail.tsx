@@ -14,7 +14,7 @@ import { formatRelative } from '@/lib/format';
 
 export function ThreadDetailPage() {
   const { threadId = '' } = useParams<{ threadId: string }>();
-  const { turn, ask } = useAsk();
+  const { turn, ask, lastUpdate } = useAsk();
   const { toast } = useToast();
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [pendingSaveQuestion, setPendingSaveQuestion] = useState('');
@@ -99,6 +99,7 @@ export function ThreadDetailPage() {
               turn={turn}
               onSave={handleSaveTurn}
               onFollowUp={(q) => ask(q, { sessionId: threadId })}
+              lastUpdate={lastUpdate}
             />
           </div>
         )}

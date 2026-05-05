@@ -150,6 +150,16 @@ class Settings(BaseSettings):
     ANALYTICS_MAX_ROWS: int = 1000             # Max rows returned per query
 
     # -----------------------------------------------------------------
+    # Iterative clarification
+    # -----------------------------------------------------------------
+    CLARIFICATION_ENABLED: bool = False        # Ask clarifying Qs on ambiguity
+
+    # -----------------------------------------------------------------
+    # Privacy & redaction
+    # -----------------------------------------------------------------
+    PII_REDACTION_ENABLED: bool = True         # Scrub PII from prompts/output
+
+    # -----------------------------------------------------------------
     # Security & Authentication
     # -----------------------------------------------------------------
     JWT_SECRET_KEY: Optional[str] = None  # Fetched from Key Vault at runtime

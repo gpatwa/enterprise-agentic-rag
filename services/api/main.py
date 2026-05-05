@@ -16,7 +16,7 @@ from app.clients.storage.factory import create_storage_client
 from app.cache.redis import redis_client
 from app.cache.semantic import set_vectordb_client as set_semantic_vectordb
 from app.agents.nodes.retriever import set_clients as set_retriever_clients
-from app.routes import chat, upload, health, auth, system, documents, context, home, threads as threads_routes, sources as sources_routes
+from app.routes import chat, upload, health, auth, system, documents, context, home, threads as threads_routes, sources as sources_routes, audit as audit_routes, privacy
 from app.routes.health import set_clients as set_health_clients
 from app.config import settings
 
@@ -207,14 +207,23 @@ async def lifespan(app: FastAPI):
 # FastAPI Application
 app = FastAPI(title="Enterprise RAG Platform", version="1.0.0", lifespan=lifespan)
 
-# CORS Middleware — configurable via CORS_ORIGINS env var
+# CORS Middleware — explicit allowlist required outside dev/staging.
+# Refuses to start in prod with wildcard, matching enterprise security review.
 origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+if settings.ENV == "prod" and (not origins or origins == ["*"]):
+    raise RuntimeError(
+        "CORS_ORIGINS must be an explicit allowlist in production "
+        "(wildcard '*' is rejected). Set e.g. "
+        "CORS_ORIGINS='https://app.compass.ai,https://staging.compass.ai'."
+    )
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    # Prefer explicit method/header allowlists in prod; '*' is fine in dev/staging.
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Tenant-ID"],
+    max_age=600,
 )
 
 # Include Routes
@@ -228,6 +237,8 @@ app.include_router(context.router, prefix="/api/v1/context", tags=["Context"])
 app.include_router(home.router, prefix="/api/v1/home", tags=["Home"])
 app.include_router(threads_routes.router, prefix="/api/v1", tags=["Threads"])
 app.include_router(sources_routes.router, prefix="/api/v1/sources", tags=["Sources"])
+app.include_router(audit_routes.router, prefix="/api/v1/audit", tags=["Audit"])
+app.include_router(privacy.router, prefix="/api/v1/privacy", tags=["Privacy"])
 
 # Serve Chat UI at root "/"
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")

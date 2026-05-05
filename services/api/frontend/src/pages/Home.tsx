@@ -93,7 +93,7 @@ const MOCK: LandingResponse = {
 export function HomePage() {
   const { data, isLoading, error } = useLanding();
   const { data: liveHealth } = useSourcesHealth();
-  const { turn, ask } = useAsk();
+  const { turn, ask, lastUpdate } = useAsk();
 
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [pendingSaveQuestion, setPendingSaveQuestion] = useState('');
@@ -144,6 +144,7 @@ export function HomePage() {
                 turn={turn}
                 onSave={handleSaveTurn}
                 onFollowUp={(q) => ask(q, { sessionId: turn.sessionId })}
+                lastUpdate={lastUpdate}
               />
             </div>
           )}

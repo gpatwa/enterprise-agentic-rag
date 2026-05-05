@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.auth.tenant import TenantContext, get_tenant_context
+from app.middleware.rate_limit import check_rate_limit
 # Import classes for type hinting
 from app.cache.semantic import SemanticCache, semantic_cache as global_cache
 from app.memory.postgres import PostgresMemory, postgres_memory as global_memory
@@ -19,6 +20,39 @@ from app.agents.state import AgentState
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+# ── Audit log helper ─────────────────────────────────────────────────
+async def _audit_chat(
+    *,
+    tenant_id: str,
+    user_id: str,
+    role: str | None,
+    session_id: str,
+    question: str,
+    cached: bool,
+    sources_used: list[str],
+) -> None:
+    """Best-effort audit row for one chat turn."""
+    try:
+        from app.audit import manager as audit_manager
+        from app.privacy.pii import contains_pii
+
+        await audit_manager.log_event(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            role=role,
+            event_type="chat_cached" if cached else "chat",
+            request_id=session_id,
+            method="POST",
+            path="/api/v1/chat/stream",
+            status_code=200,
+            sources_used=sources_used,
+            pii_redacted=contains_pii(question),
+            payload_summary=question[:500],
+        )
+    except Exception as e:
+        logger.warning("audit log failed: %s", e)
 
 
 # ── Follow-up suggestions helper ─────────────────────────────────────
@@ -172,6 +206,8 @@ async def chat_stream(
     req: ChatRequest,
     background_tasks: BackgroundTasks,
     ctx: TenantContext = Depends(get_tenant_context),
+    # Per-tenant rate limit. 429 raised before we touch the LLM.
+    _rl: None = Depends(check_rate_limit),
     # Inject dependencies via FastAPI Depends
     cache: SemanticCache = Depends(get_semantic_cache),
     memory: PostgresMemory = Depends(get_memory),
@@ -231,6 +267,16 @@ async def chat_stream(
             memory.add_message, session_id, "assistant", cached_ans, user_id, tenant_id
         )
         background_tasks.add_task(_upsert_thread_safe, tenant_id, user_id, session_id, req.message)
+        background_tasks.add_task(
+            _audit_chat,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            role=ctx.role,
+            session_id=session_id,
+            question=req.message,
+            cached=True,
+            sources_used=[],
+        )
 
         return StreamingResponse(stream_cache(), media_type="application/x-ndjson")
 
@@ -277,6 +323,7 @@ async def chat_stream(
     # 5. Define Generator for Streaming Response
     async def event_generator() -> AsyncGenerator[str, None]:
         final_answer = ""
+        _collected_sources: list[str] = []
 
         try:
             # Run the LangGraph
@@ -344,6 +391,12 @@ async def chat_stream(
                 # Stream retrieved images to frontend (multimodal)
                 if node_name == "retriever":
                     docs = node_data.get("documents", [])
+                    # Collect source identifiers for the audit log
+                    for d in docs:
+                        if isinstance(d, dict):
+                            fn = d.get("filename") or d.get("source")
+                            if fn and fn not in _collected_sources:
+                                _collected_sources.append(fn)
                     image_docs = [
                         d for d in docs
                         if isinstance(d, dict) and d.get("type") == "image"
@@ -484,6 +537,19 @@ async def chat_stream(
                         logger.error(f"Memory extraction error: {mem_err}", exc_info=True)
 
                 asyncio.create_task(_extract_memories())
+
+                # Fire-and-forget audit log row (best effort, non-blocking)
+                asyncio.create_task(
+                    _audit_chat(
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        role=ctx.role,
+                        session_id=session_id,
+                        question=req.message,
+                        cached=False,
+                        sources_used=_collected_sources,
+                    )
+                )
 
         except Exception as e:
             logger.error(f"Error in chat stream: {e}", exc_info=True)

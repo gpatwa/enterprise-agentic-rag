@@ -6,6 +6,7 @@ import * as React from 'react';
 import { chatStream } from './chatStream';
 import { getToken } from './api';
 import { useQueryClient } from '@tanstack/react-query';
+import { redactForAnalytics, track } from './analytics';
 import type { AskTurn, ChatEvent } from '@/types/chat';
 
 function emptyTurn(question: string, sessionId?: string | null): AskTurn {
@@ -79,6 +80,7 @@ function applyEvent(turn: AskTurn, e: ChatEvent): AskTurn {
 
 export function useAsk() {
   const [turn, setTurn] = React.useState<AskTurn | null>(null);
+  const [lastUpdate, setLastUpdate] = React.useState<number>(Date.now());
   const abortRef = React.useRef<AbortController | null>(null);
   const qc = useQueryClient();
 
@@ -91,6 +93,14 @@ export function useAsk() {
 
       const initial = emptyTurn(message, opts.sessionId ?? null);
       setTurn(initial);
+      setLastUpdate(Date.now());
+
+      const t0 = performance.now();
+      track('question.asked', {
+        question_preview: redactForAnalytics(message),
+        question_len: message.length,
+        is_continuation: Boolean(opts.sessionId),
+      });
 
       try {
         const token = await getToken();
@@ -103,14 +113,26 @@ export function useAsk() {
         })) {
           acc = applyEvent(acc, ev);
           setTurn(acc);
+          setLastUpdate(Date.now());
         }
         // Finalize
         setTurn((prev) => (prev ? { ...prev, streaming: false } : prev));
+        track('answer.received', {
+          duration_ms: Math.round(performance.now() - t0),
+          had_sql: Boolean(acc.sql),
+          had_data: Boolean(acc.dataResult),
+          eval_score: acc.evalScore ?? null,
+          steps: acc.steps.length,
+        });
         // Refresh anything that depends on chat state
         qc.invalidateQueries({ queryKey: ['threads'] });
         qc.invalidateQueries({ queryKey: ['home', 'landing'] });
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
+        track('answer.errored', {
+          duration_ms: Math.round(performance.now() - t0),
+          error: (err as Error).message?.slice(0, 80),
+        });
         setTurn((prev) =>
           prev
             ? { ...prev, error: (err as Error).message, streaming: false }
@@ -130,5 +152,11 @@ export function useAsk() {
     return () => abortRef.current?.abort();
   }, []);
 
-  return { turn, ask, reset, streaming: turn?.streaming ?? false };
+  return {
+    turn,
+    ask,
+    reset,
+    streaming: turn?.streaming ?? false,
+    lastUpdate,
+  };
 }

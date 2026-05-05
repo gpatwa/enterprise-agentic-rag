@@ -68,7 +68,39 @@ def validate_sql(sql: str) -> Tuple[bool, str]:
     if ";" in sql_stripped:
         return False, "Multiple SQL statements are not allowed."
 
+    # Per-table column allowlist check — catches LLM column hallucinations.
+    unknown_cols = _find_unknown_columns(sql_stripped, referenced_lower - cte_aliases)
+    if unknown_cols:
+        return False, f"Unknown columns referenced: {', '.join(sorted(unknown_cols))}"
+
     return True, ""
+
+
+_QUALIFIED_COL_PATTERN = re.compile(
+    r'\b([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)\b'
+)
+
+
+def _find_unknown_columns(sql: str, tables: set[str]) -> set[str]:
+    """
+    Verify any `table.column` reference in the SQL exists in the schema.
+
+    Conservative: only flags columns where the table prefix is a real
+    schema table (we don't try to resolve unprefixed columns since aliases
+    make that ambiguous). Aliases (`o.column`) are skipped because we
+    don't track FROM/JOIN aliases here — those slip past safely.
+    """
+    if not tables:
+        return set()
+    unknown: set[str] = set()
+    for prefix, col in _QUALIFIED_COL_PATTERN.findall(sql):
+        prefix_lower = prefix.lower()
+        if prefix_lower not in tables:
+            continue  # alias or unrelated qualifier — skip
+        cols = OLIST_SCHEMA.get(prefix_lower, {}).get("columns", {})
+        if cols and col.lower() not in {c.lower() for c in cols}:
+            unknown.add(f"{prefix_lower}.{col}")
+    return unknown
 
 
 def check_cost_guard(sql: str) -> Tuple[bool, str]:
