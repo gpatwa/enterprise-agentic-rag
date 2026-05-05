@@ -4,6 +4,10 @@ import { ThemeToggle } from './ThemeToggle';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Sidebar } from './Sidebar';
 
+function openPalette() {
+  window.dispatchEvent(new CustomEvent('compass:open-palette'));
+}
+
 export function TopBar() {
   return (
     <header className="h-14 flex-shrink-0 glass border-b flex items-center px-4 md:px-6 gap-3">
@@ -21,13 +25,22 @@ export function TopBar() {
         </SheetContent>
       </Sheet>
 
-      {/* Search button — collapses to icon on mobile */}
-      <button className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-md glass hover:border-border-strong transition w-[440px] text-fg-muted text-sm">
+      {/* Search button — collapses to icon on mobile. Opens ⌘K palette. */}
+      <button
+        onClick={openPalette}
+        className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-md glass hover:border-border-strong transition w-[440px] text-fg-muted text-sm cursor-pointer"
+      >
         <Search className="w-4 h-4" />
         <span className="flex-1 text-left">Search threads, questions, sources…</span>
         <span className="font-mono text-xs px-1.5 py-0.5 bg-white/5 rounded border">⌘K</span>
       </button>
-      <Button variant="ghost" size="icon" aria-label="Search" className="md:hidden">
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Search"
+        className="md:hidden"
+        onClick={openPalette}
+      >
         <Search className="w-4 h-4" />
       </Button>
 

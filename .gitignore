@@ -48,11 +48,14 @@ build/
 .claude/worktrees/
 
 # ============================================================
-# Frontend (Node / Vite)
+# Frontend (Node / Vite / Playwright)
 # ============================================================
 node_modules/
 services/api/frontend/dist/
 *.tsbuildinfo
+services/api/frontend/test-results/
+services/api/frontend/playwright-report/
+services/api/frontend/blob-report/
 
 # ============================================================
 # Data (large files — tracked separately or via DVC)

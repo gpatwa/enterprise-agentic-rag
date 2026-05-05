@@ -55,7 +55,9 @@ export function CommandPalette() {
   const { data: threadsData } = useThreads({ limit: 20 });
   const { data: savedData } = useSavedQuestions({});
 
-  // ⌘K / Ctrl+K
+  // ⌘K / Ctrl+K — global keyboard shortcut.
+  // Plus a 'compass:open-palette' custom event so other components
+  // (e.g. TopBar's search button) can request the palette without prop drilling.
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -63,8 +65,13 @@ export function CommandPalette() {
         setOpen((v) => !v);
       }
     };
+    const onCustom = () => setOpen(true);
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('compass:open-palette', onCustom);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('compass:open-palette', onCustom);
+    };
   }, []);
 
   const go = (to: string) => {

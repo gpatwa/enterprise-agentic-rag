@@ -1,21 +1,61 @@
+import { lazy, Suspense, type ReactNode } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
-import { HomePage } from '@/pages/Home';
-import { ThreadsPage } from '@/pages/Threads';
-import { ThreadDetailPage } from '@/pages/ThreadDetail';
-import { SavedPage } from '@/pages/Saved';
-import { SolutionsPage } from '@/pages/Solutions';
-import { SourcesPage } from '@/pages/Sources';
-import { KnowledgePage } from '@/pages/Knowledge';
 import { StubPage } from '@/pages/StubPage';
-import {
-  LayoutDashboard,
-  Bot,
-} from 'lucide-react';
+import { LayoutDashboard, Bot } from 'lucide-react';
 
-/** Root layout — same AppShell for every authenticated route. */
-function RootLayout({ children }: { children: React.ReactNode }) {
-  return <AppShell>{children}</AppShell>;
+/**
+ * Route-level code splitting.
+ * Each page is a separate Vite chunk; only the active route's code is fetched.
+ * The HomePage stays eager (it's the landing) to avoid an initial Suspense flash.
+ */
+import { HomePage } from '@/pages/Home';
+const ThreadsPage = lazy(() =>
+  import('@/pages/Threads').then((m) => ({ default: m.ThreadsPage }))
+);
+const ThreadDetailPage = lazy(() =>
+  import('@/pages/ThreadDetail').then((m) => ({ default: m.ThreadDetailPage }))
+);
+const SavedPage = lazy(() =>
+  import('@/pages/Saved').then((m) => ({ default: m.SavedPage }))
+);
+const SourcesPage = lazy(() =>
+  import('@/pages/Sources').then((m) => ({ default: m.SourcesPage }))
+);
+const KnowledgePage = lazy(() =>
+  import('@/pages/Knowledge').then((m) => ({ default: m.KnowledgePage }))
+);
+const SolutionsPage = lazy(() =>
+  import('@/pages/Solutions').then((m) => ({ default: m.SolutionsPage }))
+);
+const AgentsPage = lazy(() =>
+  import('@/pages/Agents').then((m) => ({ default: m.AgentsPage }))
+);
+const DashboardsPage = lazy(() =>
+  import('@/pages/Dashboards').then((m) => ({ default: m.DashboardsPage }))
+);
+
+/** Shared layout with Suspense fallback for lazy children. */
+function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <AppShell>
+      <Suspense fallback={<RouteSkeleton />}>{children}</Suspense>
+    </AppShell>
+  );
+}
+
+function RouteSkeleton() {
+  return (
+    <div className="flex-1 overflow-auto">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 md:px-8 py-12">
+        <div className="space-y-3">
+          <div className="h-7 w-1/3 bg-surface-muted rounded animate-pulse" />
+          <div className="h-4 w-1/2 bg-surface-muted rounded animate-pulse" />
+          <div className="h-32 bg-surface-muted rounded-lg animate-pulse mt-6" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export const router = createBrowserRouter([
@@ -55,12 +95,7 @@ export const router = createBrowserRouter([
     path: '/dashboards',
     element: (
       <RootLayout>
-        <StubPage
-          icon={LayoutDashboard}
-          title="Dashboards"
-          description="Multi-question panels assembled from saved questions. Auto-refreshing, shareable, embeddable."
-          ship="W3"
-        />
+        <DashboardsPage />
       </RootLayout>
     ),
   },
@@ -84,12 +119,7 @@ export const router = createBrowserRouter([
     path: '/agents',
     element: (
       <RootLayout>
-        <StubPage
-          icon={Bot}
-          title="Skills marketplace"
-          description="Pre-configured Skills for Finance, RevOps, Engineering, Security. Install, customize, and build your own."
-          ship="Q3"
-        />
+        <AgentsPage />
       </RootLayout>
     ),
   },
@@ -111,3 +141,8 @@ export const router = createBrowserRouter([
     element: <Navigate to="/" replace />,
   },
 ]);
+
+// Silence "unused" for icons used only by historical stubs we kept around
+void LayoutDashboard;
+void Bot;
+void StubPage;
