@@ -51,7 +51,12 @@ serviceAccount:
 podLabels:
   azure.workload.identity/use: "true"
 
-# Environment variables specific to Azure deployment
+# Environment variables specific to Azure deployment.
+# IMPORTANT: every key in `env:` is rendered as a Pod-level env var which
+# OVERRIDES the corresponding key from `envFrom: secretRef`. Don't list
+# anything here that we want loaded from the K8s secret — including
+# AZURE_KEY_VAULT_URL, DATABASE_URL, REDIS_URL, etc. These come from
+# `app-env-secret` via the bootstrap script.
 env:
   CLOUD_PROVIDER: "azure"
   STORAGE_PROVIDER: "azure_blob"
@@ -59,8 +64,5 @@ env:
   GRAPHDB_PROVIDER: "neo4j"
   LLM_PROVIDER: "openai"
   EMBED_PROVIDER: "openai"
-  # Secrets from Azure Key Vault (set Key Vault URL from terraform output):
-  #   --set env.SECRETS_PROVIDER=azure_kv
-  #   --set env.AZURE_KEY_VAULT_URL=https://<vault-name>.vault.azure.net
   SECRETS_PROVIDER: "azure_kv"
-  AZURE_KEY_VAULT_URL: ""  # Set from terraform output: key_vault_url
+  # AZURE_KEY_VAULT_URL deliberately omitted — comes from app-env-secret.
