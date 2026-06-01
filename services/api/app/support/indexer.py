@@ -10,7 +10,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.support.documents import SupportIndexDocument, chunk_text, ticket_to_document
+from app.support.documents import (
+    SupportIndexDocument,
+    article_to_document,
+    chunk_text,
+    comment_to_document,
+    ticket_to_document,
+)
 from app.support.models import SupportIndexRecord
 from app.support.store import support_data_store
 
@@ -41,18 +47,40 @@ class SupportIndexer:
         limit: int = 100,
     ) -> dict[str, Any]:
         self._require_clients()
-        tickets, total = await support_data_store.list_tickets(
+        tickets, tickets_total = await support_data_store.list_tickets(
             session,
             tenant_id=tenant_id,
             provider=provider,
             limit=limit,
             offset=0,
         )
+        comments, comments_total = await support_data_store.list_comments(
+            session,
+            tenant_id=tenant_id,
+            provider=provider,
+            limit=limit * 5,
+            offset=0,
+        )
+        articles, articles_total = await support_data_store.list_articles(
+            session,
+            tenant_id=tenant_id,
+            provider=provider,
+            limit=limit,
+            offset=0,
+        )
+        documents = [ticket_to_document(ticket) for ticket in tickets]
+        documents.extend(comment_to_document(comment) for comment in comments)
+        documents.extend(article_to_document(article) for article in articles)
+
         summary: dict[str, Any] = {
             "tenant_id": tenant_id,
             "provider": provider,
             "tickets_seen": len(tickets),
-            "tickets_total": total,
+            "tickets_total": tickets_total,
+            "comments_seen": len(comments),
+            "comments_total": comments_total,
+            "articles_seen": len(articles),
+            "articles_total": articles_total,
             "indexed": 0,
             "skipped": 0,
             "chunks": 0,
@@ -60,62 +88,26 @@ class SupportIndexer:
         }
         vector_size: int | None = None
 
-        for ticket in tickets:
-            document = ticket_to_document(ticket)
+        for document in documents:
             try:
-                record = await self._get_record(session, tenant_id=tenant_id, document=document)
-                if self._is_current(record, document):
-                    summary["skipped"] += 1
-                    continue
-
-                chunks = chunk_text(document.text)
-                if not chunks:
-                    await self._upsert_record(
-                        session,
-                        tenant_id=tenant_id,
-                        document=document,
-                        chunk_count=0,
-                    )
-                    summary["skipped"] += 1
-                    continue
-
-                embeddings = await _embed_client.embed_documents(chunks)
-                if len(embeddings) != len(chunks):
-                    raise SupportIndexError(
-                        f"embedding count mismatch for {document.provider}:{document.source_id}"
-                    )
-                if not embeddings or not embeddings[0]:
-                    raise SupportIndexError(
-                        f"empty embedding returned for {document.provider}:{document.source_id}"
-                    )
-
-                current_vector_size = len(embeddings[0])
-                if vector_size != current_vector_size:
-                    await _vectordb_client.create_collection(
-                        settings.SUPPORT_INDEX_COLLECTION,
-                        vector_size=current_vector_size,
-                    )
-                    vector_size = current_vector_size
-
-                delete_filter = self._source_filter(tenant_id=tenant_id, document=document)
-                await _vectordb_client.delete_by_filter(settings.SUPPORT_INDEX_COLLECTION, delete_filter)
-                await _vectordb_client.upsert(
-                    settings.SUPPORT_INDEX_COLLECTION,
-                    self._points(document=document, chunks=chunks, embeddings=embeddings),
-                )
-                await self._upsert_record(
+                result = await self._index_document(
                     session,
                     tenant_id=tenant_id,
                     document=document,
-                    chunk_count=len(chunks),
+                    vector_size=vector_size,
                 )
-                summary["indexed"] += 1
-                summary["chunks"] += len(chunks)
+                vector_size = result["vector_size"]
+                if result["indexed"]:
+                    summary["indexed"] += 1
+                    summary["chunks"] += result["chunks"]
+                else:
+                    summary["skipped"] += 1
             except Exception as e:
                 logger.warning(
-                    "support ticket indexing failed for tenant=%s provider=%s source_id=%s: %s",
+                    "support indexing failed for tenant=%s provider=%s source_type=%s source_id=%s: %s",
                     tenant_id,
                     document.provider,
+                    document.source_type,
                     document.source_id,
                     e,
                     exc_info=True,
@@ -161,6 +153,56 @@ class SupportIndexer:
             raise SupportIndexError("support index is unavailable or has not been initialized") from e
 
         return [self._result_to_response(result) for result in results]
+
+    async def _index_document(
+        self,
+        session: AsyncSession,
+        *,
+        tenant_id: str,
+        document: SupportIndexDocument,
+        vector_size: int | None,
+    ) -> dict[str, Any]:
+        record = await self._get_record(session, tenant_id=tenant_id, document=document)
+        if self._is_current(record, document):
+            return {"indexed": False, "chunks": 0, "vector_size": vector_size}
+
+        chunks = chunk_text(document.text)
+        if not chunks:
+            await self._upsert_record(
+                session,
+                tenant_id=tenant_id,
+                document=document,
+                chunk_count=0,
+            )
+            return {"indexed": False, "chunks": 0, "vector_size": vector_size}
+
+        embeddings = await _embed_client.embed_documents(chunks)
+        if len(embeddings) != len(chunks):
+            raise SupportIndexError(f"embedding count mismatch for {document.provider}:{document.source_id}")
+        if not embeddings or not embeddings[0]:
+            raise SupportIndexError(f"empty embedding returned for {document.provider}:{document.source_id}")
+
+        current_vector_size = len(embeddings[0])
+        if vector_size != current_vector_size:
+            await _vectordb_client.create_collection(
+                settings.SUPPORT_INDEX_COLLECTION,
+                vector_size=current_vector_size,
+            )
+            vector_size = current_vector_size
+
+        delete_filter = self._source_filter(tenant_id=tenant_id, document=document)
+        await _vectordb_client.delete_by_filter(settings.SUPPORT_INDEX_COLLECTION, delete_filter)
+        await _vectordb_client.upsert(
+            settings.SUPPORT_INDEX_COLLECTION,
+            self._points(document=document, chunks=chunks, embeddings=embeddings),
+        )
+        await self._upsert_record(
+            session,
+            tenant_id=tenant_id,
+            document=document,
+            chunk_count=len(chunks),
+        )
+        return {"indexed": True, "chunks": len(chunks), "vector_size": vector_size}
 
     def _require_clients(self) -> None:
         if _vectordb_client is None or _embed_client is None:

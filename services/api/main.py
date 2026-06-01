@@ -29,6 +29,7 @@ from app.routes import support_integrations as support_integrations_routes
 from app.routes import threads as threads_routes
 from app.routes.health import set_clients as set_health_clients
 from app.support.indexer import set_clients as set_support_index_clients
+from app.support.resolver import set_clients as set_support_resolver_clients
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +168,7 @@ async def lifespan(app: FastAPI):
     set_semantic_vectordb(vectordb_client)
     set_health_clients(vectordb_client, graphdb_client)
     set_support_index_clients(vectordb_client, embed_client)
+    set_support_resolver_clients(llm_client)
 
     # 5. Context Layers — init assembler if enabled
     if settings.CONTEXT_LAYERS_ENABLED:

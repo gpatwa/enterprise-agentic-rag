@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import {
   AlertTriangle,
+  ClipboardCheck,
   CheckCircle2,
   ExternalLink,
   LifeBuoy,
@@ -16,12 +17,13 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import {
   useIndexSupportTickets,
+  useResolveSupportIssue,
   useSearchSupportIndex,
   useSupportTickets,
 } from '@/lib/queries';
 import { formatCount, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { SupportSearchResult, SupportTicket } from '@/types';
+import type { SupportResolution, SupportSearchResult, SupportTicket } from '@/types';
 
 type ProviderFilter = 'all' | 'zendesk' | 'intercom';
 
@@ -48,6 +50,7 @@ export function SupportResolutionPage() {
   const ticketsQuery = useSupportTickets({ provider: providerParam, status: statusParam, limit: 25 });
   const indexMutation = useIndexSupportTickets();
   const searchMutation = useSearchSupportIndex();
+  const resolveMutation = useResolveSupportIssue();
   const { toast } = useToast();
 
   const tickets = ticketsQuery.data?.tickets ?? [];
@@ -83,6 +86,22 @@ export function SupportResolutionPage() {
         onError: (err) =>
           toast({
             title: 'Search unavailable',
+            description: err.message,
+            variant: 'destructive',
+          }),
+      }
+    );
+  };
+
+  const runResolve = () => {
+    const q = query.trim();
+    if (q.length < 2) return;
+    resolveMutation.mutate(
+      { question: q, provider: providerParam, status: statusParam, limit: 6 },
+      {
+        onError: (err) =>
+          toast({
+            title: 'Resolution unavailable',
             description: err.message,
             variant: 'destructive',
           }),
@@ -176,25 +195,38 @@ export function SupportResolutionPage() {
               onStatusChange={setStatus}
             />
 
-            <form onSubmit={submitSearch} className="mt-4 flex gap-2">
+            <form onSubmit={submitSearch} className="mt-4 flex flex-col sm:flex-row gap-2">
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Ask about a recurring issue…"
                 className="glass border"
               />
-              <Button type="submit" disabled={searchMutation.isPending || query.trim().length < 2}>
-                {searchMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Search className="w-4 h-4" />
-                )}
-                Search
-              </Button>
+              <div className="flex gap-2">
+                <Button type="button" onClick={runResolve} disabled={resolveMutation.isPending || query.trim().length < 2}>
+                  {resolveMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <ClipboardCheck className="w-4 h-4" />
+                  )}
+                  Resolve
+                </Button>
+                <Button type="submit" variant="outline" disabled={searchMutation.isPending || query.trim().length < 2}>
+                  {searchMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4" />
+                  )}
+                  Search
+                </Button>
+              </div>
             </form>
 
             <div className="mt-5">
-              {searchMutation.isIdle && <SearchEmptyState />}
+              {resolveMutation.isSuccess && <ResolutionCard resolution={resolveMutation.data.resolution} />}
+              {resolveMutation.isPending && <LoadingRows />}
+              {resolveMutation.isError && <ResolveError />}
+              {searchMutation.isIdle && !resolveMutation.isSuccess && !resolveMutation.isPending && <SearchEmptyState />}
               {searchMutation.isPending && <LoadingRows />}
               {searchMutation.isError && <SearchError />}
               {searchMutation.isSuccess && (
@@ -229,6 +261,48 @@ export function SupportResolutionPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ResolutionCard({ resolution }: { resolution: SupportResolution }) {
+  const confidenceTone =
+    resolution.confidence === 'high'
+      ? 'text-knowledge bg-knowledge/10 border-knowledge/20'
+      : resolution.confidence === 'medium'
+        ? 'text-accent bg-accent/10 border-accent/20'
+        : 'text-governance bg-governance/10 border-governance/20';
+  return (
+    <article className="rounded-2xl border border-accent/25 bg-accent/5 p-4 mb-4">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <div className="text-xs uppercase tracking-wider text-fg-muted">Suggested resolution</div>
+          <h3 className="text-base font-semibold mt-1">Agent-ready answer</h3>
+        </div>
+        <span className={cn('text-xs px-2 py-1 rounded border capitalize', confidenceTone)}>
+          {resolution.confidence} confidence
+        </span>
+      </div>
+      <div className="whitespace-pre-wrap text-sm text-fg-secondary leading-relaxed">{resolution.answer}</div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <span className="text-[11px] px-2 py-1 rounded border border-border bg-surface-muted text-fg-muted">
+          Next: {resolution.next_action.replace(/_/g, ' ')}
+        </span>
+        {resolution.citations.map((citation) => (
+          <a
+            key={`${citation.label}-${citation.source_id}`}
+            href={citation.source_url || undefined}
+            target="_blank"
+            rel="noreferrer"
+            className={cn(
+              'text-[11px] px-2 py-1 rounded border border-border bg-surface-muted text-fg-muted',
+              citation.source_url && 'hover:text-fg hover:border-border-strong'
+            )}
+          >
+            {citation.label} {citation.title || citation.source_id || citation.source_type}
+          </a>
+        ))}
+      </div>
+    </article>
   );
 }
 
@@ -423,6 +497,20 @@ function SearchError() {
         <div className="text-sm font-medium text-destructive">Support index is not ready</div>
         <p className="text-xs text-fg-secondary mt-1">
           Sync tickets and run indexing first. In dev, also make sure the embedding and vector services are running.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ResolveError() {
+  return (
+    <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 flex items-start gap-3 mb-4">
+      <AlertTriangle className="w-4 h-4 text-destructive mt-0.5" />
+      <div>
+        <div className="text-sm font-medium text-destructive">Could not generate a resolution</div>
+        <p className="text-xs text-fg-secondary mt-1">
+          The support index is probably empty or unavailable. Sync tickets, index them, then retry.
         </p>
       </div>
     </div>

@@ -297,6 +297,28 @@ export interface SupportSearchResponse {
   limit: number;
 }
 
+export interface SupportCitation {
+  label: string;
+  provider: string | null;
+  source_type: string | null;
+  source_id: string | null;
+  title: string | null;
+  source_url: string | null;
+  score: number | null;
+}
+
+export interface SupportResolution {
+  answer: string;
+  confidence: 'low' | 'medium' | 'high' | string;
+  citations: SupportCitation[];
+  matches: SupportSearchResult[];
+  next_action: string;
+}
+
+export interface SupportResolveResponse {
+  resolution: SupportResolution;
+}
+
 // ── Feedback widget ───────────────────────────────────────────────────
 
 export type FeedbackCategory = 'bug' | 'idea' | 'comment';

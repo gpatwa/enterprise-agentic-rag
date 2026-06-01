@@ -4,7 +4,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from app.support.types import NormalizedSupportCustomer, NormalizedSupportTicket
+from app.support.types import (
+    NormalizedSupportArticle,
+    NormalizedSupportComment,
+    NormalizedSupportCustomer,
+    NormalizedSupportTicket,
+)
 
 
 class SupportNormalizerError(ValueError):
@@ -17,6 +22,26 @@ def normalize_ticket(provider: str, raw: dict[str, Any]) -> NormalizedSupportTic
         return normalize_zendesk_ticket(raw)
     if provider == "intercom":
         return normalize_intercom_conversation(raw)
+    raise SupportNormalizerError(f"unsupported support provider: {provider}")
+
+
+def normalize_comment(
+    provider: str, raw: dict[str, Any], *, ticket_external_id: str
+) -> NormalizedSupportComment:
+    provider = provider.lower().strip()
+    if provider == "zendesk":
+        return normalize_zendesk_comment(raw, ticket_external_id=ticket_external_id)
+    if provider == "intercom":
+        return normalize_intercom_comment(raw, ticket_external_id=ticket_external_id)
+    raise SupportNormalizerError(f"unsupported support provider: {provider}")
+
+
+def normalize_article(provider: str, raw: dict[str, Any]) -> NormalizedSupportArticle:
+    provider = provider.lower().strip()
+    if provider == "zendesk":
+        return normalize_zendesk_article(raw)
+    if provider == "intercom":
+        return normalize_intercom_article(raw)
     raise SupportNormalizerError(f"unsupported support provider: {provider}")
 
 
@@ -52,6 +77,38 @@ def normalize_zendesk_ticket(raw: dict[str, Any]) -> NormalizedSupportTicket:
             if requester_id
             else None
         ),
+    )
+
+
+def normalize_zendesk_comment(
+    raw: dict[str, Any], *, ticket_external_id: str
+) -> NormalizedSupportComment:
+    external_id = _required_id(raw.get("id"), "Zendesk ticket comment")
+    return NormalizedSupportComment(
+        provider="zendesk",
+        ticket_external_id=ticket_external_id,
+        external_id=external_id,
+        author_external_id=_str_or_none(raw.get("author_id")),
+        body_text=_clean_or_none(raw.get("plain_body") or raw.get("body")),
+        body_html=_clean_or_none(raw.get("html_body")),
+        is_public=bool(raw.get("public", True)),
+        created_at_external=_parse_dt(raw.get("created_at")),
+        raw=raw,
+    )
+
+
+def normalize_zendesk_article(raw: dict[str, Any]) -> NormalizedSupportArticle:
+    external_id = _required_id(raw.get("id"), "Zendesk article")
+    return NormalizedSupportArticle(
+        provider="zendesk",
+        external_id=external_id,
+        title=_clean(raw.get("title") or "(no title)"),
+        body_text=_clean_or_none(raw.get("body")),
+        body_html=_clean_or_none(raw.get("body")),
+        locale=_str_or_none(raw.get("locale")),
+        source_url=_str_or_none(raw.get("html_url") or raw.get("url")),
+        updated_at_external=_parse_dt(raw.get("updated_at")),
+        raw=raw,
     )
 
 
@@ -91,6 +148,40 @@ def normalize_intercom_conversation(raw: dict[str, Any]) -> NormalizedSupportTic
             if requester_id
             else None
         ),
+    )
+
+
+def normalize_intercom_comment(
+    raw: dict[str, Any], *, ticket_external_id: str
+) -> NormalizedSupportComment:
+    external_id = _required_id(raw.get("id"), "Intercom conversation part")
+    author = raw.get("author") or {}
+    return NormalizedSupportComment(
+        provider="intercom",
+        ticket_external_id=ticket_external_id,
+        external_id=external_id,
+        author_external_id=_str_or_none(author.get("id") or author.get("email") or author.get("name")),
+        body_text=_clean_or_none(raw.get("body")),
+        body_html=_clean_or_none(raw.get("body")),
+        is_public=not bool(raw.get("private_note")),
+        created_at_external=_parse_dt(raw.get("created_at")),
+        raw=raw,
+    )
+
+
+def normalize_intercom_article(raw: dict[str, Any]) -> NormalizedSupportArticle:
+    external_id = _required_id(raw.get("id"), "Intercom article")
+    body = raw.get("body") or raw.get("description") or raw.get("content")
+    return NormalizedSupportArticle(
+        provider="intercom",
+        external_id=external_id,
+        title=_clean(raw.get("title") or "(no title)"),
+        body_text=_clean_or_none(body),
+        body_html=_clean_or_none(body),
+        locale=_str_or_none(raw.get("locale")),
+        source_url=_str_or_none(raw.get("url")),
+        updated_at_external=_parse_dt(raw.get("updated_at")),
+        raw=raw,
     )
 
 

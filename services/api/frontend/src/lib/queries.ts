@@ -19,6 +19,7 @@ import type {
   SupportAuthMode,
   SupportCatalogResponse,
   SupportConnectionsResponse,
+  SupportResolveResponse,
   SupportSearchResponse,
   SupportTicketsResponse,
   Thread,
@@ -251,6 +252,21 @@ export function useSearchSupportIndex() {
     }
   >({
     mutationFn: (opts) => api.searchSupportIndex(opts),
+  });
+}
+
+export function useResolveSupportIssue() {
+  return useMutation<
+    SupportResolveResponse,
+    Error,
+    {
+      question: string;
+      provider?: 'zendesk' | 'intercom';
+      status?: string;
+      limit?: number;
+    }
+  >({
+    mutationFn: (opts) => api.resolveSupportIssue(opts),
   });
 }
 

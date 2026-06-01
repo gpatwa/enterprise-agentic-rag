@@ -8,7 +8,12 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.support.models import SupportSyncRun
-from app.support.normalizers import SupportNormalizerError, normalize_ticket
+from app.support.normalizers import (
+    SupportNormalizerError,
+    normalize_article,
+    normalize_comment,
+    normalize_ticket,
+)
 from app.support.store import support_data_store
 from app.support_integrations.manager import (
     SupportIntegrationError,
@@ -52,6 +57,10 @@ class SupportSyncRunner:
         records_seen = 0
         records_upserted = 0
         records_skipped = 0
+        comments_seen = 0
+        comments_upserted = 0
+        articles_seen = 0
+        articles_upserted = 0
         cursor_finished_at = cursor_started_at
 
         try:
@@ -82,15 +91,41 @@ class SupportSyncRunner:
                     ticket=normalized,
                 )
                 records_upserted += 1
+                comment_counts = await self._sync_ticket_comments(
+                    session,
+                    tenant_id=tenant_id,
+                    provider=provider,
+                    ticket_id=normalized.external_id,
+                )
+                comments_seen += comment_counts["seen"]
+                comments_upserted += comment_counts["upserted"]
+                records_skipped += comment_counts["skipped"]
                 cursor_finished_at = self._max_cursor(
                     cursor_finished_at,
                     self._dt_to_cursor(normalized.updated_at_external),
                 )
 
+            article_counts = await self._sync_articles(
+                session,
+                tenant_id=tenant_id,
+                provider=provider,
+                limit=min(max(limit, 1), 100),
+            )
+            articles_seen += article_counts["seen"]
+            articles_upserted += article_counts["upserted"]
+            records_skipped += article_counts["skipped"]
+
             run.status = "succeeded"
             run.records_seen = records_seen
             run.records_upserted = records_upserted
             run.records_skipped = records_skipped
+            run.metadata_ = {
+                **(run.metadata_ or {}),
+                "comments_seen": comments_seen,
+                "comments_upserted": comments_upserted,
+                "articles_seen": articles_seen,
+                "articles_upserted": articles_upserted,
+            }
             run.cursor_finished_at = cursor_finished_at
             run.finished_at = datetime.utcnow()
             await session.commit()
@@ -104,6 +139,97 @@ class SupportSyncRunner:
             message = str(e)[:500] or e.__class__.__name__
             await self._mark_failed(session, run, message, records_seen, records_upserted, records_skipped)
             raise SupportSyncError(message) from e
+
+    async def _sync_ticket_comments(
+        self,
+        session: AsyncSession,
+        *,
+        tenant_id: str,
+        provider: str,
+        ticket_id: str,
+    ) -> dict[str, int]:
+        counts = {"seen": 0, "upserted": 0, "skipped": 0}
+        try:
+            comments = await support_integration_manager.list_ticket_comments(
+                session,
+                tenant_id=tenant_id,
+                provider=provider,
+                ticket_id=ticket_id,
+                limit=100,
+            )
+        except Exception as e:
+            counts["skipped"] += 1
+            logger.warning(
+                "support comments sync failed provider=%s ticket=%s: %s",
+                provider,
+                ticket_id,
+                e,
+            )
+            return counts
+
+        for preview in comments:
+            counts["seen"] += 1
+            try:
+                normalized = normalize_comment(
+                    provider,
+                    preview.raw,
+                    ticket_external_id=ticket_id,
+                )
+            except SupportNormalizerError as e:
+                counts["skipped"] += 1
+                logger.warning(
+                    "support comment normalize failed provider=%s ticket=%s: %s",
+                    provider,
+                    ticket_id,
+                    e,
+                )
+                continue
+
+            await support_data_store.upsert_comment(
+                session,
+                tenant_id=tenant_id,
+                comment=normalized,
+            )
+            counts["upserted"] += 1
+        return counts
+
+    async def _sync_articles(
+        self,
+        session: AsyncSession,
+        *,
+        tenant_id: str,
+        provider: str,
+        limit: int,
+    ) -> dict[str, int]:
+        counts = {"seen": 0, "upserted": 0, "skipped": 0}
+        try:
+            articles = await support_integration_manager.list_article_previews(
+                session,
+                tenant_id=tenant_id,
+                provider=provider,
+                limit=limit,
+            )
+        except Exception as e:
+            counts["skipped"] += 1
+            logger.warning("support article sync failed provider=%s: %s", provider, e)
+            return counts
+
+        for preview in articles:
+            counts["seen"] += 1
+            try:
+                normalized = normalize_article(provider, preview.raw)
+            except SupportNormalizerError as e:
+                counts["skipped"] += 1
+                logger.warning("support article normalize failed provider=%s: %s", provider, e)
+                continue
+
+            await support_data_store.upsert_article(
+                session,
+                tenant_id=tenant_id,
+                article=normalized,
+            )
+            counts["upserted"] += 1
+        return counts
 
     async def _mark_failed(
         self,

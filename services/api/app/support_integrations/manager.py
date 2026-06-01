@@ -19,7 +19,9 @@ from app.support_integrations.clients import (
 )
 from app.support_integrations.models import SupportIntegrationConnection
 from app.support_integrations.types import (
+    SupportArticlePreview,
     SupportAuthMode,
+    SupportCommentPreview,
     SupportConnectionStatus,
     SupportProvider,
     SupportTicketPreview,
@@ -158,6 +160,33 @@ class SupportIntegrationManager:
         if row is None:
             raise SupportIntegrationError(f"{provider} is not connected")
         return await self._client_for(row).list_tickets(limit=limit)
+
+    async def list_ticket_comments(
+        self,
+        session: AsyncSession,
+        *,
+        tenant_id: str,
+        provider: str,
+        ticket_id: str,
+        limit: int = 100,
+    ) -> list[SupportCommentPreview]:
+        row = await self.get_connection(session, tenant_id=tenant_id, provider=provider)
+        if row is None:
+            raise SupportIntegrationError(f"{provider} is not connected")
+        return await self._client_for(row).list_ticket_comments(ticket_id=ticket_id, limit=limit)
+
+    async def list_article_previews(
+        self,
+        session: AsyncSession,
+        *,
+        tenant_id: str,
+        provider: str,
+        limit: int = 25,
+    ) -> list[SupportArticlePreview]:
+        row = await self.get_connection(session, tenant_id=tenant_id, provider=provider)
+        if row is None:
+            raise SupportIntegrationError(f"{provider} is not connected")
+        return await self._client_for(row).list_articles(limit=limit)
 
     async def source_health(self, session: AsyncSession, *, tenant_id: str) -> list[dict[str, Any]]:
         rows_by_provider = {

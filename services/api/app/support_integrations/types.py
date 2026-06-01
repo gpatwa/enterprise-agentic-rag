@@ -45,3 +45,22 @@ class SupportTicketPreview:
     updated_at: Optional[str]
     url: Optional[str]
     raw: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class SupportCommentPreview:
+    id: str
+    ticket_id: str
+    author: Optional[str]
+    created_at: Optional[str]
+    is_public: bool
+    raw: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class SupportArticlePreview:
+    id: str
+    title: str
+    updated_at: Optional[str]
+    url: Optional[str]
+    raw: dict[str, Any]

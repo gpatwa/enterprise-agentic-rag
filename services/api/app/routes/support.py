@@ -12,6 +12,7 @@ from app.audit import manager as audit_mgr
 from app.auth.tenant import TenantContext, get_tenant_context
 from app.support.indexer import SupportIndexError, support_indexer
 from app.support.models import SupportSyncRun, SupportTicket
+from app.support.resolver import SupportResolveError, support_resolver
 from app.support.store import support_data_store
 from app.support.sync import SupportSyncError, support_sync_runner
 
@@ -69,6 +70,31 @@ class SupportSearchResultResponse(BaseModel):
     source_url: Optional[str]
     chunk_index: Optional[int]
     chunk_count: Optional[int]
+
+
+class SupportResolveRequest(BaseModel):
+    question: str
+    provider: Optional[str] = None
+    status: Optional[str] = None
+    limit: int = 6
+
+
+class SupportCitationResponse(BaseModel):
+    label: str
+    provider: Optional[str]
+    source_type: Optional[str]
+    source_id: Optional[str]
+    title: Optional[str]
+    source_url: Optional[str]
+    score: Optional[float]
+
+
+class SupportResolveResponse(BaseModel):
+    answer: str
+    confidence: str
+    citations: list[SupportCitationResponse]
+    matches: list[SupportSearchResultResponse]
+    next_action: str
 
 
 def _require_admin(ctx: TenantContext) -> None:
@@ -157,6 +183,38 @@ async def search_support_resolution_index(
         "query": q,
         "limit": limit,
     }
+
+
+@router.post("/resolve", response_model=dict)
+async def resolve_support_issue(
+    body: SupportResolveRequest,
+    ctx: TenantContext = Depends(get_tenant_context),
+):
+    start = time.monotonic()
+    limit = min(max(body.limit, 1), 10)
+    try:
+        result = await support_resolver.resolve(
+            tenant_id=ctx.tenant_id,
+            question=body.question,
+            provider=body.provider,
+            status=body.status,
+            limit=limit,
+        )
+    except SupportResolveError as e:
+        await _audit_resolve(ctx, False, start, {"error": str(e), "provider": body.provider})
+        raise HTTPException(status_code=503, detail=str(e)) from e
+
+    await _audit_resolve(
+        ctx,
+        True,
+        start,
+        {
+            "provider": body.provider,
+            "confidence": result["confidence"],
+            "match_count": len(result["matches"]),
+        },
+    )
+    return {"resolution": SupportResolveResponse(**result).model_dump()}
 
 
 @router.get("/tickets", response_model=dict)
@@ -290,6 +348,26 @@ async def _audit_index(
         event_type="support.index",
         method="POST",
         path="/api/v1/support/index",
+        status_code=200 if success else 503,
+        duration_ms=int((time.monotonic() - start) * 1000),
+        sources_used=[extra["provider"]] if extra.get("provider") else [],
+        extra={"success": success, **extra},
+    )
+
+
+async def _audit_resolve(
+    ctx: TenantContext,
+    success: bool,
+    start: float,
+    extra: dict[str, Any],
+) -> None:
+    await audit_mgr.log_event(
+        tenant_id=ctx.tenant_id,
+        user_id=ctx.user_id,
+        role=ctx.role,
+        event_type="support.resolve",
+        method="POST",
+        path="/api/v1/support/resolve",
         status_code=200 if success else 503,
         duration_ms=int((time.monotonic() - start) * 1000),
         sources_used=[extra["provider"]] if extra.get("provider") else [],

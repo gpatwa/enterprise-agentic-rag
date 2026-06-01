@@ -188,6 +188,19 @@ export const api = {
     if (!res.ok) throw new Error(`searchSupportIndex failed: ${res.status}`);
     return res.json();
   },
+  async resolveSupportIssue(opts: {
+    question: string;
+    provider?: 'zendesk' | 'intercom';
+    status?: string;
+    limit?: number;
+  }): Promise<import('@/types').SupportResolveResponse> {
+    const res = await authedFetch('/support/resolve', {
+      method: 'POST',
+      body: JSON.stringify(opts),
+    });
+    if (!res.ok) throw new Error(`resolveSupportIssue failed: ${res.status}`);
+    return res.json();
+  },
 
   // ── Context layers (Knowledge admin) ─────────────────────────────
   async listAnnotations(annotationType?: string) {

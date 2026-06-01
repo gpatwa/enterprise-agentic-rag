@@ -54,6 +54,47 @@ def _ticket(**overrides):
     return SupportTicket(**values)
 
 
+def _comment(**overrides):
+    from app.support.models import SupportTicketComment
+
+    values = {
+        "tenant_id": "tenant-a",
+        "provider": "zendesk",
+        "ticket_external_id": "42",
+        "external_id": "501",
+        "author_external_id": "1001",
+        "body_text": "Restarting the export worker resolved the timeout.",
+        "body_html": None,
+        "is_public": True,
+        "raw": {"id": 501},
+        "created_at_external": datetime(2026, 5, 30, 13, 0, 0),
+        "created_at": datetime(2026, 5, 30, 13, 0, 0),
+    }
+    values.update(overrides)
+    return SupportTicketComment(**values)
+
+
+def _article(**overrides):
+    from app.support.models import SupportArticle
+
+    values = {
+        "tenant_id": "tenant-a",
+        "provider": "zendesk",
+        "external_id": "701",
+        "title": "Troubleshooting export timeouts",
+        "body_text": "Check worker health and retry the export.",
+        "body_html": None,
+        "locale": "en-us",
+        "source_url": "https://example.zendesk.com/hc/articles/701",
+        "raw": {"id": 701},
+        "updated_at_external": datetime(2026, 5, 30, 14, 0, 0),
+        "created_at": datetime(2026, 5, 30, 14, 0, 0),
+        "updated_at": datetime(2026, 5, 30, 14, 0, 0),
+    }
+    values.update(overrides)
+    return SupportArticle(**values)
+
+
 class FakeEmbedClient:
     def __init__(self):
         self.documents: list[str] = []
@@ -140,6 +181,19 @@ class TestSupportIndexDocuments:
         assert document.metadata["tags"] == ["api", "export"]
         assert document.content_hash == same_document.content_hash
 
+    def test_comment_and_article_documents_include_resolution_text(self):
+        from app.support.documents import article_to_document, comment_to_document
+
+        comment_doc = comment_to_document(_comment())
+        article_doc = article_to_document(_article())
+
+        assert comment_doc.source_type == "comment"
+        assert comment_doc.metadata["ticket_external_id"] == "42"
+        assert "Restarting the export worker" in comment_doc.text
+        assert article_doc.source_type == "article"
+        assert article_doc.title == "Troubleshooting export timeouts"
+        assert "Check worker health" in article_doc.text
+
     def test_chunk_text_keeps_chunks_bounded_with_overlap(self):
         from app.support.documents import chunk_text
 
@@ -214,6 +268,40 @@ class TestSupportIndexer:
                 assert second_summary["indexed"] == 0
                 assert second_summary["skipped"] == 1
                 assert len(fake_vector.upserts) == 1
+        finally:
+            indexer_mod.set_clients(None, None)
+            await engine.dispose()
+
+    @pytest.mark.asyncio
+    async def test_index_tickets_also_indexes_comments_and_articles(self):
+        import app.support.indexer as indexer_mod
+        from app.support.indexer import support_indexer
+
+        engine, Session = await _session()
+        fake_embed = FakeEmbedClient()
+        fake_vector = FakeVectorClient()
+        indexer_mod.set_clients(fake_vector, fake_embed)
+
+        try:
+            async with Session() as session:
+                session.add_all([_ticket(), _comment(), _article()])
+                await session.commit()
+
+                summary = await support_indexer.index_tickets(
+                    session,
+                    tenant_id="tenant-a",
+                    provider="zendesk",
+                    limit=10,
+                )
+
+                assert summary["tickets_seen"] == 1
+                assert summary["comments_seen"] == 1
+                assert summary["articles_seen"] == 1
+                assert summary["indexed"] == 3
+                payload_types = [
+                    upsert[1][0]["payload"]["source_type"] for upsert in fake_vector.upserts
+                ]
+                assert payload_types == ["ticket", "comment", "article"]
         finally:
             indexer_mod.set_clients(None, None)
             await engine.dispose()

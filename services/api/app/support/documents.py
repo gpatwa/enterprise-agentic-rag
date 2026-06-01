@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 
 from app.config import settings
-from app.support.models import SupportTicket
+from app.support.models import SupportArticle, SupportTicket, SupportTicketComment
 
 
 @dataclass(frozen=True)
@@ -64,6 +65,77 @@ def ticket_to_document(ticket: SupportTicket) -> SupportIndexDocument:
     )
 
 
+def comment_to_document(comment: SupportTicketComment) -> SupportIndexDocument:
+    body = comment.body_text or _html_to_text(comment.body_html or "")
+    text = "\n".join(
+        [
+            f"Provider: {comment.provider}",
+            f"Ticket ID: {comment.ticket_external_id}",
+            f"Comment ID: {comment.external_id}",
+            f"Public: {'yes' if comment.is_public else 'no'}",
+            "",
+            "Support conversation:",
+            body or "(empty comment)",
+        ]
+    ).strip()
+    metadata = {
+        "tenant_id": comment.tenant_id,
+        "provider": comment.provider,
+        "source_type": "comment",
+        "source_id": comment.external_id,
+        "ticket_external_id": comment.ticket_external_id,
+        "comment_id": comment.id,
+        "is_public": comment.is_public,
+        "created_at_external": _dt(comment.created_at_external),
+        "index_version": settings.SUPPORT_INDEX_VERSION,
+    }
+    return SupportIndexDocument(
+        source_type="comment",
+        source_id=comment.external_id,
+        provider=comment.provider,
+        title=f"Comment on ticket {comment.ticket_external_id}",
+        text=text,
+        content_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        metadata=metadata,
+    )
+
+
+def article_to_document(article: SupportArticle) -> SupportIndexDocument:
+    body = article.body_text or _html_to_text(article.body_html or "")
+    text = "\n".join(
+        [
+            f"Provider: {article.provider}",
+            f"Article ID: {article.external_id}",
+            f"Title: {article.title}",
+            f"Locale: {article.locale or 'unknown'}",
+            "",
+            "Knowledge base article:",
+            body or "(empty article)",
+        ]
+    ).strip()
+    metadata = {
+        "tenant_id": article.tenant_id,
+        "provider": article.provider,
+        "source_type": "article",
+        "source_id": article.external_id,
+        "article_id": article.id,
+        "title": article.title,
+        "locale": article.locale,
+        "source_url": article.source_url,
+        "updated_at_external": _dt(article.updated_at_external),
+        "index_version": settings.SUPPORT_INDEX_VERSION,
+    }
+    return SupportIndexDocument(
+        source_type="article",
+        source_id=article.external_id,
+        provider=article.provider,
+        title=article.title,
+        text=text,
+        content_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        metadata=metadata,
+    )
+
+
 def chunk_text(text: str, *, chunk_chars: int | None = None, overlap_chars: int | None = None) -> list[str]:
     chunk_size = chunk_chars or settings.SUPPORT_INDEX_CHUNK_CHARS
     overlap = overlap_chars if overlap_chars is not None else settings.SUPPORT_INDEX_CHUNK_OVERLAP_CHARS
@@ -95,3 +167,8 @@ def _dt(value) -> str | None:
     if value is None:
         return None
     return value.replace(microsecond=0).isoformat() + "Z"
+
+
+def _html_to_text(value: str) -> str:
+    text = re.sub(r"<[^>]+>", " ", value or "")
+    return " ".join(text.split())

@@ -53,6 +53,28 @@ def _intercom_raw(conversation_id: str = "conv_1") -> dict:
     }
 
 
+def _zendesk_comment_raw(comment_id: int = 501) -> dict:
+    return {
+        "id": comment_id,
+        "author_id": 1001,
+        "body": "Restarting the export worker resolved the timeout.",
+        "plain_body": "Restarting the export worker resolved the timeout.",
+        "public": True,
+        "created_at": "2026-05-30T13:00:00Z",
+    }
+
+
+def _zendesk_article_raw(article_id: int = 701) -> dict:
+    return {
+        "id": article_id,
+        "title": "Troubleshooting export timeouts",
+        "body": "Check worker health, retry the export, and escalate if the queue is saturated.",
+        "locale": "en-us",
+        "html_url": "https://example.zendesk.com/hc/articles/701",
+        "updated_at": "2026-05-30T14:00:00Z",
+    }
+
+
 async def _session():
     import app.support.models  # noqa: F401
     from app.memory.postgres import Base
@@ -90,6 +112,21 @@ class TestSupportNormalizers:
         assert ticket.customer is not None
         assert ticket.customer.email == "buyer@example.com"
 
+    def test_zendesk_comment_and_article_normalize_to_internal_shape(self):
+        from app.support.normalizers import normalize_zendesk_article, normalize_zendesk_comment
+
+        comment = normalize_zendesk_comment(_zendesk_comment_raw(), ticket_external_id="42")
+        article = normalize_zendesk_article(_zendesk_article_raw())
+
+        assert comment.provider == "zendesk"
+        assert comment.ticket_external_id == "42"
+        assert comment.external_id == "501"
+        assert comment.body_text == "Restarting the export worker resolved the timeout."
+        assert comment.is_public is True
+        assert article.provider == "zendesk"
+        assert article.external_id == "701"
+        assert article.title == "Troubleshooting export timeouts"
+
 
 class TestSupportDataStore:
     @pytest.mark.asyncio
@@ -126,14 +163,55 @@ class TestSupportDataStore:
         finally:
             await engine.dispose()
 
+    @pytest.mark.asyncio
+    async def test_comment_and_article_upserts_are_idempotent_and_tenant_scoped(self):
+        from app.support.models import SupportArticle, SupportTicketComment
+        from app.support.normalizers import normalize_zendesk_article, normalize_zendesk_comment
+        from app.support.store import support_data_store
+
+        engine, Session = await _session()
+        try:
+            async with Session() as session:
+                comment = normalize_zendesk_comment(_zendesk_comment_raw(), ticket_external_id="42")
+                article = normalize_zendesk_article(_zendesk_article_raw())
+
+                created_comment = await support_data_store.upsert_comment(
+                    session, tenant_id="tenant-a", comment=comment
+                )
+                updated_comment = await support_data_store.upsert_comment(
+                    session, tenant_id="tenant-a", comment=comment
+                )
+                created_article = await support_data_store.upsert_article(
+                    session, tenant_id="tenant-a", article=article
+                )
+                updated_article = await support_data_store.upsert_article(
+                    session, tenant_id="tenant-a", article=article
+                )
+                await session.commit()
+
+                assert created_comment is True
+                assert updated_comment is False
+                assert created_article is True
+                assert updated_article is False
+                comment_count = await session.scalar(select(func.count(SupportTicketComment.id)))
+                article_count = await session.scalar(select(func.count(SupportArticle.id)))
+                assert comment_count == 1
+                assert article_count == 1
+        finally:
+            await engine.dispose()
+
 
 class TestSupportSyncRunner:
     @pytest.mark.asyncio
     async def test_sync_persists_tickets_and_sync_run(self, monkeypatch):
         import app.support.sync as sync_mod
-        from app.support.models import SupportSyncRun, SupportTicket
+        from app.support.models import SupportArticle, SupportSyncRun, SupportTicket, SupportTicketComment
         from app.support.sync import support_sync_runner
-        from app.support_integrations.types import SupportTicketPreview
+        from app.support_integrations.types import (
+            SupportArticlePreview,
+            SupportCommentPreview,
+            SupportTicketPreview,
+        )
 
         engine, Session = await _session()
         fake_manager = type(
@@ -152,7 +230,30 @@ class TestSupportSyncRunner:
                             raw=_zendesk_raw(),
                         )
                     ]
-                )
+                ),
+                "list_ticket_comments": AsyncMock(
+                    return_value=[
+                        SupportCommentPreview(
+                            id="501",
+                            ticket_id="42",
+                            author="1001",
+                            created_at="2026-05-30T13:00:00Z",
+                            is_public=True,
+                            raw=_zendesk_comment_raw(),
+                        )
+                    ]
+                ),
+                "list_article_previews": AsyncMock(
+                    return_value=[
+                        SupportArticlePreview(
+                            id="701",
+                            title="Troubleshooting export timeouts",
+                            updated_at="2026-05-30T14:00:00Z",
+                            url="https://example.zendesk.com/hc/articles/701",
+                            raw=_zendesk_article_raw(),
+                        )
+                    ]
+                ),
             },
         )()
         monkeypatch.setattr(sync_mod, "support_integration_manager", fake_manager)
@@ -171,10 +272,18 @@ class TestSupportSyncRunner:
                 assert run["records_seen"] == 1
                 assert run["records_upserted"] == 1
                 assert run["records_skipped"] == 0
+                assert run["metadata"]["comments_seen"] == 1
+                assert run["metadata"]["comments_upserted"] == 1
+                assert run["metadata"]["articles_seen"] == 1
+                assert run["metadata"]["articles_upserted"] == 1
 
                 ticket_count = await session.scalar(select(func.count(SupportTicket.id)))
+                comment_count = await session.scalar(select(func.count(SupportTicketComment.id)))
+                article_count = await session.scalar(select(func.count(SupportArticle.id)))
                 sync_count = await session.scalar(select(func.count(SupportSyncRun.id)))
                 assert ticket_count == 1
+                assert comment_count == 1
+                assert article_count == 1
                 assert sync_count == 1
         finally:
             await engine.dispose()
