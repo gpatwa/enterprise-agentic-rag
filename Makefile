@@ -267,8 +267,8 @@ deploy-api-azure:
 import-azure:
 	./scripts/terraform_import_azure.sh
 
-# Stop Postgres, delete Redis, release orphaned IPs, prune ACR — saves ~$17/day
-# Safe to run while cluster is off. No data loss. Reversible with make resume-azure.
+# Stop AKS + Postgres, delete Redis, release orphaned IPs, prune ACR — saves most daily Azure cost.
+# No durable data loss. Reversible with make resume-azure + make infra-azure.
 # Use --force flag to skip confirmations: make pause-azure ARGS=--force
 pause-azure:
 	./scripts/pause_azure.sh $(ARGS)

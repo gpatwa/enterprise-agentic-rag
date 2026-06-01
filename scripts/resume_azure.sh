@@ -4,9 +4,10 @@
 # Counterpart to scripts/pause_azure.sh.
 #
 # What this does:
-#   1. Starts PostgreSQL Flexible Server  (if stopped)
-#   2. Redis is recreated by Terraform on next `make infra-azure` / `make deploy-azure`
-#   3. Runs `make bootstrap-azure` instructions reminder
+#   1. Starts AKS cluster compute        (if stopped)
+#   2. Starts PostgreSQL Flexible Server (if stopped)
+#   3. Redis is recreated by Terraform on next `make infra-azure` / `make deploy-azure`
+#   4. Runs `make bootstrap-azure` instructions reminder
 #
 # Usage:
 #   ./scripts/resume_azure.sh
@@ -15,6 +16,7 @@
 set -euo pipefail
 
 RESOURCE_GROUP="${RESOURCE_GROUP:-rag-platform-rg}"
+AKS_CLUSTER_NAME="${AKS_CLUSTER_NAME:-rag-platform-aks}"
 POSTGRES_NAME="${POSTGRES_NAME:-ragplatform-pgdb-central}"
 
 # ─── helpers ────────────────────────────────────────────────────────────────
@@ -46,9 +48,32 @@ echo "=============================================="
 
 check_az
 
-# ─── 1. Start PostgreSQL ─────────────────────────────────────────────────────
+# ─── 1. Start AKS ────────────────────────────────────────────────────────────
 
-section "Step 1: Start PostgreSQL Flexible Server"
+section "Step 1: Start AKS cluster"
+
+AKS_STATE=$(az aks show \
+    --resource-group "$RESOURCE_GROUP" \
+    --name "$AKS_CLUSTER_NAME" \
+    --query "powerState.code" -o tsv 2>/dev/null || echo "NotFound")
+
+if [ "$AKS_STATE" = "NotFound" ]; then
+    echo "  SKIP: AKS cluster '$AKS_CLUSTER_NAME' not found."
+    echo "        It may have been destroyed. Run 'make infra-azure' to recreate."
+elif [ "$AKS_STATE" = "Running" ]; then
+    echo "  SKIP: AKS is already running."
+else
+    echo "  Current state: $AKS_STATE"
+    echo "  Starting AKS (takes a few minutes)..."
+    az aks start \
+        --resource-group "$RESOURCE_GROUP" \
+        --name "$AKS_CLUSTER_NAME"
+    echo "  DONE: AKS cluster started."
+fi
+
+# ─── 2. Start PostgreSQL ─────────────────────────────────────────────────────
+
+section "Step 2: Start PostgreSQL Flexible Server"
 
 PG_STATE=$(az postgres flexible-server show \
     --resource-group "$RESOURCE_GROUP" \
@@ -83,9 +108,9 @@ else
     done
 fi
 
-# ─── 2. Redis reminder ───────────────────────────────────────────────────────
+# ─── 3. Redis reminder ───────────────────────────────────────────────────────
 
-section "Step 2: Redis Cache"
+section "Step 3: Redis Cache"
 
 REDIS_EXISTS=$(az redis show \
     --resource-group "$RESOURCE_GROUP" \
@@ -101,9 +126,9 @@ else
     echo "    make deploy-azure  (full redeploy)"
 fi
 
-# ─── 3. Start App Service ────────────────────────────────────────────────────
+# ─── 4. Start App Service ────────────────────────────────────────────────────
 
-section "Step 3: Start App Service"
+section "Step 4: Start App Service"
 
 WEBAPPS=$(az webapp list \
     --resource-group "$RESOURCE_GROUP" \

@@ -1,10 +1,9 @@
 # .github/workflows/deploy-staging.yml
-# Auto-deploys to staging on every push to main (after CI passes).
+# Manual-only staging deploy. Keep local/dev validation as the default path.
 name: Deploy Staging
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 env:
   PYTHON_VERSION: "3.11"
