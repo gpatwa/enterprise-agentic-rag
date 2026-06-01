@@ -1,0 +1,5 @@
+# deploy/helm/qdrant/values-azure.yaml
+
+# AKS uses Azure Disk CSI storage classes. The base values are AWS-oriented.
+persistence:
+  storageClassName: managed-csi

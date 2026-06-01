@@ -1,0 +1,7 @@
+# deploy/helm/neo4j/values-azure.yaml
+
+# AKS uses Azure Disk CSI storage classes. The base values are AWS-oriented.
+volumes:
+  data:
+    dynamic:
+      storageClassName: "managed-csi"

@@ -16,12 +16,15 @@ set -euo pipefail
 CLOUD_PROVIDER="${CLOUD_PROVIDER:-aws}"
 REPO_NAME="rag-backend-api"
 TAG="${1:-$(git rev-parse --short HEAD 2>/dev/null || echo 'latest')}"
+PROVIDER_LABEL=$(printf "%s" "$CLOUD_PROVIDER" | tr '[:lower:]' '[:upper:]')
+DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
 
 echo "========================================"
-echo "  Build & Push — ${CLOUD_PROVIDER^^}"
+echo "  Build & Push - ${PROVIDER_LABEL}"
 echo "========================================"
 echo "  Repo:    $REPO_NAME"
 echo "  Tag:     $TAG"
+echo "  Platform:$DOCKER_PLATFORM"
 echo "========================================"
 
 # -------------------------------------------------------
@@ -29,7 +32,7 @@ echo "========================================"
 # -------------------------------------------------------
 echo ""
 echo "Step 1: Building Docker image..."
-docker build -t "${REPO_NAME}:${TAG}" -f services/api/Dockerfile services/api/
+docker build --platform "$DOCKER_PLATFORM" -t "${REPO_NAME}:${TAG}" -f services/api/Dockerfile services/api/
 
 # -------------------------------------------------------
 # Step 2+: Registry-specific login, tag, push

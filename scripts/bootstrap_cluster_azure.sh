@@ -66,6 +66,31 @@ if [ -z "$DB_PASSWORD" ]; then
     echo ""
 fi
 
+read_tfvar() {
+    local key="$1"
+    awk -F= -v key="$key" '
+        $1 ~ "^[[:space:]]*" key "[[:space:]]*$" {
+            value=$0
+            sub(/^[^=]*=/, "", value)
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+            gsub(/^"|"$/, "", value)
+            print value
+            exit
+        }
+    ' "$PROJECT_DIR/infra/terraform/azure/terraform.tfvars" 2>/dev/null || true
+}
+
+NEO4J_PASSWORD="${NEO4J_PASSWORD:-}"
+if [ -z "$NEO4J_PASSWORD" ]; then
+    NEO4J_PASSWORD="$(read_tfvar neo4j_password)"
+fi
+if [ -z "$NEO4J_PASSWORD" ]; then
+    NEO4J_PASSWORD="$(kubectl get secret app-env-secret -o jsonpath='{.data.NEO4J_PASSWORD}' 2>/dev/null | base64 -d 2>/dev/null || true)"
+fi
+if [ -z "$NEO4J_PASSWORD" ]; then
+    NEO4J_PASSWORD="$(openssl rand -hex 24)"
+fi
+
 DATABASE_URL="postgresql+asyncpg://ragadmin:${DB_PASSWORD}@${POSTGRES_FQDN}:5432/ragdb"
 REDIS_URL="rediss://:${REDIS_KEY}@${REDIS_HOST}:${REDIS_PORT}/0"
 
@@ -73,7 +98,7 @@ SECRET_ARGS=(
     --from-literal=DATABASE_URL="$DATABASE_URL"
     --from-literal=REDIS_URL="$REDIS_URL"
     --from-literal=JWT_SECRET_KEY="$(openssl rand -hex 32)"
-    --from-literal=NEO4J_PASSWORD="password"
+    --from-literal=NEO4J_PASSWORD="$NEO4J_PASSWORD"
     --from-literal=AZURE_STORAGE_ACCOUNT_NAME="$STORAGE_ACCOUNT"
     --from-literal=CLOUD_PROVIDER="azure"
     --from-literal=STORAGE_PROVIDER="azure_blob"
@@ -107,9 +132,14 @@ echo ""
 echo "Step 4: Deploying Qdrant..."
 helm repo add qdrant https://qdrant.to/helm 2>/dev/null || true
 helm repo update
+QDRANT_VALUES_FILE="${QDRANT_VALUES_FILE:-deploy/helm/qdrant/values-azure.yaml}"
+QDRANT_VALUES_ARGS=(--values deploy/helm/qdrant/values.yaml)
+if [ -f "$QDRANT_VALUES_FILE" ]; then
+    QDRANT_VALUES_ARGS+=(--values "$QDRANT_VALUES_FILE")
+fi
 helm upgrade --install qdrant qdrant/qdrant \
     --namespace default \
-    --values deploy/helm/qdrant/values.yaml \
+    "${QDRANT_VALUES_ARGS[@]}" \
     --wait --timeout 120s
 
 # -----------------------------------------------------------
@@ -119,10 +149,18 @@ echo ""
 echo "Step 5: Deploying Neo4j..."
 helm repo add neo4j https://helm.neo4j.com/neo4j 2>/dev/null || true
 helm repo update
+NEO4J_VALUES_FILE="${NEO4J_VALUES_FILE:-deploy/helm/neo4j/values-azure.yaml}"
+NEO4J_VALUES_ARGS=(--values deploy/helm/neo4j/values.yaml)
+if [ -f "$NEO4J_VALUES_FILE" ]; then
+    NEO4J_VALUES_ARGS+=(--values "$NEO4J_VALUES_FILE")
+fi
+kubectl create secret generic neo4j-bootstrap-auth \
+    --from-literal=NEO4J_AUTH="neo4j/${NEO4J_PASSWORD}" \
+    --dry-run=client -o yaml | kubectl apply -f -
 helm upgrade --install neo4j neo4j/neo4j \
     --namespace default \
-    --values deploy/helm/neo4j/values.yaml \
-    --set neo4j.password="$(kubectl get secret app-env-secret -o jsonpath='{.data.NEO4J_PASSWORD}' 2>/dev/null | base64 -d 2>/dev/null || echo 'password')" \
+    "${NEO4J_VALUES_ARGS[@]}" \
+    --set neo4j.passwordFromSecret=neo4j-bootstrap-auth \
     --wait --timeout 180s
 
 # -----------------------------------------------------------

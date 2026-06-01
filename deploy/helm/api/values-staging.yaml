@@ -7,11 +7,9 @@ replicaCount: 1
 image:
   pullPolicy: Always  # Always pull to get latest staging build
 
-# Alpha: expose a public IP via Azure LoadBalancer. No HTTPS yet — fine
-# for internal stakeholder traffic. Add ingress + cert-manager when we
-# move past alpha.
+# Staging traffic is exposed through ingress; keep the API service private.
 service:
-  type: LoadBalancer
+  type: ClusterIP
   port: 8080
 
 env:
