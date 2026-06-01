@@ -17,19 +17,18 @@ spec:
     metadata:
       labels:
         app: api-migration
-        {{- with .Values.podLabels }}
+        {{- with .Values.migrations.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
       restartPolicy: Never
+      automountServiceAccountToken: {{ .Values.migrations.automountServiceAccountToken }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         fsGroup: 1000
-      {{- if .Values.serviceAccount }}
-      {{- if .Values.serviceAccount.name }}
-      serviceAccountName: {{ .Values.serviceAccount.name }}
-      {{- end }}
+      {{- with .Values.migrations.serviceAccountName }}
+      serviceAccountName: {{ . }}
       {{- end }}
       {{- with .Values.tolerations }}
       tolerations:

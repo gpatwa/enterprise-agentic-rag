@@ -57,6 +57,9 @@ migrations:
   backoffLimit: 1
   activeDeadlineSeconds: 180
   ttlSecondsAfterFinished: 300
+  serviceAccountName: ""
+  automountServiceAccountToken: false
+  podLabels: {}
   env: {}
   resources:
     requests:
