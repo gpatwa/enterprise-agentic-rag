@@ -6,6 +6,7 @@ import {
   Database,
   Home,
   LayoutDashboard,
+  LifeBuoy,
   MessageSquare,
   Sparkles,
   type LucideIcon,
@@ -36,6 +37,7 @@ const NAV: NavItem[] = [
   { id: 'saved', label: 'Saved questions', icon: Bookmark, to: '/saved' },
   { id: 'dashboards', label: 'Dashboards', icon: LayoutDashboard, to: '/dashboards' },
   { id: 'sources', label: 'Sources', icon: Database, to: '/sources' },
+  { id: 'support', label: 'Resolution Intelligence', icon: LifeBuoy, to: '/support' },
   { id: 'knowledge', label: 'Knowledge', icon: Brain, to: '/knowledge' },
 ];
 

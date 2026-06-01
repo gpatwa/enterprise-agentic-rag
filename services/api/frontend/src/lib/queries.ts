@@ -16,6 +16,16 @@ import type {
   MCPTestResponse,
   SavedQuestionDetail,
   SourceHealth,
+  SupportAuthMode,
+  SupportCatalogResponse,
+  SupportConnectionsResponse,
+  SupportJobResponse,
+  SupportJobSummaryResponse,
+  SupportJobsResponse,
+  SupportResolveResponse,
+  SupportSearchResponse,
+  SupportSeedDemoResponse,
+  SupportTicketsResponse,
   Thread,
   ThreadMessage,
 } from '@/types';
@@ -28,6 +38,16 @@ export const queryKeys = {
   savedQuestions: (opts: { pinnedOnly?: boolean } = {}) =>
     ['saved-questions', opts] as const,
   sourceHealth: ['sources', 'health'] as const,
+  supportCatalog: ['support-integrations', 'catalog'] as const,
+  supportConnections: ['support-integrations', 'connections'] as const,
+  supportTickets: (opts: {
+    provider?: 'zendesk' | 'intercom';
+    status?: string;
+    limit?: number;
+    offset?: number;
+  } = {}) => ['support', 'tickets', opts] as const,
+  supportJobs: ['support', 'jobs'] as const,
+  supportJobSummary: ['support', 'jobs', 'summary'] as const,
   mcpCatalog: ['mcp', 'catalog'] as const,
   mcpConnections: ['mcp', 'connections'] as const,
 };
@@ -139,6 +159,190 @@ export function useSourcesHealth() {
     // Probes are slow-ish — cache 60s, auto-refresh every 5min
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
+  });
+}
+
+// ── Support integrations ─────────────────────────────────────────────
+
+export function useSupportCatalog() {
+  return useQuery<SupportCatalogResponse>({
+    queryKey: queryKeys.supportCatalog,
+    queryFn: () => api.getSupportCatalog(),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useSupportConnections() {
+  return useQuery<SupportConnectionsResponse>({
+    queryKey: queryKeys.supportConnections,
+    queryFn: () => api.getSupportConnections(),
+    staleTime: 30_000,
+  });
+}
+
+export function useUpsertSupportConnection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      provider: 'zendesk' | 'intercom';
+      auth_mode: SupportAuthMode;
+      nango_connection_id?: string | null;
+      provider_config_key?: string | null;
+      external_account_id?: string | null;
+    }) => api.upsertSupportConnection(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.supportConnections });
+      qc.invalidateQueries({ queryKey: queryKeys.sourceHealth });
+    },
+  });
+}
+
+export function useTestSupportConnection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (provider: 'zendesk' | 'intercom') => api.testSupportConnection(provider),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.supportConnections });
+      qc.invalidateQueries({ queryKey: queryKeys.sourceHealth });
+    },
+  });
+}
+
+export function useRemoveSupportConnection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (provider: 'zendesk' | 'intercom') => api.removeSupportConnection(provider),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.supportConnections });
+      qc.invalidateQueries({ queryKey: queryKeys.sourceHealth });
+    },
+  });
+}
+
+// ── Support Resolution Intelligence ─────────────────────────────────
+
+export function useSupportTickets(opts: {
+  provider?: 'zendesk' | 'intercom';
+  status?: string;
+  limit?: number;
+  offset?: number;
+} = {}) {
+  return useQuery<SupportTicketsResponse>({
+    queryKey: queryKeys.supportTickets(opts),
+    queryFn: () => api.listSupportTickets(opts),
+    staleTime: 30_000,
+  });
+}
+
+export function useIndexSupportTickets() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (opts: { provider?: 'zendesk' | 'intercom'; limit?: number } = {}) =>
+      api.indexSupportTickets(opts),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['support'] });
+      qc.invalidateQueries({ queryKey: queryKeys.sourceHealth });
+    },
+  });
+}
+
+export function useSearchSupportIndex() {
+  return useMutation<
+    SupportSearchResponse,
+    Error,
+    {
+      q: string;
+      provider?: 'zendesk' | 'intercom';
+      status?: string;
+      limit?: number;
+    }
+  >({
+    mutationFn: (opts) => api.searchSupportIndex(opts),
+  });
+}
+
+export function useResolveSupportIssue() {
+  return useMutation<
+    SupportResolveResponse,
+    Error,
+    {
+      question: string;
+      provider?: 'zendesk' | 'intercom';
+      status?: string;
+      limit?: number;
+    }
+  >({
+    mutationFn: (opts) => api.resolveSupportIssue(opts),
+  });
+}
+
+export function useSeedSupportDemo() {
+  const qc = useQueryClient();
+  return useMutation<SupportSeedDemoResponse, Error, void>({
+    mutationFn: () => api.seedSupportDemo(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['support'] });
+      qc.invalidateQueries({ queryKey: queryKeys.sourceHealth });
+    },
+  });
+}
+
+export function useStartSupportSyncIndexJob() {
+  const qc = useQueryClient();
+  return useMutation<
+    SupportJobResponse,
+    Error,
+    {
+      providers?: Array<'zendesk' | 'intercom'>;
+      limit?: number;
+      seed_demo?: boolean;
+    }
+  >({
+    mutationFn: (opts) => api.startSupportSyncIndexJob(opts),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['support'] });
+      qc.invalidateQueries({ queryKey: queryKeys.sourceHealth });
+    },
+  });
+}
+
+export function useSupportJobs(limit = 20) {
+  return useQuery<SupportJobsResponse>({
+    queryKey: [...queryKeys.supportJobs, limit],
+    queryFn: () => api.listSupportJobs(limit),
+    staleTime: 3_000,
+    refetchInterval: 3_000,
+  });
+}
+
+export function useSupportJobSummary() {
+  return useQuery<SupportJobSummaryResponse>({
+    queryKey: queryKeys.supportJobSummary,
+    queryFn: () => api.getSupportJobSummary(),
+    staleTime: 3_000,
+    refetchInterval: 3_000,
+  });
+}
+
+export function useCancelSupportJob() {
+  const qc = useQueryClient();
+  return useMutation<SupportJobResponse, Error, string>({
+    mutationFn: (jobId) => api.cancelSupportJob(jobId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['support'] });
+      qc.invalidateQueries({ queryKey: queryKeys.sourceHealth });
+    },
+  });
+}
+
+export function useRetrySupportJob() {
+  const qc = useQueryClient();
+  return useMutation<SupportJobResponse, Error, string>({
+    mutationFn: (jobId) => api.retrySupportJob(jobId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['support'] });
+      qc.invalidateQueries({ queryKey: queryKeys.sourceHealth });
+    },
   });
 }
 

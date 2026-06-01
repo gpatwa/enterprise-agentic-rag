@@ -32,6 +32,40 @@ tolerations: []
 # Extra environment variables (merged into container env)
 env: {}
 
+supportWorker:
+  enabled: false
+  replicaCount: 1
+  command:
+    - python
+    - support_worker.py
+  env:
+    SUPPORT_JOB_WORKER_ENABLED: "true"
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+migrations:
+  enabled: false
+  command:
+    - alembic
+    - upgrade
+    - head
+  backoffLimit: 1
+  activeDeadlineSeconds: 180
+  ttlSecondsAfterFinished: 300
+  env: {}
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
 resources:
   requests:
     cpu: 500m

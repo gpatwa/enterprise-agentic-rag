@@ -169,6 +169,35 @@ class Settings(BaseSettings):
     FEEDBACK_SLACK_WEBHOOK_URL: Optional[str] = None
 
     # -----------------------------------------------------------------
+    # Support Resolution Intelligence integrations
+    # -----------------------------------------------------------------
+    SUPPORT_INTEGRATIONS_ENABLED: bool = True
+    SUPPORT_CONNECTOR_TIMEOUT_SECONDS: int = 10
+    SUPPORT_INDEX_COLLECTION: str = "support_resolution_index"
+    SUPPORT_INDEX_VERSION: str = "support-v1"
+    SUPPORT_INDEX_CHUNK_CHARS: int = 1800
+    SUPPORT_INDEX_CHUNK_OVERLAP_CHARS: int = 200
+    SUPPORT_JOB_WORKER_ENABLED: bool = True
+    SUPPORT_JOB_POLL_SECONDS: float = 2.0
+    SUPPORT_JOB_STALE_SECONDS: int = 900
+    SUPPORT_JOB_MAX_ATTEMPTS: int = 3
+    SUPPORT_JOB_RETRY_BASE_SECONDS: int = 30
+    SUPPORT_JOB_RETRY_MAX_SECONDS: int = 300
+
+    # Nango handles customer OAuth, token refresh, and proxying.
+    NANGO_BASE_URL: str = "https://api.nango.dev"
+    NANGO_SECRET_KEY: Optional[str] = None
+    NANGO_PROVIDER_CONFIG_KEY_ZENDESK: str = "zendesk"
+    NANGO_PROVIDER_CONFIG_KEY_INTERCOM: str = "intercom"
+
+    # Direct first-class connectors for local/private deployments.
+    # These are process-level credentials; tenant/customer OAuth should use Nango.
+    ZENDESK_SUBDOMAIN: Optional[str] = None
+    ZENDESK_EMAIL: Optional[str] = None
+    ZENDESK_API_TOKEN: Optional[str] = None
+    INTERCOM_ACCESS_TOKEN: Optional[str] = None
+
+    # -----------------------------------------------------------------
     # Sentry observability (B.3)
     # -----------------------------------------------------------------
     # When SENTRY_DSN is set, lifespan initialises sentry-sdk[fastapi].

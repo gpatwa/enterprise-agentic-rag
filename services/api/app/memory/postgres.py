@@ -69,6 +69,26 @@ try:
 except ImportError:
     pass
 
+# Import support integration connection model so its table is auto-created
+try:
+    from app.support_integrations.models import SupportIntegrationConnection  # noqa: F401
+except ImportError:
+    pass
+
+# Import normalized support models so their tables are auto-created
+try:
+    from app.support.models import (  # noqa: F401
+        SupportArticle,
+        SupportCustomer,
+        SupportIndexRecord,
+        SupportJob,
+        SupportSyncRun,
+        SupportTicket,
+        SupportTicketComment,
+    )
+except ImportError:
+    pass
+
 # 3. Async Engine & Session
 #    The engine is lazily initialised so that secrets injected via
 #    Key Vault during the lifespan hook are available before the first

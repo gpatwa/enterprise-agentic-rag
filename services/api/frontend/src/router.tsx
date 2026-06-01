@@ -24,6 +24,9 @@ const SavedPage = lazy(() =>
 const SourcesPage = lazy(() =>
   import('@/pages/Sources').then((m) => ({ default: m.SourcesPage }))
 );
+const SupportResolutionPage = lazy(() =>
+  import('@/pages/SupportResolution').then((m) => ({ default: m.SupportResolutionPage }))
+);
 const KnowledgePage = lazy(() =>
   import('@/pages/Knowledge').then((m) => ({ default: m.KnowledgePage }))
 );
@@ -112,6 +115,14 @@ export const router = createBrowserRouter([
     element: (
       <RootLayout>
         <SourcesPage />
+      </RootLayout>
+    ),
+  },
+  {
+    path: '/support',
+    element: (
+      <RootLayout>
+        <SupportResolutionPage />
       </RootLayout>
     ),
   },

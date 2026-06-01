@@ -17,6 +17,7 @@ service:
 env:
   ENV: "staging"
   LOG_LEVEL: "DEBUG"
+  SUPPORT_JOB_WORKER_ENABLED: "false"
   # Alpha: serve the new Compass SPA at root (legacy UI stays at /v1).
   # The Dockerfile builds frontend/dist/ during image build; main.py
   # auto-detects and mounts at /.
@@ -70,3 +71,12 @@ resources:
   limits:
     cpu: 500m
     memory: 512Mi
+
+supportWorker:
+  enabled: true
+  replicaCount: 1
+  env:
+    SUPPORT_JOB_WORKER_ENABLED: "true"
+
+migrations:
+  enabled: true

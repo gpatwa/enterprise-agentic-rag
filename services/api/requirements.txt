@@ -10,6 +10,8 @@ simpleeval==0.9.13  # Safe math evaluation
 # Async Database & Cache
 sqlalchemy==2.0.25
 asyncpg==0.29.0
+aiosqlite>=0.19.0  # Async SQLite driver used by CI/unit tests
+alembic>=1.13.0  # Runtime migration job in Helm deploys
 greenlet>=3.0.0  # Required by SQLAlchemy async
 redis==5.0.1
 

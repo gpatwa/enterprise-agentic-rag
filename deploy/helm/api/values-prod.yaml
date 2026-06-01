@@ -10,6 +10,7 @@ image:
 env:
   ENV: "prod"
   LOG_LEVEL: "WARNING"
+  SUPPORT_JOB_WORKER_ENABLED: "false"
   # Embedding — production model (BGE-M3 via Ray Serve or OpenAI)
   EMBED_MODEL: "bge-m3"  # Or "text-embedding-3-small" if EMBED_PROVIDER=openai
   # Re-ranking — cross-encoder via Ray Serve for best accuracy (~50ms)
@@ -27,3 +28,12 @@ resources:
   limits:
     cpu: "1"
     memory: 1Gi
+
+supportWorker:
+  enabled: true
+  replicaCount: 1
+  env:
+    SUPPORT_JOB_WORKER_ENABLED: "true"
+
+migrations:
+  enabled: true
