@@ -1,14 +1,18 @@
 # services/api/app/support/resolver.py
 from __future__ import annotations
 
+import asyncio
 import logging
+import re
 from typing import Any
 
+from app.config import settings
 from app.support.indexer import SupportIndexError, support_indexer
 
 logger = logging.getLogger(__name__)
 
 _llm_client = None
+_CITATION_RE = re.compile(r"\[(\d+)\]")
 
 
 class SupportResolveError(RuntimeError):
@@ -30,6 +34,7 @@ class SupportResolver:
         provider: str | None = None,
         status: str | None = None,
         limit: int = 6,
+        session: Any = None,
     ) -> dict[str, Any]:
         query = " ".join(question.split())
         if len(query) < 2:
@@ -42,6 +47,7 @@ class SupportResolver:
                 provider=provider,
                 status=status,
                 limit=limit,
+                session=session,
             )
         except SupportIndexError as e:
             raise SupportResolveError(str(e)) from e
@@ -59,6 +65,7 @@ class SupportResolver:
             }
 
         answer = await self._generate_answer(query=query, matches=matches)
+        answer = self._verified_answer(query=query, answer=answer, matches=matches)
         return {
             "answer": answer,
             "confidence": self._confidence(matches),
@@ -97,7 +104,10 @@ class SupportResolver:
             },
         ]
         try:
-            return await _llm_client.chat_completion(messages, temperature=0.2)
+            return await asyncio.wait_for(
+                _llm_client.chat_completion(messages, temperature=0.2),
+                timeout=settings.SUPPORT_RESOLVE_LLM_TIMEOUT_SECONDS,
+            )
         except Exception as e:
             logger.warning("support resolve LLM failed, using fallback: %s", e, exc_info=True)
             return self._fallback_answer(query=query, matches=matches)
@@ -112,6 +122,29 @@ class SupportResolver:
             "Suggested next step: review the cited ticket/article, confirm the customer environment matches, "
             "then reuse the proven resolution steps with a human support agent in the loop."
         )
+
+    def _verified_answer(
+        self,
+        *,
+        query: str,
+        answer: str,
+        matches: list[dict[str, Any]],
+    ) -> str:
+        """Require generated answers to cite only retrieved evidence labels."""
+        allowed = {str(idx) for idx in range(1, len(matches) + 1)}
+        referenced = set(_CITATION_RE.findall(answer or ""))
+        if referenced and referenced.issubset(allowed):
+            return answer
+
+        if referenced:
+            logger.warning(
+                "support resolve answer had unverifiable citation labels: referenced=%s allowed=%s",
+                sorted(referenced),
+                sorted(allowed),
+            )
+        else:
+            logger.info("support resolve answer had no citations; using deterministic fallback")
+        return self._fallback_answer(query=query, matches=matches)
 
     def _confidence(self, matches: list[dict[str, Any]]) -> str:
         top_score = matches[0].get("score") if matches else None

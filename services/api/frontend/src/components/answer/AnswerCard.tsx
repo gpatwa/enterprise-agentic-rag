@@ -45,7 +45,13 @@ export function AnswerCard({ turn, onSave, onFollowUp, lastUpdate }: Props) {
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <PipelineStatus steps={turn.steps} streaming={turn.streaming} />
             {turn.streaming && lastUpdate !== undefined && (
-              <StreamHealthBadge streaming={turn.streaming} lastUpdate={lastUpdate} />
+              <StreamHealthBadge
+                streaming={turn.streaming}
+                lastUpdate={lastUpdate}
+                startedAt={turn.startedAt}
+                firstTokenMs={turn.firstTokenMs}
+                serverFirstTokenMs={turn.serverFirstTokenMs}
+              />
             )}
           </div>
         </div>

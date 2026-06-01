@@ -37,7 +37,7 @@ export function DashboardsPage() {
   const tiles = data?.saved_questions ?? [];
 
   // One ask hook for the active "running" tile. Single-active to keep it simple.
-  const { turn, ask, reset } = useAsk();
+  const { turn, ask, reset, lastUpdate } = useAsk();
   const [runningId, setRunningId] = useState<string | null>(null);
 
   const runTile = (q: SavedQuestionDetail) => {
@@ -104,7 +104,7 @@ export function DashboardsPage() {
                     Close
                   </button>
                 </div>
-                <AnswerCard turn={turn} />
+                <AnswerCard turn={turn} lastUpdate={lastUpdate} />
               </div>
             )}
 

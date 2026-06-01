@@ -17,6 +17,7 @@ from app.support.documents import (
     comment_to_document,
     ticket_to_document,
 )
+from app.support.lexical import support_lexical_search
 from app.support.models import SupportIndexRecord
 from app.support.store import support_data_store
 
@@ -132,6 +133,7 @@ class SupportIndexer:
         provider: str | None = None,
         status: str | None = None,
         limit: int = 10,
+        session: AsyncSession | None = None,
     ) -> list[dict[str, Any]]:
         self._require_clients()
         filters: dict[str, Any] = {"tenant_id": tenant_id}
@@ -140,6 +142,8 @@ class SupportIndexer:
         if status:
             filters["status"] = status
 
+        vector_results: list[dict[str, Any]] = []
+        vector_error: Exception | None = None
         try:
             vector = await _embed_client.embed_query(query)
             results = await _vectordb_client.search(
@@ -148,11 +152,26 @@ class SupportIndexer:
                 limit=limit,
                 filters=filters,
             )
+            vector_results = [self._result_to_response(result) for result in results]
         except Exception as e:
             logger.warning("support index search failed for tenant=%s: %s", tenant_id, e, exc_info=True)
-            raise SupportIndexError("support index is unavailable or has not been initialized") from e
+            vector_error = e
 
-        return [self._result_to_response(result) for result in results]
+        lexical_results: list[dict[str, Any]] = []
+        if session is not None:
+            lexical_results = await support_lexical_search(
+                session,
+                tenant_id=tenant_id,
+                query=query,
+                provider=provider,
+                status=status,
+                limit=max(limit * 2, 10),
+            )
+
+        if vector_error and not lexical_results:
+            raise SupportIndexError("support index is unavailable or has not been initialized") from vector_error
+
+        return _fuse_results(vector_results, lexical_results, limit=limit)
 
     async def _index_document(
         self,
@@ -316,6 +335,10 @@ class SupportIndexer:
         return {
             "id": str(result.get("id")),
             "score": result.get("score"),
+            "vector_score": result.get("score"),
+            "lexical_score": None,
+            "fusion_score": None,
+            "retrieval_source": "vector",
             "provider": payload.get("provider"),
             "source_type": payload.get("source_type"),
             "source_id": payload.get("source_id"),
@@ -328,6 +351,68 @@ class SupportIndexer:
             "chunk_index": payload.get("chunk_index"),
             "chunk_count": payload.get("chunk_count"),
         }
+
+
+def _fuse_results(
+    vector_results: list[dict[str, Any]],
+    lexical_results: list[dict[str, Any]],
+    *,
+    limit: int,
+) -> list[dict[str, Any]]:
+    if not lexical_results:
+        return vector_results[:limit]
+    if not vector_results:
+        return lexical_results[:limit]
+
+    fused: dict[tuple[Any, ...], dict[str, Any]] = {}
+    for rank, result in enumerate(vector_results, start=1):
+        key = _result_key(result)
+        item = {**result}
+        item["vector_score"] = result.get("score")
+        item["fusion_score"] = _rrf(rank)
+        item["retrieval_source"] = "vector"
+        fused[key] = item
+
+    for rank, result in enumerate(lexical_results, start=1):
+        key = _result_key(result)
+        lexical_rrf = _rrf(rank)
+        existing = fused.get(key)
+        if existing:
+            existing["lexical_score"] = result.get("lexical_score")
+            existing["fusion_score"] = (existing.get("fusion_score") or 0) + lexical_rrf
+            existing["retrieval_source"] = "hybrid"
+            existing["score"] = _max_score(existing.get("score"), result.get("score"))
+        else:
+            item = {**result}
+            item["vector_score"] = None
+            item["fusion_score"] = lexical_rrf
+            item["retrieval_source"] = "lexical"
+            fused[key] = item
+
+    return sorted(
+        fused.values(),
+        key=lambda item: (item.get("fusion_score") or 0, item.get("score") or 0),
+        reverse=True,
+    )[:limit]
+
+
+def _result_key(result: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        result.get("provider"),
+        result.get("source_type"),
+        result.get("source_id"),
+        result.get("chunk_index") or 0,
+    )
+
+
+def _rrf(rank: int, *, k: int = 60) -> float:
+    return 1.0 / (k + rank)
+
+
+def _max_score(left: Any, right: Any) -> Any:
+    if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+        return max(left, right)
+    return left if left is not None else right
 
 
 support_indexer = SupportIndexer()

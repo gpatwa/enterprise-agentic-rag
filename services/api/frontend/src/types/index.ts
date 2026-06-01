@@ -282,6 +282,10 @@ export interface SupportIndexSummary {
 export interface SupportSearchResult {
   id: string;
   score: number | null;
+  vector_score: number | null;
+  lexical_score: number | null;
+  fusion_score: number | null;
+  retrieval_source: 'vector' | 'lexical' | 'hybrid' | string | null;
   provider: string | null;
   source_type: string | null;
   source_id: string | null;
@@ -340,6 +344,89 @@ export interface SupportSeedDemoResponse {
   index_status: 'succeeded' | 'failed' | string;
   index: SupportIndexSummary | null;
   index_error: string | null;
+}
+
+export interface SupportRepeatTicketSample {
+  provider: string;
+  external_id: string;
+  subject: string;
+  status: string | null;
+  priority: string | null;
+  source_url: string | null;
+  updated_at_external: string | null;
+}
+
+export interface SupportRepeatTicketInsight {
+  id: string;
+  title: string;
+  signals: string[];
+  count: number;
+  share: number;
+  providers: string[];
+  statuses: Record<string, number>;
+  priorities: Record<string, number>;
+  tags: string[];
+  latest_updated_at: string | null;
+  sample_tickets: SupportRepeatTicketSample[];
+  related_query: string;
+  deflection_candidate: boolean;
+  potential_deflection_count: number;
+  recommended_action: string;
+}
+
+export interface SupportRepeatInsightsResponse {
+  insights: SupportRepeatTicketInsight[];
+  summary: {
+    tickets_analyzed: number;
+    total_tickets: number;
+    repeat_clusters: number;
+    repeat_ticket_count: number;
+    potential_deflection_count: number;
+  };
+}
+
+export interface SupportResolutionPlaybook {
+  title: string;
+  status: string;
+  verification_status: string;
+  issue_signature: string[];
+  recommended_resolution: string;
+  resolution_steps: string[];
+  customer_response_draft: string;
+  confidence: 'low' | 'medium' | 'high' | string;
+  evidence_count: number;
+  citations: SupportCitation[];
+  next_action: string;
+  guardrails: string[];
+}
+
+export interface SupportKnowledgeGap {
+  status: string;
+  severity: 'low' | 'medium' | 'high' | string;
+  article_title: string;
+  recommendation: string;
+  rationale: string;
+}
+
+export interface SupportDeflectionEstimate {
+  potential_ticket_count: number;
+  confidence: 'low' | 'medium' | 'high' | string;
+  estimated_agent_hours_saved: number;
+  basis: string;
+  rationale: string;
+  assumptions: string[];
+}
+
+export interface SupportResolutionWorkflow {
+  cluster: SupportRepeatTicketInsight;
+  query: string;
+  playbook: SupportResolutionPlaybook;
+  knowledge_gap: SupportKnowledgeGap;
+  deflection_estimate: SupportDeflectionEstimate;
+}
+
+export interface SupportResolutionWorkflowResponse {
+  workflow: SupportResolutionWorkflow;
 }
 
 export interface SupportJob {

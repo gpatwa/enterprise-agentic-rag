@@ -1,6 +1,6 @@
 # Makefile
 
-.PHONY: help install dev up down stop init deploy infra build bootstrap init-cloud smoke-test verify destroy test ingest \
+.PHONY: help install dev up down stop init support-demo deploy infra build bootstrap init-cloud smoke-test verify destroy test ingest \
        infra-staging bootstrap-staging deploy-staging deploy-aws \
        deploy-azure infra-azure build-azure bootstrap-azure deploy-api-azure destroy-azure \
        pause-azure resume-azure import-azure \
@@ -16,6 +16,7 @@ help:
 	@echo "    make up            - Start local DBs (Docker)"
 	@echo "    make init          - Initialize local DBs, collections, indexes"
 	@echo "    make dev           - Run FastAPI server locally (hot reload)"
+	@echo "    make support-demo  - Validate Resolution Intelligence demo workflow"
 	@echo "    make ingest FILE=x - Ingest a file, directory, or --sample"
 	@echo "    make down          - Stop local DBs (Docker only)"
 	@echo "    make stop          - Stop everything (API + Docker + stale processes)"
@@ -100,6 +101,9 @@ stop:
 
 init:
 	python3 scripts/init_local.py
+
+support-demo:
+	@python3 scripts/support_demo_acceptance.py $${API_BASE_URL:+--base-url "$$API_BASE_URL"}
 
 dev:
 	cd services/api && uvicorn main:app --reload --host 0.0.0.0 --port 8000 --env-file ../../.env

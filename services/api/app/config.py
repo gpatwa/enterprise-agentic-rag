@@ -173,6 +173,7 @@ class Settings(BaseSettings):
     # -----------------------------------------------------------------
     SUPPORT_INTEGRATIONS_ENABLED: bool = True
     SUPPORT_CONNECTOR_TIMEOUT_SECONDS: int = 10
+    SUPPORT_RESOLVE_LLM_TIMEOUT_SECONDS: float = 8.0
     SUPPORT_INDEX_COLLECTION: str = "support_resolution_index"
     SUPPORT_INDEX_VERSION: str = "support-v1"
     SUPPORT_INDEX_CHUNK_CHARS: int = 1800
@@ -298,8 +299,8 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
 
-    # LLM: stream tokens to client (time-to-first-token improvement)
-    LLM_STREAM_RESPONSE: bool = False  # Disabled by default (Phase 3)
+    # LLM: stream answer deltas to client and expose time-to-first-token.
+    LLM_STREAM_RESPONSE: bool = True
 
     # CORS (comma-separated origins, e.g., "http://localhost:3000,https://your-domain.com")
     CORS_ORIGINS: str = "*"  # Default: allow all for dev. Restrict in production!

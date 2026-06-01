@@ -14,6 +14,7 @@ export type EventName =
   | 'app.loaded'
   | 'home.viewed'
   | 'question.asked'
+  | 'answer.first_token'
   | 'answer.received'
   | 'answer.errored'
   | 'answer.saved'

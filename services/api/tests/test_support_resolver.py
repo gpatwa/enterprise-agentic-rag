@@ -1,6 +1,7 @@
 # services/api/tests/test_support_resolver.py
 from __future__ import annotations
 
+import asyncio
 import os
 
 import pytest
@@ -27,6 +28,22 @@ class FakeLLM:
             {"messages": messages, "temperature": temperature, "json_mode": json_mode}
         )
         return "Likely cause is an export worker timeout. Restart the worker and retry [1]."
+
+
+class SlowLLM:
+    async def chat_completion(self, messages, temperature=0.7, json_mode=False):
+        await asyncio.sleep(1)
+        return "This should time out."
+
+
+class UncitedLLM:
+    async def chat_completion(self, messages, temperature=0.7, json_mode=False):
+        return "Restart the export worker and retry the CSV export."
+
+
+class FabricatedCitationLLM:
+    async def chat_completion(self, messages, temperature=0.7, json_mode=False):
+        return "Restart the export worker and retry the CSV export [9]."
 
 
 def _match(score=0.91):
@@ -96,5 +113,69 @@ class TestSupportResolver:
             assert result["citations"] == []
             assert result["matches"] == []
             assert result["next_action"] == "route_to_human"
+        finally:
+            resolver_mod.set_clients(None)
+
+    @pytest.mark.asyncio
+    async def test_resolve_falls_back_when_llm_times_out(self, monkeypatch):
+        import app.support.resolver as resolver_mod
+        from app.config import settings
+        from app.support.resolver import support_resolver
+
+        monkeypatch.setattr(resolver_mod, "support_indexer", FakeSupportIndexer([_match()]))
+        monkeypatch.setattr(settings, "SUPPORT_RESOLVE_LLM_TIMEOUT_SECONDS", 0.01)
+        resolver_mod.set_clients(SlowLLM())
+
+        try:
+            result = await support_resolver.resolve(
+                tenant_id="tenant-a",
+                question="exports time out after 30 seconds",
+                limit=5,
+            )
+
+            assert "Likely related prior resolution" in result["answer"]
+            assert result["citations"][0]["source_id"] == "42"
+        finally:
+            resolver_mod.set_clients(None)
+
+    @pytest.mark.asyncio
+    async def test_resolve_falls_back_when_llm_omits_citations(self, monkeypatch):
+        import app.support.resolver as resolver_mod
+        from app.support.resolver import support_resolver
+
+        monkeypatch.setattr(resolver_mod, "support_indexer", FakeSupportIndexer([_match()]))
+        resolver_mod.set_clients(UncitedLLM())
+
+        try:
+            result = await support_resolver.resolve(
+                tenant_id="tenant-a",
+                question="exports time out after 30 seconds",
+                limit=5,
+            )
+
+            assert "Likely related prior resolution" in result["answer"]
+            assert "[1]" in result["answer"]
+            assert "retry the CSV export." not in result["answer"]
+        finally:
+            resolver_mod.set_clients(None)
+
+    @pytest.mark.asyncio
+    async def test_resolve_falls_back_when_llm_fabricates_citations(self, monkeypatch):
+        import app.support.resolver as resolver_mod
+        from app.support.resolver import support_resolver
+
+        monkeypatch.setattr(resolver_mod, "support_indexer", FakeSupportIndexer([_match()]))
+        resolver_mod.set_clients(FabricatedCitationLLM())
+
+        try:
+            result = await support_resolver.resolve(
+                tenant_id="tenant-a",
+                question="exports time out after 30 seconds",
+                limit=5,
+            )
+
+            assert "Likely related prior resolution" in result["answer"]
+            assert "[1]" in result["answer"]
+            assert "[9]" not in result["answer"]
         finally:
             resolver_mod.set_clients(None)

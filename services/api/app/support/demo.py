@@ -146,6 +146,64 @@ def _demo_tickets() -> list[NormalizedSupportTicket]:
         ),
         NormalizedSupportTicket(
             provider=DEMO_PROVIDER,
+            external_id="demo-ticket-export-timeout-repeat",
+            subject="Weekly CSV export hits gateway timeout again",
+            description=(
+                "A second customer report export fails at the gateway timeout. The dataset is large "
+                "and the account is still routed through the synchronous export path."
+            ),
+            status="solved",
+            priority="high",
+            category="incident",
+            channel="email",
+            requester_external_id="demo-customer-ops-lead",
+            assignee_external_id="demo-agent-maya",
+            organization_external_id="demo-org-acme",
+            tags=["export", "timeout", "csv", "async"],
+            source_url="https://example.zendesk.com/agent/tickets/demo-ticket-export-timeout-repeat",
+            created_at_external=_dt("2026-05-29T13:15:00Z"),
+            updated_at_external=_dt("2026-05-29T15:00:00Z"),
+            raw={"id": "demo-ticket-export-timeout-repeat", "demo": True},
+            customer=NormalizedSupportCustomer(
+                provider=DEMO_PROVIDER,
+                external_id="demo-customer-ops-lead",
+                email="ops-lead@example.com",
+                name="Ops Lead",
+                role="admin",
+                raw={"demo": True},
+            ),
+        ),
+        NormalizedSupportTicket(
+            provider=DEMO_PROVIDER,
+            external_id="demo-ticket-export-timeout-open",
+            subject="Report export endpoint returns timeout for 80k rows",
+            description=(
+                "New inbound ticket: the customer is seeing the same 30 second timeout pattern on "
+                "large report exports and needs an agent response before their executive review."
+            ),
+            status="open",
+            priority="high",
+            category="incident",
+            channel="web",
+            requester_external_id="demo-customer-eng",
+            assignee_external_id=None,
+            organization_external_id="demo-org-beta",
+            tags=["export", "timeout", "reports", "csv"],
+            source_url="https://example.zendesk.com/agent/tickets/demo-ticket-export-timeout-open",
+            created_at_external=_dt("2026-05-31T09:10:00Z"),
+            updated_at_external=_dt("2026-05-31T09:25:00Z"),
+            raw={"id": "demo-ticket-export-timeout-open", "demo": True},
+            customer=NormalizedSupportCustomer(
+                provider=DEMO_PROVIDER,
+                external_id="demo-customer-eng",
+                email="eng@example.com",
+                name="Engineering Manager",
+                role="admin",
+                raw={"demo": True},
+            ),
+        ),
+        NormalizedSupportTicket(
+            provider=DEMO_PROVIDER,
             external_id="demo-ticket-billing-plan",
             subject="Billing plan changed but invoice still shows old seat count",
             description=(
@@ -164,6 +222,35 @@ def _demo_tickets() -> list[NormalizedSupportTicket]:
             created_at_external=_dt("2026-05-29T09:15:00Z"),
             updated_at_external=_dt("2026-05-29T10:20:00Z"),
             raw={"id": "demo-ticket-billing-plan", "demo": True},
+            customer=NormalizedSupportCustomer(
+                provider=DEMO_PROVIDER,
+                external_id="demo-customer-finance",
+                email="finance@example.com",
+                name="Finance Buyer",
+                role="billing_admin",
+                raw={"demo": True},
+            ),
+        ),
+        NormalizedSupportTicket(
+            provider=DEMO_PROVIDER,
+            external_id="demo-ticket-billing-cache-repeat",
+            subject="Invoice preview stale after seat downgrade",
+            description=(
+                "Customer reduced seats before renewal, but the invoice preview still reflects the "
+                "old quantity. They ask if finance can approve the corrected amount."
+            ),
+            status="solved",
+            priority="medium",
+            category="question",
+            channel="email",
+            requester_external_id="demo-customer-finance",
+            assignee_external_id="demo-agent-lee",
+            organization_external_id="demo-org-acme",
+            tags=["billing", "invoice", "cache"],
+            source_url="https://example.zendesk.com/agent/tickets/demo-ticket-billing-cache-repeat",
+            created_at_external=_dt("2026-05-30T11:45:00Z"),
+            updated_at_external=_dt("2026-05-30T12:15:00Z"),
+            raw={"id": "demo-ticket-billing-cache-repeat", "demo": True},
             customer=NormalizedSupportCustomer(
                 provider=DEMO_PROVIDER,
                 external_id="demo-customer-finance",
@@ -238,6 +325,34 @@ def _demo_comments() -> list[NormalizedSupportComment]:
         ),
         NormalizedSupportComment(
             provider=DEMO_PROVIDER,
+            ticket_external_id="demo-ticket-export-timeout-repeat",
+            external_id="demo-comment-export-repeat-1",
+            author_external_id="demo-agent-maya",
+            body_text=(
+                "Repeated pattern confirmed. Enabled async CSV generation, invalidated the old export "
+                "route cache, and reused the customer-facing async export response."
+            ),
+            body_html=None,
+            is_public=False,
+            created_at_external=_dt("2026-05-29T14:20:00Z"),
+            raw={"id": "demo-comment-export-repeat-1", "demo": True},
+        ),
+        NormalizedSupportComment(
+            provider=DEMO_PROVIDER,
+            ticket_external_id="demo-ticket-export-timeout-open",
+            external_id="demo-comment-export-open-1",
+            author_external_id="demo-agent-maya",
+            body_text=(
+                "Triage note: Similar to prior async CSV export timeout cases. Check whether the "
+                "customer is still on the synchronous endpoint before escalating."
+            ),
+            body_html=None,
+            is_public=False,
+            created_at_external=_dt("2026-05-31T09:30:00Z"),
+            raw={"id": "demo-comment-export-open-1", "demo": True},
+        ),
+        NormalizedSupportComment(
+            provider=DEMO_PROVIDER,
             ticket_external_id="demo-ticket-billing-plan",
             external_id="demo-comment-billing-1",
             author_external_id="demo-agent-lee",
@@ -249,6 +364,20 @@ def _demo_comments() -> list[NormalizedSupportComment]:
             is_public=False,
             created_at_external=_dt("2026-05-29T09:45:00Z"),
             raw={"id": "demo-comment-billing-1", "demo": True},
+        ),
+        NormalizedSupportComment(
+            provider=DEMO_PROVIDER,
+            ticket_external_id="demo-ticket-billing-cache-repeat",
+            external_id="demo-comment-billing-repeat-1",
+            author_external_id="demo-agent-lee",
+            body_text=(
+                "Resolution: Refreshed the billing preview cache, verified the subscription source of "
+                "truth, and sent finance the corrected invoice preview."
+            ),
+            body_html=None,
+            is_public=True,
+            created_at_external=_dt("2026-05-30T12:05:00Z"),
+            raw={"id": "demo-comment-billing-repeat-1", "demo": True},
         ),
         NormalizedSupportComment(
             provider=DEMO_PROVIDER,

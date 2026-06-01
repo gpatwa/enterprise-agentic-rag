@@ -14,22 +14,32 @@ import {
   ShieldCheck,
   Sparkles,
   Ticket,
+  TrendingDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import {
   useIndexSupportTickets,
+  useBuildSupportResolutionWorkflow,
   useResolveSupportIssue,
   useSearchSupportIndex,
   useSeedSupportDemo,
   useStartSupportSyncIndexJob,
+  useSupportRepeatInsights,
   useSupportJobs,
   useSupportTickets,
 } from '@/lib/queries';
 import { formatCount, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { SupportJob, SupportResolution, SupportSearchResult, SupportTicket } from '@/types';
+import type {
+  SupportJob,
+  SupportRepeatTicketInsight,
+  SupportResolution,
+  SupportResolutionWorkflow,
+  SupportSearchResult,
+  SupportTicket,
+} from '@/types';
 
 type ProviderFilter = 'all' | 'zendesk' | 'intercom';
 
@@ -62,16 +72,25 @@ export function SupportResolutionPage() {
   const providerParam = provider === 'all' ? undefined : provider;
   const statusParam = status.trim() || undefined;
   const ticketsQuery = useSupportTickets({ provider: providerParam, status: statusParam, limit: 25 });
+  const repeatInsightsQuery = useSupportRepeatInsights({
+    provider: providerParam,
+    status: statusParam,
+    limit: 200,
+    min_count: 2,
+  });
   const jobsQuery = useSupportJobs();
   const indexMutation = useIndexSupportTickets();
   const searchMutation = useSearchSupportIndex();
   const resolveMutation = useResolveSupportIssue();
+  const workflowMutation = useBuildSupportResolutionWorkflow();
   const seedMutation = useSeedSupportDemo();
   const startJobMutation = useStartSupportSyncIndexJob();
   const { toast } = useToast();
 
   const tickets = ticketsQuery.data?.tickets ?? [];
   const jobs = jobsQuery.data?.jobs ?? [];
+  const repeatInsights = repeatInsightsQuery.data?.insights ?? [];
+  const repeatSummary = repeatInsightsQuery.data?.summary;
   const activeJob = jobs.find((job) => job.status === 'queued' || job.status === 'running');
   const indexSummary = indexMutation.data?.index ?? seedMutation.data?.index ?? undefined;
   const resultCount = searchMutation.data?.results.length ?? 0;
@@ -139,9 +158,7 @@ export function SupportResolutionPage() {
     );
   };
 
-  const submitSearch = (event: FormEvent) => {
-    event.preventDefault();
-    const q = query.trim();
+  const searchResolutionMemory = (q: string) => {
     if (q.length < 2) return;
     searchMutation.mutate(
       { q, provider: providerParam, status: statusParam, limit: 8 },
@@ -149,6 +166,42 @@ export function SupportResolutionPage() {
         onError: (err) =>
           toast({
             title: 'Search unavailable',
+            description: err.message,
+            variant: 'destructive',
+          }),
+      }
+    );
+  };
+
+  const submitSearch = (event: FormEvent) => {
+    event.preventDefault();
+    searchResolutionMemory(query.trim());
+  };
+
+  const searchRepeatInsight = (q: string) => {
+    setQuery(q);
+    searchResolutionMemory(q);
+  };
+
+  const buildWorkflow = (insight: SupportRepeatTicketInsight) => {
+    setQuery(insight.related_query);
+    workflowMutation.mutate(
+      {
+        cluster_id: insight.id,
+        provider: providerParam,
+        status: statusParam,
+        limit: 200,
+        min_count: 2,
+      },
+      {
+        onSuccess: (data) =>
+          toast({
+            title: 'Resolution workflow built',
+            description: `${data.workflow.cluster.title}: ${data.workflow.deflection_estimate.potential_ticket_count} potential repeat tickets.`,
+          }),
+        onError: (err) =>
+          toast({
+            title: 'Could not build workflow',
             description: err.message,
             variant: 'destructive',
           }),
@@ -216,7 +269,7 @@ export function SupportResolutionPage() {
           </div>
         </header>
 
-        <div className="grid md:grid-cols-3 gap-3 mb-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           <MetricCard
             icon={Ticket}
             label="Normalized tickets"
@@ -228,6 +281,12 @@ export function SupportResolutionPage() {
             label="Indexed chunks"
             value={formatCount(indexSummary?.chunks ?? 0)}
             detail={indexSummary ? `${indexSummary.indexed} records refreshed` : 'Run indexing after sync'}
+          />
+          <MetricCard
+            icon={TrendingDown}
+            label="Repeat clusters"
+            value={formatCount(repeatSummary?.repeat_clusters ?? 0)}
+            detail={`${formatCount(repeatSummary?.potential_deflection_count ?? 0)} tickets could be deflected`}
           />
           <MetricCard
             icon={ShieldCheck}
@@ -258,6 +317,24 @@ export function SupportResolutionPage() {
           isLoading={jobsQuery.isLoading}
           isRefreshing={jobsQuery.isFetching}
           onRefresh={() => void jobsQuery.refetch()}
+        />
+
+        <RepeatInsightsPanel
+          insights={repeatInsights}
+          summary={repeatSummary}
+          isLoading={repeatInsightsQuery.isLoading}
+          isError={repeatInsightsQuery.isError}
+          isRefreshing={repeatInsightsQuery.isFetching}
+          onRefresh={() => void repeatInsightsQuery.refetch()}
+          onSearchQuery={searchRepeatInsight}
+          onBuildWorkflow={buildWorkflow}
+        />
+
+        <WorkflowPanel
+          workflow={workflowMutation.data?.workflow}
+          isLoading={workflowMutation.isPending}
+          isError={workflowMutation.isError}
+          errorMessage={workflowMutation.error?.message}
         />
 
         <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-6 items-start">
@@ -394,6 +471,164 @@ function ResolutionCard({ resolution }: { resolution: SupportResolution }) {
   );
 }
 
+function WorkflowPanel({
+  workflow,
+  isLoading,
+  isError,
+  errorMessage,
+}: {
+  workflow: SupportResolutionWorkflow | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  errorMessage?: string;
+}) {
+  if (!workflow && !isLoading && !isError) return null;
+
+  return (
+    <section className="glass rounded-2xl p-4 md:p-5 mb-6">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <ClipboardCheck className="w-4 h-4 text-accent" />
+            <h2 className="text-lg font-semibold tracking-tight">Resolution workflow</h2>
+          </div>
+          <p className="text-sm text-fg-secondary mt-1">
+            Repeat issue cluster to evidence-backed playbook, KB gap, and deflection estimate.
+          </p>
+        </div>
+      </div>
+
+      {isLoading && <div className="h-56 rounded-xl bg-surface-muted animate-pulse" />}
+      {!isLoading && isError && (
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 flex items-start gap-3">
+          <AlertTriangle className="w-4 h-4 text-destructive mt-0.5" />
+          <div>
+            <div className="text-sm font-medium text-destructive">Could not build workflow</div>
+            <p className="text-xs text-fg-secondary mt-1">
+              {errorMessage || 'Load demo data, index support records, then try again.'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!isLoading && workflow && (
+        <div className="space-y-4">
+          <div className="grid md:grid-cols-4 gap-3">
+            <WorkflowStep
+              label="1. Issue cluster"
+              title={workflow.cluster.title}
+              body={`${formatCount(workflow.cluster.count)} tickets, ${Math.round(workflow.cluster.share * 100)}% of analyzed volume.`}
+            />
+            <WorkflowStep
+              label="2. Playbook"
+              title={formatLabel(workflow.playbook.status)}
+              body={`${workflow.playbook.confidence} confidence with ${formatCount(workflow.playbook.evidence_count)} evidence source(s).`}
+            />
+            <WorkflowStep
+              label="3. KB gap"
+              title={formatLabel(workflow.knowledge_gap.status)}
+              body={`${workflow.knowledge_gap.severity} severity: ${workflow.knowledge_gap.article_title}`}
+            />
+            <WorkflowStep
+              label="4. Deflection"
+              title={`${formatCount(workflow.deflection_estimate.potential_ticket_count)} tickets`}
+              body={`${workflow.deflection_estimate.confidence} confidence, about ${workflow.deflection_estimate.estimated_agent_hours_saved} agent hours in-sample.`}
+            />
+          </div>
+
+          <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-3">
+            <article className="rounded-xl border border-border/70 bg-surface-muted/30 p-4">
+              <div className="text-xs uppercase tracking-wider text-fg-muted">Evidence-backed playbook</div>
+              <h3 className="font-semibold mt-1">{workflow.playbook.title}</h3>
+              <div className="mt-3 rounded-lg border border-accent/20 bg-accent/5 p-3 text-sm text-fg-secondary whitespace-pre-wrap leading-relaxed">
+                {workflow.playbook.recommended_resolution}
+              </div>
+              <ol className="mt-4 space-y-2">
+                {workflow.playbook.resolution_steps.map((step) => (
+                  <li key={step} className="flex gap-2 text-sm text-fg-secondary">
+                    <span className="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+              <div className="mt-4">
+                <div className="text-xs uppercase tracking-wider text-fg-muted mb-2">Customer response draft</div>
+                <p className="text-sm text-fg-secondary leading-relaxed rounded-lg border border-border/70 bg-bg/30 p-3">
+                  {workflow.playbook.customer_response_draft}
+                </p>
+              </div>
+            </article>
+
+            <div className="space-y-3">
+              <article className="rounded-xl border border-border/70 bg-surface-muted/30 p-4">
+                <div className="text-xs uppercase tracking-wider text-fg-muted">Knowledge gap</div>
+                <h3 className="font-semibold mt-1">{formatLabel(workflow.knowledge_gap.status)}</h3>
+                <p className="text-sm text-fg-secondary mt-2 leading-relaxed">
+                  {workflow.knowledge_gap.recommendation}
+                </p>
+                <p className="text-xs text-fg-muted mt-2">{workflow.knowledge_gap.rationale}</p>
+              </article>
+
+              <article className="rounded-xl border border-border/70 bg-surface-muted/30 p-4">
+                <div className="text-xs uppercase tracking-wider text-fg-muted">Deflection estimate</div>
+                <h3 className="font-semibold mt-1">{workflow.deflection_estimate.rationale}</h3>
+                <p className="text-xs text-fg-muted mt-2">{workflow.deflection_estimate.basis}</p>
+                <ul className="mt-3 space-y-1.5">
+                  {workflow.deflection_estimate.assumptions.map((assumption) => (
+                    <li key={assumption} className="text-xs text-fg-secondary">
+                      {assumption}
+                    </li>
+                  ))}
+                </ul>
+              </article>
+
+              <article className="rounded-xl border border-border/70 bg-surface-muted/30 p-4">
+                <div className="text-xs uppercase tracking-wider text-fg-muted">Evidence and guardrails</div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {workflow.playbook.citations.map((citation) => (
+                    <a
+                      key={`${citation.label}-${citation.source_id}`}
+                      href={citation.source_url || undefined}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={cn(
+                        'text-[11px] px-2 py-1 rounded border border-border bg-bg/40 text-fg-muted',
+                        citation.source_url && 'hover:text-fg hover:border-border-strong'
+                      )}
+                    >
+                      {citation.label} {citation.title || citation.source_id || citation.source_type}
+                    </a>
+                  ))}
+                  {workflow.playbook.citations.length === 0 && (
+                    <span className="text-xs text-fg-muted">No citations yet. Keep this in human review.</span>
+                  )}
+                </div>
+                <ul className="mt-3 space-y-1.5">
+                  {workflow.playbook.guardrails.map((guardrail) => (
+                    <li key={guardrail} className="text-xs text-fg-secondary">
+                      {guardrail}
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function WorkflowStep({ label, title, body }: { label: string; title: string; body: string }) {
+  return (
+    <article className="rounded-xl border border-border/70 bg-surface-muted/30 p-4">
+      <div className="text-[11px] uppercase tracking-wider text-fg-muted">{label}</div>
+      <div className="font-semibold mt-1">{title}</div>
+      <p className="text-xs text-fg-secondary mt-2 leading-relaxed">{body}</p>
+    </article>
+  );
+}
+
 function MetricCard({
   icon: Icon,
   label,
@@ -512,6 +747,164 @@ function JobStatusPanel({
   );
 }
 
+function RepeatInsightsPanel({
+  insights,
+  summary,
+  isLoading,
+  isError,
+  isRefreshing,
+  onRefresh,
+  onSearchQuery,
+  onBuildWorkflow,
+}: {
+  insights: SupportRepeatTicketInsight[];
+  summary:
+    | {
+        tickets_analyzed: number;
+        total_tickets: number;
+        repeat_clusters: number;
+        repeat_ticket_count: number;
+        potential_deflection_count: number;
+      }
+    | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  isRefreshing: boolean;
+  onRefresh: () => void;
+  onSearchQuery: (query: string) => void;
+  onBuildWorkflow: (insight: SupportRepeatTicketInsight) => void;
+}) {
+  return (
+    <section className="glass rounded-2xl p-4 md:p-5 mb-6">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <TrendingDown className="w-4 h-4 text-accent" />
+            <h2 className="text-lg font-semibold tracking-tight">Repeat-ticket insights</h2>
+          </div>
+          <p className="text-sm text-fg-secondary mt-1">
+            Spot issue clusters that should become macros, help articles, or automated deflection.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={onRefresh} disabled={isRefreshing}>
+          <RefreshCw className={cn('w-3.5 h-3.5', isRefreshing && 'animate-spin')} />
+          Refresh
+        </Button>
+      </div>
+
+      {isLoading && <div className="h-36 rounded-xl bg-surface-muted animate-pulse" />}
+      {!isLoading && isError && (
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 flex items-start gap-3">
+          <AlertTriangle className="w-4 h-4 text-destructive mt-0.5" />
+          <div>
+            <div className="text-sm font-medium text-destructive">Could not load repeat insights</div>
+            <p className="text-xs text-fg-secondary mt-1">
+              The local database may be unavailable. Load demo data and refresh this panel.
+            </p>
+          </div>
+        </div>
+      )}
+      {!isLoading && !isError && insights.length === 0 && (
+        <div className="rounded-xl border border-border bg-surface-muted/40 p-5 text-sm text-fg-secondary">
+          No repeat clusters yet. Load demo data to see local patterns, or sync more support tickets
+          before relying on ticket deflection recommendations.
+        </div>
+      )}
+      {!isLoading && !isError && insights.length > 0 && (
+        <>
+          <div className="grid sm:grid-cols-3 gap-2 mb-4">
+            <MiniStat label="Tickets analyzed" value={formatCount(summary?.tickets_analyzed ?? 0)} />
+            <MiniStat label="Repeat tickets" value={formatCount(summary?.repeat_ticket_count ?? 0)} />
+            <MiniStat
+              label="Deflection potential"
+              value={formatCount(summary?.potential_deflection_count ?? 0)}
+            />
+          </div>
+          <div className="grid lg:grid-cols-3 gap-3">
+            {insights.slice(0, 3).map((insight) => (
+              <RepeatInsightCard
+                key={insight.id}
+                insight={insight}
+                onSearchQuery={onSearchQuery}
+                onBuildWorkflow={onBuildWorkflow}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border/70 bg-surface-muted/30 p-3">
+      <div className="text-[11px] uppercase tracking-wider text-fg-muted">{label}</div>
+      <div className="text-lg font-semibold mt-1">{value}</div>
+    </div>
+  );
+}
+
+function RepeatInsightCard({
+  insight,
+  onSearchQuery,
+  onBuildWorkflow,
+}: {
+  insight: SupportRepeatTicketInsight;
+  onSearchQuery: (query: string) => void;
+  onBuildWorkflow: (insight: SupportRepeatTicketInsight) => void;
+}) {
+  const share = Math.round(insight.share * 100);
+  const statusText = Object.entries(insight.statuses)
+    .map(([status, count]) => `${count} ${status}`)
+    .join(', ');
+
+  return (
+    <article className="rounded-xl border border-border/70 bg-surface-muted/30 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs uppercase tracking-wider text-fg-muted">Repeat cluster</div>
+          <h3 className="font-semibold mt-1">{insight.title}</h3>
+        </div>
+        <span className="text-xs px-2 py-1 rounded border border-accent/25 bg-accent/10 text-accent whitespace-nowrap">
+          {insight.count} tickets
+        </span>
+      </div>
+      <p className="text-xs text-fg-secondary mt-3 leading-relaxed">
+        {share}% of analyzed tickets. {insight.recommended_action}
+      </p>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {insight.tags.slice(0, 4).map((tag) => (
+          <span key={tag} className="text-[11px] px-1.5 py-0.5 rounded bg-white/5 text-fg-muted border border-border/50">
+            {tag}
+          </span>
+        ))}
+      </div>
+      <div className="text-[11px] text-fg-muted mt-3">
+        {statusText}
+        {insight.latest_updated_at ? ` · Latest ${formatRelative(insight.latest_updated_at)}` : ''}
+      </div>
+      <ul className="mt-3 space-y-1.5">
+        {insight.sample_tickets.slice(0, 2).map((ticket) => (
+          <li key={`${ticket.provider}-${ticket.external_id}`} className="text-xs text-fg-secondary line-clamp-1">
+            {ticket.subject}
+          </li>
+        ))}
+      </ul>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <Button size="sm" onClick={() => onBuildWorkflow(insight)}>
+          <ClipboardCheck className="w-3.5 h-3.5" />
+          Playbook
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => onSearchQuery(insight.related_query)}>
+          <Search className="w-3.5 h-3.5" />
+          Cases
+        </Button>
+      </div>
+    </article>
+  );
+}
+
 function JobStatusBadge({ status }: { status: string }) {
   return (
     <span className={cn('text-[11px] px-2 py-1 rounded border capitalize', JOB_STATUS_TONE[status] ?? JOB_STATUS_TONE.queued)}>
@@ -520,9 +913,13 @@ function JobStatusBadge({ status }: { status: string }) {
   );
 }
 
+function formatLabel(value: string) {
+  return value.replace(/_/g, ' ');
+}
+
 function formatJobStep(step: string | null) {
   if (!step) return 'Waiting to start';
-  return step.replace(/_/g, ' ');
+  return formatLabel(step);
 }
 
 function formatJobTime(job: SupportJob) {
@@ -595,6 +992,7 @@ function SearchResults({ results, resultCount }: { results: SupportSearchResult[
               <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-fg-muted">
                 {result.provider && <span className="font-mono uppercase">{result.provider}</span>}
                 {result.status && <StatusPill status={result.status} />}
+                {result.retrieval_source && <RetrievalPill source={result.retrieval_source} />}
                 {typeof result.score === 'number' && <span>Score {result.score.toFixed(2)}</span>}
               </div>
             </div>
@@ -663,6 +1061,16 @@ function StatusPill({ status }: { status: string }) {
       {status}
     </span>
   );
+}
+
+function RetrievalPill({ source }: { source: string }) {
+  const tone =
+    source === 'hybrid'
+      ? 'text-knowledge bg-knowledge/10 border-knowledge/20'
+      : source === 'lexical'
+        ? 'text-accent bg-accent/10 border-accent/20'
+        : 'text-fg-muted bg-surface-muted border-border';
+  return <span className={cn('px-1.5 py-0.5 rounded border text-[11px]', tone)}>{source}</span>;
 }
 
 function LoadingRows() {

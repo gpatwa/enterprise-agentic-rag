@@ -22,7 +22,9 @@ import type {
   SupportJobResponse,
   SupportJobSummaryResponse,
   SupportJobsResponse,
+  SupportRepeatInsightsResponse,
   SupportResolveResponse,
+  SupportResolutionWorkflowResponse,
   SupportSearchResponse,
   SupportSeedDemoResponse,
   SupportTicketsResponse,
@@ -46,6 +48,12 @@ export const queryKeys = {
     limit?: number;
     offset?: number;
   } = {}) => ['support', 'tickets', opts] as const,
+  supportRepeatInsights: (opts: {
+    provider?: 'zendesk' | 'intercom';
+    status?: string;
+    limit?: number;
+    min_count?: number;
+  } = {}) => ['support', 'insights', 'repeats', opts] as const,
   supportJobs: ['support', 'jobs'] as const,
   supportJobSummary: ['support', 'jobs', 'summary'] as const,
   mcpCatalog: ['mcp', 'catalog'] as const,
@@ -261,6 +269,22 @@ export function useSearchSupportIndex() {
   });
 }
 
+export function useBuildSupportResolutionWorkflow() {
+  return useMutation<
+    SupportResolutionWorkflowResponse,
+    Error,
+    {
+      cluster_id?: string;
+      provider?: 'zendesk' | 'intercom';
+      status?: string;
+      limit?: number;
+      min_count?: number;
+    }
+  >({
+    mutationFn: (opts) => api.buildSupportResolutionWorkflow(opts),
+  });
+}
+
 export function useResolveSupportIssue() {
   return useMutation<
     SupportResolveResponse,
@@ -284,6 +308,19 @@ export function useSeedSupportDemo() {
       qc.invalidateQueries({ queryKey: ['support'] });
       qc.invalidateQueries({ queryKey: queryKeys.sourceHealth });
     },
+  });
+}
+
+export function useSupportRepeatInsights(opts: {
+  provider?: 'zendesk' | 'intercom';
+  status?: string;
+  limit?: number;
+  min_count?: number;
+} = {}) {
+  return useQuery<SupportRepeatInsightsResponse>({
+    queryKey: queryKeys.supportRepeatInsights(opts),
+    queryFn: () => api.getSupportRepeatInsights(opts),
+    staleTime: 30_000,
   });
 }
 
