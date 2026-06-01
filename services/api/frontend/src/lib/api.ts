@@ -201,6 +201,35 @@ export const api = {
     if (!res.ok) throw new Error(`resolveSupportIssue failed: ${res.status}`);
     return res.json();
   },
+  async seedSupportDemo(): Promise<import('@/types').SupportSeedDemoResponse> {
+    const res = await authedFetch('/support/demo/seed', {
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error(`seedSupportDemo failed: ${res.status}`);
+    return res.json();
+  },
+  async startSupportSyncIndexJob(opts: {
+    providers?: Array<'zendesk' | 'intercom'>;
+    limit?: number;
+    seed_demo?: boolean;
+  } = {}): Promise<import('@/types').SupportJobResponse> {
+    const res = await authedFetch('/support/jobs/sync-index', {
+      method: 'POST',
+      body: JSON.stringify(opts),
+    });
+    if (!res.ok) throw new Error(`startSupportSyncIndexJob failed: ${res.status}`);
+    return res.json();
+  },
+  async listSupportJobs(limit = 20): Promise<import('@/types').SupportJobsResponse> {
+    const res = await authedFetch(`/support/jobs?limit=${limit}`);
+    if (!res.ok) throw new Error(`listSupportJobs failed: ${res.status}`);
+    return res.json();
+  },
+  async getSupportJob(jobId: string): Promise<import('@/types').SupportJobResponse> {
+    const res = await authedFetch(`/support/jobs/${encodeURIComponent(jobId)}`);
+    if (!res.ok) throw new Error(`getSupportJob failed: ${res.status}`);
+    return res.json();
+  },
 
   // ── Context layers (Knowledge admin) ─────────────────────────────
   async listAnnotations(annotationType?: string) {

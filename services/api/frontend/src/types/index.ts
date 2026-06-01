@@ -264,6 +264,10 @@ export interface SupportIndexSummary {
   provider: string | null;
   tickets_seen: number;
   tickets_total: number;
+  comments_seen: number;
+  comments_total: number;
+  articles_seen: number;
+  articles_total: number;
   indexed: number;
   skipped: number;
   chunks: number;
@@ -317,6 +321,49 @@ export interface SupportResolution {
 
 export interface SupportResolveResponse {
   resolution: SupportResolution;
+}
+
+export interface SupportDemoSeedSummary {
+  provider: string;
+  sync_run_id: number;
+  customers_created: number;
+  tickets_seen: number;
+  tickets_created: number;
+  comments_seen: number;
+  comments_created: number;
+  articles_seen: number;
+  articles_created: number;
+}
+
+export interface SupportSeedDemoResponse {
+  seed: SupportDemoSeedSummary;
+  index_status: 'succeeded' | 'failed' | string;
+  index: SupportIndexSummary | null;
+  index_error: string | null;
+}
+
+export interface SupportJob {
+  id: string;
+  tenant_id: string;
+  requested_by: string;
+  providers: string[];
+  limit: number;
+  seed_demo: boolean;
+  status: 'queued' | 'running' | 'succeeded' | 'failed' | string;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  current_step: string | null;
+  result: Record<string, unknown> | null;
+  error_message: string | null;
+}
+
+export interface SupportJobsResponse {
+  jobs: SupportJob[];
+}
+
+export interface SupportJobResponse {
+  job: SupportJob;
 }
 
 // ── Feedback widget ───────────────────────────────────────────────────

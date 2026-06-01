@@ -19,8 +19,11 @@ import type {
   SupportAuthMode,
   SupportCatalogResponse,
   SupportConnectionsResponse,
+  SupportJobResponse,
+  SupportJobsResponse,
   SupportResolveResponse,
   SupportSearchResponse,
+  SupportSeedDemoResponse,
   SupportTicketsResponse,
   Thread,
   ThreadMessage,
@@ -42,6 +45,7 @@ export const queryKeys = {
     limit?: number;
     offset?: number;
   } = {}) => ['support', 'tickets', opts] as const,
+  supportJobs: ['support', 'jobs'] as const,
   mcpCatalog: ['mcp', 'catalog'] as const,
   mcpConnections: ['mcp', 'connections'] as const,
 };
@@ -267,6 +271,45 @@ export function useResolveSupportIssue() {
     }
   >({
     mutationFn: (opts) => api.resolveSupportIssue(opts),
+  });
+}
+
+export function useSeedSupportDemo() {
+  const qc = useQueryClient();
+  return useMutation<SupportSeedDemoResponse, Error, void>({
+    mutationFn: () => api.seedSupportDemo(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['support'] });
+      qc.invalidateQueries({ queryKey: queryKeys.sourceHealth });
+    },
+  });
+}
+
+export function useStartSupportSyncIndexJob() {
+  const qc = useQueryClient();
+  return useMutation<
+    SupportJobResponse,
+    Error,
+    {
+      providers?: Array<'zendesk' | 'intercom'>;
+      limit?: number;
+      seed_demo?: boolean;
+    }
+  >({
+    mutationFn: (opts) => api.startSupportSyncIndexJob(opts),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['support'] });
+      qc.invalidateQueries({ queryKey: queryKeys.sourceHealth });
+    },
+  });
+}
+
+export function useSupportJobs(limit = 20) {
+  return useQuery<SupportJobsResponse>({
+    queryKey: [...queryKeys.supportJobs, limit],
+    queryFn: () => api.listSupportJobs(limit),
+    staleTime: 3_000,
+    refetchInterval: 3_000,
   });
 }
 

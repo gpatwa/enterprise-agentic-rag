@@ -5,12 +5,14 @@ import time
 from datetime import datetime
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 
 from app.audit import manager as audit_mgr
 from app.auth.tenant import TenantContext, get_tenant_context
+from app.support.demo import DEMO_PROVIDER, seed_demo_data
 from app.support.indexer import SupportIndexError, support_indexer
+from app.support.jobs import support_job_manager
 from app.support.models import SupportSyncRun, SupportTicket
 from app.support.resolver import SupportResolveError, support_resolver
 from app.support.store import support_data_store
@@ -97,9 +99,110 @@ class SupportResolveResponse(BaseModel):
     next_action: str
 
 
+class SupportSyncIndexJobRequest(BaseModel):
+    providers: list[str] = Field(default_factory=lambda: ["zendesk", "intercom"])
+    limit: int = Field(default=100, ge=1, le=200)
+    seed_demo: bool = False
+
+
 def _require_admin(ctx: TenantContext) -> None:
     if ctx.role not in ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Support sync requires admin role")
+
+
+@router.post("/demo/seed", response_model=dict)
+async def seed_support_demo(
+    ctx: TenantContext = Depends(get_tenant_context),
+):
+    _require_admin(ctx)
+    from app.memory.postgres import AsyncSessionLocal
+
+    if AsyncSessionLocal is None:
+        raise HTTPException(status_code=503, detail="database unavailable")
+
+    start = time.monotonic()
+    index_summary: dict[str, Any] | None = None
+    index_error: str | None = None
+    index_status = "succeeded"
+    async with AsyncSessionLocal() as session:
+        seed_summary = await seed_demo_data(
+            session,
+            tenant_id=ctx.tenant_id,
+            requested_by=ctx.user_id,
+        )
+        try:
+            index_summary = await support_indexer.index_tickets(
+                session,
+                tenant_id=ctx.tenant_id,
+                provider=DEMO_PROVIDER,
+                limit=100,
+            )
+            if index_summary.get("errors"):
+                index_status = "failed"
+                index_error = f"{len(index_summary['errors'])} support documents failed to index"
+        except Exception as e:
+            await session.rollback()
+            index_status = "failed"
+            index_error = str(e)[:500] or e.__class__.__name__
+
+    await _audit_demo_seed(
+        ctx,
+        success=index_status == "succeeded",
+        start=start,
+        extra={
+            "seed": seed_summary,
+            "index_status": index_status,
+            "index_error": index_error,
+        },
+    )
+    return {
+        "seed": seed_summary,
+        "index_status": index_status,
+        "index": index_summary,
+        "index_error": index_error,
+    }
+
+
+@router.post("/jobs/sync-index", response_model=dict, status_code=status.HTTP_202_ACCEPTED)
+async def start_sync_index_job(
+    body: SupportSyncIndexJobRequest,
+    ctx: TenantContext = Depends(get_tenant_context),
+):
+    _require_admin(ctx)
+    start = time.monotonic()
+    try:
+        job = await support_job_manager.start_sync_index_job(
+            tenant_id=ctx.tenant_id,
+            requested_by=ctx.user_id,
+            providers=body.providers,
+            limit=body.limit,
+            seed_demo=body.seed_demo,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    await _audit_job_start(ctx, start, job)
+    return {"job": job}
+
+
+@router.get("/jobs", response_model=dict)
+async def list_support_jobs(
+    limit: int = Query(default=20, ge=1, le=50),
+    ctx: TenantContext = Depends(get_tenant_context),
+):
+    jobs = await support_job_manager.list_jobs(tenant_id=ctx.tenant_id, limit=limit)
+    return {"jobs": jobs}
+
+
+@router.get("/jobs/{job_id}", response_model=dict)
+async def get_support_job(
+    job_id: str,
+    ctx: TenantContext = Depends(get_tenant_context),
+):
+    job = await support_job_manager.get_job(tenant_id=ctx.tenant_id, job_id=job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="support job not found")
+    return {"job": job}
 
 
 @router.post("/sync/{provider}", response_model=dict)
@@ -352,6 +455,45 @@ async def _audit_index(
         duration_ms=int((time.monotonic() - start) * 1000),
         sources_used=[extra["provider"]] if extra.get("provider") else [],
         extra={"success": success, **extra},
+    )
+
+
+async def _audit_demo_seed(
+    ctx: TenantContext,
+    success: bool,
+    start: float,
+    extra: dict[str, Any],
+) -> None:
+    await audit_mgr.log_event(
+        tenant_id=ctx.tenant_id,
+        user_id=ctx.user_id,
+        role=ctx.role,
+        event_type="support.demo_seed",
+        method="POST",
+        path="/api/v1/support/demo/seed",
+        status_code=200,
+        duration_ms=int((time.monotonic() - start) * 1000),
+        sources_used=[DEMO_PROVIDER],
+        extra={"success": success, **extra},
+    )
+
+
+async def _audit_job_start(
+    ctx: TenantContext,
+    start: float,
+    job: dict[str, Any],
+) -> None:
+    await audit_mgr.log_event(
+        tenant_id=ctx.tenant_id,
+        user_id=ctx.user_id,
+        role=ctx.role,
+        event_type="support.job.start",
+        method="POST",
+        path="/api/v1/support/jobs/sync-index",
+        status_code=status.HTTP_202_ACCEPTED,
+        duration_ms=int((time.monotonic() - start) * 1000),
+        sources_used=job.get("providers", []),
+        extra={"job_id": job.get("id"), "seed_demo": job.get("seed_demo")},
     )
 
 
