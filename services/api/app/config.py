@@ -180,6 +180,9 @@ class Settings(BaseSettings):
     SUPPORT_JOB_WORKER_ENABLED: bool = True
     SUPPORT_JOB_POLL_SECONDS: float = 2.0
     SUPPORT_JOB_STALE_SECONDS: int = 900
+    SUPPORT_JOB_MAX_ATTEMPTS: int = 3
+    SUPPORT_JOB_RETRY_BASE_SECONDS: int = 30
+    SUPPORT_JOB_RETRY_MAX_SECONDS: int = 300
 
     # Nango handles customer OAuth, token refresh, and proxying.
     NANGO_BASE_URL: str = "https://api.nango.dev"

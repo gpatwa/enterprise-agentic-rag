@@ -230,6 +230,25 @@ export const api = {
     if (!res.ok) throw new Error(`getSupportJob failed: ${res.status}`);
     return res.json();
   },
+  async getSupportJobSummary(): Promise<import('@/types').SupportJobSummaryResponse> {
+    const res = await authedFetch('/support/jobs/summary');
+    if (!res.ok) throw new Error(`getSupportJobSummary failed: ${res.status}`);
+    return res.json();
+  },
+  async cancelSupportJob(jobId: string): Promise<import('@/types').SupportJobResponse> {
+    const res = await authedFetch(`/support/jobs/${encodeURIComponent(jobId)}/cancel`, {
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error(`cancelSupportJob failed: ${res.status}`);
+    return res.json();
+  },
+  async retrySupportJob(jobId: string): Promise<import('@/types').SupportJobResponse> {
+    const res = await authedFetch(`/support/jobs/${encodeURIComponent(jobId)}/retry`, {
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error(`retrySupportJob failed: ${res.status}`);
+    return res.json();
+  },
 
   // ── Context layers (Knowledge admin) ─────────────────────────────
   async listAnnotations(annotationType?: string) {

@@ -350,7 +350,7 @@ export interface SupportJob {
   providers: string[];
   limit: number;
   seed_demo: boolean;
-  status: 'queued' | 'running' | 'succeeded' | 'failed' | string;
+  status: 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled' | string;
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
@@ -359,8 +359,20 @@ export interface SupportJob {
   error_message: string | null;
   attempt_count: number;
   max_attempts: number;
+  cancel_requested: boolean;
+  canceled_at: string | null;
+  retry_of_job_id: string | null;
   locked_by: string | null;
   locked_at: string | null;
+  next_run_at: string | null;
+}
+
+export interface SupportJobSummary {
+  counts: Record<string, number>;
+  active_count: number;
+  terminal_count: number;
+  dead_letter_count: number;
+  stale_running_count: number;
 }
 
 export interface SupportJobsResponse {
@@ -369,6 +381,10 @@ export interface SupportJobsResponse {
 
 export interface SupportJobResponse {
   job: SupportJob;
+}
+
+export interface SupportJobSummaryResponse {
+  summary: SupportJobSummary;
 }
 
 // ── Feedback widget ───────────────────────────────────────────────────

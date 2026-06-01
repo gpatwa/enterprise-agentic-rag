@@ -1,0 +1,60 @@
+{{- if .Values.supportWorker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-support-worker
+  labels:
+    app: api-support-worker
+spec:
+  replicas: {{ .Values.supportWorker.replicaCount }}
+  selector:
+    matchLabels:
+      app: api-support-worker
+  template:
+    metadata:
+      labels:
+        app: api-support-worker
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      {{- if .Values.serviceAccount }}
+      {{- if .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: support-worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.supportWorker.command | nindent 12 }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.secretRef | default "app-env-secret" }}
+          {{- $env := mergeOverwrite (dict) (.Values.env | default dict) (.Values.supportWorker.env | default dict) }}
+          {{- with $env }}
+          env:
+            {{- range $key, $value := . }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            {{- toYaml .Values.supportWorker.resources | nindent 12 }}
+{{- end }}

@@ -20,6 +20,7 @@ import type {
   SupportCatalogResponse,
   SupportConnectionsResponse,
   SupportJobResponse,
+  SupportJobSummaryResponse,
   SupportJobsResponse,
   SupportResolveResponse,
   SupportSearchResponse,
@@ -46,6 +47,7 @@ export const queryKeys = {
     offset?: number;
   } = {}) => ['support', 'tickets', opts] as const,
   supportJobs: ['support', 'jobs'] as const,
+  supportJobSummary: ['support', 'jobs', 'summary'] as const,
   mcpCatalog: ['mcp', 'catalog'] as const,
   mcpConnections: ['mcp', 'connections'] as const,
 };
@@ -310,6 +312,37 @@ export function useSupportJobs(limit = 20) {
     queryFn: () => api.listSupportJobs(limit),
     staleTime: 3_000,
     refetchInterval: 3_000,
+  });
+}
+
+export function useSupportJobSummary() {
+  return useQuery<SupportJobSummaryResponse>({
+    queryKey: queryKeys.supportJobSummary,
+    queryFn: () => api.getSupportJobSummary(),
+    staleTime: 3_000,
+    refetchInterval: 3_000,
+  });
+}
+
+export function useCancelSupportJob() {
+  const qc = useQueryClient();
+  return useMutation<SupportJobResponse, Error, string>({
+    mutationFn: (jobId) => api.cancelSupportJob(jobId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['support'] });
+      qc.invalidateQueries({ queryKey: queryKeys.sourceHealth });
+    },
+  });
+}
+
+export function useRetrySupportJob() {
+  const qc = useQueryClient();
+  return useMutation<SupportJobResponse, Error, string>({
+    mutationFn: (jobId) => api.retrySupportJob(jobId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['support'] });
+      qc.invalidateQueries({ queryKey: queryKeys.sourceHealth });
+    },
   });
 }
 

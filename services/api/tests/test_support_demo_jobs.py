@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
@@ -147,6 +148,7 @@ class TestSupportJobManager:
                 assert other_tenant_jobs == []
                 assert persisted is not None
                 assert persisted.status == "queued"
+                assert persisted.max_attempts >= 1
 
                 with pytest.raises(ValueError):
                     await manager.start_sync_index_job(
@@ -155,6 +157,151 @@ class TestSupportJobManager:
                         requested_by="alice",
                         providers=["salesforce"],
                     )
+        finally:
+            await engine.dispose()
+
+    @pytest.mark.asyncio
+    async def test_job_controls_cancel_retry_summary_and_stale_dead_letter(self):
+        from app.support.jobs import SupportJobManager
+        from app.support.models import SupportJob
+
+        engine, Session = await _session()
+        manager = SupportJobManager()
+        try:
+            async with Session() as session:
+                job = await manager.start_sync_index_job(
+                    session,
+                    tenant_id="tenant-a",
+                    requested_by="alice",
+                    providers=["zendesk"],
+                    limit=10,
+                )
+
+                canceled = await manager.cancel_job(
+                    session,
+                    tenant_id="tenant-a",
+                    job_id=job["id"],
+                )
+                retry = await manager.retry_job(
+                    session,
+                    tenant_id="tenant-a",
+                    job_id=job["id"],
+                    requested_by="bob",
+                )
+
+                assert canceled is not None
+                assert canceled["status"] == "canceled"
+                assert canceled["cancel_requested"] is True
+                assert canceled["canceled_at"] is not None
+                assert retry is not None
+                assert retry["status"] == "queued"
+                assert retry["retry_of_job_id"] == job["id"]
+
+                with pytest.raises(ValueError):
+                    await manager.retry_job(
+                        session,
+                        tenant_id="tenant-a",
+                        job_id=retry["id"],
+                        requested_by="bob",
+                    )
+
+                claimed = await manager.claim_next_job(
+                    session,
+                    worker_id="test-worker",
+                    stale_after_seconds=60,
+                )
+                assert claimed is not None
+
+                row = await session.get(SupportJob, claimed["id"])
+                assert row is not None
+                row.locked_at = datetime.utcnow() - timedelta(seconds=120)
+                row.attempt_count = row.max_attempts
+                await session.commit()
+
+                recovered = await manager.recover_stale_running_jobs(
+                    session,
+                    stale_after_seconds=60,
+                )
+                await session.commit()
+                dead_lettered = await manager.get_job(
+                    session,
+                    tenant_id="tenant-a",
+                    job_id=claimed["id"],
+                )
+                summary = await manager.job_summary(
+                    session,
+                    tenant_id="tenant-a",
+                    stale_after_seconds=60,
+                )
+
+                assert recovered == 1
+                assert dead_lettered is not None
+                assert dead_lettered["status"] == "failed"
+                assert dead_lettered["current_step"] == "dead_lettered_after_stale_lock"
+                assert summary["counts"]["canceled"] == 1
+                assert summary["dead_letter_count"] == 1
+                assert summary["stale_running_count"] == 0
+        finally:
+            await engine.dispose()
+
+    @pytest.mark.asyncio
+    async def test_fail_job_requeues_until_attempts_are_exhausted(self):
+        from app.support.jobs import SupportJobManager
+        from app.support.models import SupportJob
+
+        engine, Session = await _session()
+        manager = SupportJobManager()
+        try:
+            async with Session() as session:
+                job = await manager.start_sync_index_job(
+                    session,
+                    tenant_id="tenant-a",
+                    requested_by="alice",
+                    providers=["zendesk"],
+                )
+                claimed = await manager.claim_next_job(
+                    session,
+                    worker_id="test-worker",
+                    stale_after_seconds=60,
+                )
+
+                assert claimed is not None
+                assert claimed["id"] == job["id"]
+
+                retried = await manager.fail_job(
+                    session,
+                    job_id=job["id"],
+                    message="transient worker crash",
+                    result={"errors": []},
+                )
+                assert retried is not None
+                assert retried["status"] == "queued"
+                assert retried["current_step"] == "retry_scheduled"
+                assert retried["next_run_at"] is not None
+
+                not_ready = await manager.claim_next_job(
+                    session,
+                    worker_id="test-worker",
+                    stale_after_seconds=60,
+                )
+                assert not_ready is None
+
+                row = await session.get(SupportJob, job["id"])
+                assert row is not None
+                row.status = "running"
+                row.attempt_count = row.max_attempts
+                await session.commit()
+
+                terminal = await manager.fail_job(
+                    session,
+                    job_id=job["id"],
+                    message="still broken",
+                    result={"errors": []},
+                )
+
+                assert terminal is not None
+                assert terminal["status"] == "failed"
+                assert terminal["current_step"] == "failed"
         finally:
             await engine.dispose()
 

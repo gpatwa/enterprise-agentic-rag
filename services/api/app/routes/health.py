@@ -1,5 +1,6 @@
 # services/api/app/routes/health.py
 from fastapi import APIRouter, Response, status
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.cache.redis import redis_client
 
@@ -146,3 +147,9 @@ async def deep_health(response: Response):
     if any(v["status"] != "up" for v in body.values()):
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return body
+
+
+@router.get("/metrics")
+async def metrics():
+    """Prometheus scrape endpoint for process/runtime metrics."""
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)

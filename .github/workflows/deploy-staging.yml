@@ -101,7 +101,9 @@ jobs:
       - name: Verify
         run: |
           kubectl rollout status deployment/api-deployment --timeout=120s
+          kubectl rollout status deployment/api-support-worker --timeout=120s
           kubectl get pods -l app=api
+          kubectl get pods -l app=api-support-worker
 
   # ──────────────────────────────────────────────────
   # Job 2b: Deploy to Azure Staging
@@ -159,4 +161,6 @@ jobs:
       - name: Verify
         run: |
           kubectl rollout status deployment/api-deployment --timeout=120s
+          kubectl rollout status deployment/api-support-worker --timeout=120s
           kubectl get pods -l app=api
+          kubectl get pods -l app=api-support-worker

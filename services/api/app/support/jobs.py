@@ -7,9 +7,10 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any, Callable
 
-from sqlalchemy import desc, or_, select
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.support.demo import seed_demo_data
 from app.support.indexer import SupportIndexError, support_indexer
 from app.support.models import SupportJob
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 SUPPORTED_SUPPORT_PROVIDERS = ("zendesk", "intercom")
 SUPPORT_SYNC_INDEX_JOB = "support_sync_index"
+TERMINAL_JOB_STATUSES = ("succeeded", "failed", "canceled")
 
 SessionFactory = Callable[[], AsyncSession]
 
@@ -49,7 +51,8 @@ class SupportJobManager:
             current_step="queued",
             result=None,
             attempt_count=0,
-            max_attempts=1,
+            max_attempts=_max_attempts(),
+            next_run_at=now,
             created_at=now,
             updated_at=now,
         )
@@ -87,6 +90,126 @@ class SupportJobManager:
         job = await session.get(SupportJob, job_id)
         return self.job_to_dict(job) if job else None
 
+    async def job_summary(
+        self,
+        session: AsyncSession,
+        *,
+        tenant_id: str,
+        stale_after_seconds: int | None = None,
+    ) -> dict[str, Any]:
+        result = await session.execute(
+            select(SupportJob.status, func.count(SupportJob.id))
+            .where(SupportJob.tenant_id == tenant_id)
+            .group_by(SupportJob.status)
+        )
+        counts = {status: int(count) for status, count in result.all()}
+
+        stale_count = 0
+        if stale_after_seconds is not None:
+            cutoff = datetime.utcnow() - timedelta(seconds=max(stale_after_seconds, 1))
+            stale_count = int(
+                await session.scalar(
+                    select(func.count(SupportJob.id)).where(
+                        SupportJob.tenant_id == tenant_id,
+                        SupportJob.status == "running",
+                        or_(SupportJob.locked_at.is_(None), SupportJob.locked_at < cutoff),
+                    )
+                )
+                or 0
+            )
+
+        active_count = counts.get("queued", 0) + counts.get("running", 0)
+        terminal_count = sum(counts.get(status, 0) for status in TERMINAL_JOB_STATUSES)
+        return {
+            "counts": counts,
+            "active_count": active_count,
+            "terminal_count": terminal_count,
+            "dead_letter_count": counts.get("failed", 0),
+            "stale_running_count": stale_count,
+        }
+
+    async def cancel_job(
+        self,
+        session: AsyncSession,
+        *,
+        tenant_id: str,
+        job_id: str,
+    ) -> dict[str, Any] | None:
+        result = await session.execute(
+            select(SupportJob).where(
+                SupportJob.id == job_id,
+                SupportJob.tenant_id == tenant_id,
+            )
+        )
+        job = result.scalars().first()
+        if job is None:
+            return None
+
+        now = datetime.utcnow()
+        if job.status in TERMINAL_JOB_STATUSES:
+            return self.job_to_dict(job)
+
+        job.cancel_requested = True
+        if job.status == "queued":
+            job.status = "canceled"
+            job.current_step = "canceled"
+            job.canceled_at = now
+            job.finished_at = now
+            job.locked_by = None
+            job.locked_at = None
+            job.next_run_at = None
+        else:
+            job.current_step = "cancel_requested"
+        job.updated_at = now
+        await session.commit()
+        await session.refresh(job)
+        return self.job_to_dict(job)
+
+    async def retry_job(
+        self,
+        session: AsyncSession,
+        *,
+        tenant_id: str,
+        job_id: str,
+        requested_by: str,
+    ) -> dict[str, Any] | None:
+        result = await session.execute(
+            select(SupportJob).where(
+                SupportJob.id == job_id,
+                SupportJob.tenant_id == tenant_id,
+            )
+        )
+        original = result.scalars().first()
+        if original is None:
+            return None
+        if original.status not in {"failed", "canceled"}:
+            raise ValueError("only failed or canceled support jobs can be retried")
+
+        now = datetime.utcnow()
+        retry = SupportJob(
+            id=f"support-job-{uuid.uuid4().hex[:12]}",
+            tenant_id=original.tenant_id,
+            requested_by=requested_by,
+            job_type=original.job_type,
+            providers=original.providers or [],
+            limit=original.limit,
+            seed_demo=bool(original.seed_demo),
+            status="queued",
+            current_step="queued",
+            result=None,
+            error_message=None,
+            attempt_count=0,
+            max_attempts=_max_attempts(),
+            retry_of_job_id=original.id,
+            next_run_at=now,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(retry)
+        await session.commit()
+        await session.refresh(retry)
+        return self.job_to_dict(retry)
+
     async def claim_next_job(
         self,
         session: AsyncSession,
@@ -98,9 +221,14 @@ class SupportJobManager:
             session,
             stale_after_seconds=stale_after_seconds,
         )
+        now = datetime.utcnow()
         result = await session.execute(
             select(SupportJob)
-            .where(SupportJob.status == "queued", SupportJob.job_type == SUPPORT_SYNC_INDEX_JOB)
+            .where(
+                SupportJob.status == "queued",
+                SupportJob.job_type == SUPPORT_SYNC_INDEX_JOB,
+                or_(SupportJob.next_run_at.is_(None), SupportJob.next_run_at <= now),
+            )
             .order_by(SupportJob.created_at)
             .with_for_update(skip_locked=True)
             .limit(1)
@@ -110,12 +238,12 @@ class SupportJobManager:
             await session.commit()
             return None
 
-        now = datetime.utcnow()
         job.status = "running"
         job.current_step = "opening_database"
         job.started_at = job.started_at or now
         job.locked_by = worker_id
         job.locked_at = now
+        job.next_run_at = None
         job.attempt_count = int(job.attempt_count or 0) + 1
         job.updated_at = now
         await session.commit()
@@ -139,17 +267,30 @@ class SupportJobManager:
         now = datetime.utcnow()
         for job in result.scalars().all():
             recovered += 1
-            if int(job.attempt_count or 0) < int(job.max_attempts or 1):
+            if job.cancel_requested:
+                job.status = "canceled"
+                job.current_step = "canceled"
+                job.finished_at = now
+                job.canceled_at = now
+                job.error_message = "job canceled after worker lock expired"
+                job.locked_by = None
+                job.locked_at = None
+                job.next_run_at = None
+            elif int(job.attempt_count or 0) < int(job.max_attempts or 1):
                 job.status = "queued"
                 job.current_step = "requeued_after_stale_lock"
                 job.locked_by = None
                 job.locked_at = None
+                job.next_run_at = now
                 job.error_message = "worker lock expired; job requeued"
             else:
                 job.status = "failed"
-                job.current_step = "failed"
+                job.current_step = "dead_lettered_after_stale_lock"
                 job.finished_at = now
-                job.error_message = "worker lock expired"
+                job.error_message = "worker lock expired; max attempts exhausted"
+                job.locked_by = None
+                job.locked_at = None
+                job.next_run_at = None
             job.updated_at = now
         if recovered:
             await session.flush()
@@ -165,6 +306,8 @@ class SupportJobManager:
         job = await session.get(SupportJob, job_id)
         if job is None:
             return None
+        if job.cancel_requested:
+            return self.job_to_dict(job)
         now = datetime.utcnow()
         job.current_step = step
         job.locked_at = now
@@ -184,6 +327,8 @@ class SupportJobManager:
         job = await session.get(SupportJob, job_id)
         if job is None:
             return None
+        if job.cancel_requested:
+            return await self.mark_canceled(session, job_id=job_id, result=result)
         now = datetime.utcnow()
         job.status = "failed" if errors else "succeeded"
         job.current_step = "finished"
@@ -192,6 +337,7 @@ class SupportJobManager:
         job.error_message = _error_summary(errors)
         job.locked_by = None
         job.locked_at = None
+        job.next_run_at = None
         job.updated_at = now
         await session.commit()
         await session.refresh(job)
@@ -204,18 +350,54 @@ class SupportJobManager:
         job_id: str,
         message: str,
         result: dict[str, Any] | None = None,
+        retryable: bool = True,
     ) -> dict[str, Any] | None:
         job = await session.get(SupportJob, job_id)
         if job is None:
             return None
         now = datetime.utcnow()
-        job.status = "failed"
-        job.current_step = "failed"
-        job.finished_at = now
+        if job.cancel_requested:
+            return await self.mark_canceled(session, job_id=job_id, result=result)
+        if retryable and int(job.attempt_count or 0) < int(job.max_attempts or 1):
+            job.status = "queued"
+            job.current_step = "retry_scheduled"
+            job.finished_at = None
+            job.next_run_at = now + _retry_delay(job.attempt_count)
+        else:
+            job.status = "failed"
+            job.current_step = "failed"
+            job.finished_at = now
+            job.next_run_at = None
         job.result = result
         job.error_message = message[:500] or "unknown job error"
         job.locked_by = None
         job.locked_at = None
+        job.updated_at = now
+        await session.commit()
+        await session.refresh(job)
+        return self.job_to_dict(job)
+
+    async def mark_canceled(
+        self,
+        session: AsyncSession,
+        *,
+        job_id: str,
+        result: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        job = await session.get(SupportJob, job_id)
+        if job is None:
+            return None
+        now = datetime.utcnow()
+        job.status = "canceled"
+        job.current_step = "canceled"
+        job.result = result
+        job.error_message = None
+        job.cancel_requested = True
+        job.canceled_at = now
+        job.finished_at = now
+        job.locked_by = None
+        job.locked_at = None
+        job.next_run_at = None
         job.updated_at = now
         await session.commit()
         await session.refresh(job)
@@ -239,8 +421,12 @@ class SupportJobManager:
             "error_message": job.error_message,
             "attempt_count": job.attempt_count,
             "max_attempts": job.max_attempts,
+            "cancel_requested": bool(job.cancel_requested),
+            "canceled_at": _dt(job.canceled_at),
+            "retry_of_job_id": job.retry_of_job_id,
             "locked_by": job.locked_by,
             "locked_at": _dt(job.locked_at),
+            "next_run_at": _dt(job.next_run_at),
         }
 
 
@@ -338,8 +524,12 @@ class SupportJobWorker:
         }
         try:
             async with self._session_factory() as session:
+                if await self._cancel_if_requested(job_id, result):
+                    return
                 if job["seed_demo"]:
                     await self._mark_step(job_id, "seeding_demo_data")
+                    if await self._cancel_if_requested(job_id, result):
+                        return
                     result["seed"] = await seed_demo_data(
                         session,
                         tenant_id=job["tenant_id"],
@@ -347,6 +537,8 @@ class SupportJobWorker:
                     )
 
                 for provider in job["providers"]:
+                    if await self._cancel_if_requested(job_id, result):
+                        return
                     await self._mark_step(job_id, f"syncing_{provider}")
                     try:
                         run = await support_sync_runner.sync_provider(
@@ -361,7 +553,11 @@ class SupportJobWorker:
                         await session.rollback()
                         result["errors"].append({"step": "sync", "provider": provider, "error": str(e)})
 
+                if await self._cancel_if_requested(job_id, result):
+                    return
                 await self._mark_step(job_id, "indexing_support_memory")
+                if await self._cancel_if_requested(job_id, result):
+                    return
                 try:
                     result["index"] = await support_indexer.index_tickets(
                         session,
@@ -376,6 +572,9 @@ class SupportJobWorker:
                     result["errors"].append({"step": "index", "error": str(e)})
 
             async with self._session_factory() as session:
+                if await self._is_cancel_requested(job_id):
+                    await self._manager.mark_canceled(session, job_id=job_id, result=result)
+                    return
                 await self._manager.complete_job(
                     session,
                     job_id=job_id,
@@ -397,6 +596,20 @@ class SupportJobWorker:
             return
         async with self._session_factory() as session:
             await self._manager.mark_step(session, job_id=job_id, step=step)
+
+    async def _is_cancel_requested(self, job_id: str) -> bool:
+        if self._session_factory is None:
+            return False
+        async with self._session_factory() as session:
+            job = await self._manager.get_job_by_id(session, job_id=job_id)
+        return bool(job and job.get("cancel_requested") and job.get("status") not in TERMINAL_JOB_STATUSES)
+
+    async def _cancel_if_requested(self, job_id: str, result: dict[str, Any]) -> bool:
+        if not await self._is_cancel_requested(job_id):
+            return False
+        async with self._session_factory() as session:
+            await self._manager.mark_canceled(session, job_id=job_id, result=result)
+        return True
 
     async def _run_loop(self) -> None:
         assert self._stop_event is not None
@@ -434,6 +647,19 @@ def _dt(value: datetime | None) -> str | None:
     if value is None:
         return None
     return value.replace(microsecond=0).isoformat() + "Z"
+
+
+def _max_attempts() -> int:
+    return min(max(int(settings.SUPPORT_JOB_MAX_ATTEMPTS), 1), 10)
+
+
+def _retry_delay(attempt_count: int | None) -> timedelta:
+    exponent = max(int(attempt_count or 1) - 1, 0)
+    seconds = min(
+        int(settings.SUPPORT_JOB_RETRY_BASE_SECONDS) * (2**exponent),
+        int(settings.SUPPORT_JOB_RETRY_MAX_SECONDS),
+    )
+    return timedelta(seconds=max(seconds, 1))
 
 
 def _error_summary(errors: list[dict[str, Any]]) -> str | None:

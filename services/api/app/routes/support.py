@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from app.audit import manager as audit_mgr
 from app.auth.tenant import TenantContext, get_tenant_context
+from app.config import settings
 from app.support.demo import DEMO_PROVIDER, seed_demo_data
 from app.support.indexer import SupportIndexError, support_indexer
 from app.support.jobs import support_job_manager, support_job_worker
@@ -208,6 +209,24 @@ async def list_support_jobs(
     return {"jobs": jobs}
 
 
+@router.get("/jobs/summary", response_model=dict)
+async def get_support_jobs_summary(
+    ctx: TenantContext = Depends(get_tenant_context),
+):
+    from app.memory.postgres import AsyncSessionLocal
+
+    if AsyncSessionLocal is None:
+        raise HTTPException(status_code=503, detail="database unavailable")
+
+    async with AsyncSessionLocal() as session:
+        summary = await support_job_manager.job_summary(
+            session,
+            tenant_id=ctx.tenant_id,
+            stale_after_seconds=settings.SUPPORT_JOB_STALE_SECONDS,
+        )
+    return {"summary": summary}
+
+
 @router.get("/jobs/{job_id}", response_model=dict)
 async def get_support_job(
     job_id: str,
@@ -222,6 +241,62 @@ async def get_support_job(
         job = await support_job_manager.get_job(session, tenant_id=ctx.tenant_id, job_id=job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="support job not found")
+    return {"job": job}
+
+
+@router.post("/jobs/{job_id}/cancel", response_model=dict)
+async def cancel_support_job(
+    job_id: str,
+    ctx: TenantContext = Depends(get_tenant_context),
+):
+    _require_admin(ctx)
+    from app.memory.postgres import AsyncSessionLocal
+
+    if AsyncSessionLocal is None:
+        raise HTTPException(status_code=503, detail="database unavailable")
+
+    start = time.monotonic()
+    async with AsyncSessionLocal() as session:
+        job = await support_job_manager.cancel_job(
+            session,
+            tenant_id=ctx.tenant_id,
+            job_id=job_id,
+        )
+    if job is None:
+        await _audit_job_action(ctx, "cancel", False, start, {"id": job_id}, status.HTTP_404_NOT_FOUND)
+        raise HTTPException(status_code=404, detail="support job not found")
+    await _audit_job_action(ctx, "cancel", True, start, job)
+    return {"job": job}
+
+
+@router.post("/jobs/{job_id}/retry", response_model=dict, status_code=status.HTTP_202_ACCEPTED)
+async def retry_support_job(
+    job_id: str,
+    ctx: TenantContext = Depends(get_tenant_context),
+):
+    _require_admin(ctx)
+    from app.memory.postgres import AsyncSessionLocal
+
+    if AsyncSessionLocal is None:
+        raise HTTPException(status_code=503, detail="database unavailable")
+
+    start = time.monotonic()
+    try:
+        async with AsyncSessionLocal() as session:
+            job = await support_job_manager.retry_job(
+                session,
+                tenant_id=ctx.tenant_id,
+                job_id=job_id,
+                requested_by=ctx.user_id,
+            )
+    except ValueError as e:
+        await _audit_job_action(ctx, "retry", False, start, {"id": job_id, "error": str(e)}, 400)
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if job is None:
+        await _audit_job_action(ctx, "retry", False, start, {"id": job_id}, status.HTTP_404_NOT_FOUND)
+        raise HTTPException(status_code=404, detail="support job not found")
+    support_job_worker.kick()
+    await _audit_job_action(ctx, "retry", True, start, job, status.HTTP_202_ACCEPTED)
     return {"job": job}
 
 
@@ -514,6 +589,34 @@ async def _audit_job_start(
         duration_ms=int((time.monotonic() - start) * 1000),
         sources_used=job.get("providers", []),
         extra={"job_id": job.get("id"), "seed_demo": job.get("seed_demo")},
+    )
+
+
+async def _audit_job_action(
+    ctx: TenantContext,
+    action: str,
+    success: bool,
+    start: float,
+    job: dict[str, Any],
+    status_code: int = 200,
+) -> None:
+    await audit_mgr.log_event(
+        tenant_id=ctx.tenant_id,
+        user_id=ctx.user_id,
+        role=ctx.role,
+        event_type=f"support.job.{action}",
+        method="POST",
+        path=f"/api/v1/support/jobs/{job.get('id', 'unknown')}/{action}",
+        status_code=status_code,
+        duration_ms=int((time.monotonic() - start) * 1000),
+        sources_used=job.get("providers", []),
+        extra={
+            "job_id": job.get("id"),
+            "success": success,
+            "status": job.get("status"),
+            "retry_of_job_id": job.get("retry_of_job_id"),
+            "error": job.get("error"),
+        },
     )
 
 

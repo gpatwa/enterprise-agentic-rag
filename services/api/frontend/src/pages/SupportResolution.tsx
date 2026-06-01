@@ -45,6 +45,7 @@ const JOB_STATUS_TONE: Record<string, string> = {
   running: 'text-accent bg-accent/10 border-accent/20',
   succeeded: 'text-knowledge bg-knowledge/10 border-knowledge/20',
   failed: 'text-destructive bg-destructive/10 border-destructive/20',
+  canceled: 'text-fg-muted bg-surface-muted border-border',
 };
 
 const PIPELINE = [
@@ -444,7 +445,7 @@ function JobStatusPanel({
             <h2 className="text-lg font-semibold tracking-tight">Sync and indexing jobs</h2>
           </div>
           <p className="text-sm text-fg-secondary mt-1">
-            Demo mode uses an in-process job runner; production should move this contract to a durable worker queue.
+            Production runs this through a dedicated durable support-worker deployment; local dev may use an embedded runner.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={onRefresh} disabled={isRefreshing}>
