@@ -81,6 +81,7 @@ try:
         SupportArticle,
         SupportCustomer,
         SupportIndexRecord,
+        SupportJob,
         SupportSyncRun,
         SupportTicket,
         SupportTicketComment,

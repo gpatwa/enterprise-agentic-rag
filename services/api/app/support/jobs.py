@@ -4,110 +4,329 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any
+from datetime import datetime, timedelta
+from typing import Any, Callable
+
+from sqlalchemy import desc, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.support.demo import seed_demo_data
 from app.support.indexer import SupportIndexError, support_indexer
+from app.support.models import SupportJob
 from app.support.sync import SupportSyncError, support_sync_runner
 
 logger = logging.getLogger(__name__)
 
 SUPPORTED_SUPPORT_PROVIDERS = ("zendesk", "intercom")
-TERMINAL_JOB_STATUSES = {"succeeded", "failed"}
+SUPPORT_SYNC_INDEX_JOB = "support_sync_index"
 
-
-@dataclass
-class SupportJobState:
-    id: str
-    tenant_id: str
-    requested_by: str
-    providers: list[str]
-    limit: int
-    seed_demo: bool
-    status: str = "queued"
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    started_at: datetime | None = None
-    finished_at: datetime | None = None
-    current_step: str | None = None
-    result: dict[str, Any] | None = None
-    error_message: str | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "id": self.id,
-            "tenant_id": self.tenant_id,
-            "requested_by": self.requested_by,
-            "providers": self.providers,
-            "limit": self.limit,
-            "seed_demo": self.seed_demo,
-            "status": self.status,
-            "created_at": _dt(self.created_at),
-            "started_at": _dt(self.started_at),
-            "finished_at": _dt(self.finished_at),
-            "current_step": self.current_step,
-            "result": self.result,
-            "error_message": self.error_message,
-        }
+SessionFactory = Callable[[], AsyncSession]
 
 
 class SupportJobManager:
-    """Small in-process job runner for dev/demo sync-index workflows.
-
-    This is intentionally lightweight. Production should move this contract to a durable
-    queue/table so jobs survive process restarts and can run outside API workers.
-    """
-
-    def __init__(self, max_jobs: int = 100) -> None:
-        self._jobs: dict[str, SupportJobState] = {}
-        self._tasks: dict[str, asyncio.Task] = {}
-        self._lock = asyncio.Lock()
-        self._max_jobs = max_jobs
+    """Durable support job store and status-transition helper."""
 
     async def start_sync_index_job(
         self,
+        session: AsyncSession,
         *,
         tenant_id: str,
         requested_by: str,
         providers: list[str] | None = None,
         limit: int = 100,
         seed_demo: bool = False,
-        start_background: bool = True,
     ) -> dict[str, Any]:
-        job = SupportJobState(
+        now = datetime.utcnow()
+        job = SupportJob(
             id=f"support-job-{uuid.uuid4().hex[:12]}",
             tenant_id=tenant_id,
             requested_by=requested_by,
+            job_type=SUPPORT_SYNC_INDEX_JOB,
             providers=_normalize_providers(providers),
             limit=min(max(limit, 1), 200),
             seed_demo=seed_demo,
+            status="queued",
+            current_step="queued",
+            result=None,
+            attempt_count=0,
+            max_attempts=1,
+            created_at=now,
+            updated_at=now,
         )
-        async with self._lock:
-            self._jobs[job.id] = job
-            self._trim_locked()
+        session.add(job)
+        await session.commit()
+        await session.refresh(job)
+        return self.job_to_dict(job)
 
-        if start_background:
-            task = asyncio.create_task(self._run_sync_index_job(job.id))
-            self._tasks[job.id] = task
-            task.add_done_callback(lambda _task, job_id=job.id: self._tasks.pop(job_id, None))
-        return job.to_dict()
+    async def list_jobs(self, session: AsyncSession, *, tenant_id: str, limit: int = 20) -> list[dict[str, Any]]:
+        result = await session.execute(
+            select(SupportJob)
+            .where(SupportJob.tenant_id == tenant_id)
+            .order_by(desc(SupportJob.created_at))
+            .limit(min(max(limit, 1), 50))
+        )
+        return [self.job_to_dict(job) for job in result.scalars().all()]
 
-    async def list_jobs(self, *, tenant_id: str, limit: int = 20) -> list[dict[str, Any]]:
-        async with self._lock:
-            jobs = [job for job in self._jobs.values() if job.tenant_id == tenant_id]
-            jobs.sort(key=lambda job: job.created_at, reverse=True)
-            return [job.to_dict() for job in jobs[: min(max(limit, 1), 50)]]
+    async def get_job(
+        self,
+        session: AsyncSession,
+        *,
+        tenant_id: str,
+        job_id: str,
+    ) -> dict[str, Any] | None:
+        result = await session.execute(
+            select(SupportJob).where(
+                SupportJob.id == job_id,
+                SupportJob.tenant_id == tenant_id,
+            )
+        )
+        job = result.scalars().first()
+        return self.job_to_dict(job) if job else None
 
-    async def get_job(self, *, tenant_id: str, job_id: str) -> dict[str, Any] | None:
-        async with self._lock:
-            job = self._jobs.get(job_id)
-            if job is None or job.tenant_id != tenant_id:
-                return None
-            return job.to_dict()
+    async def get_job_by_id(self, session: AsyncSession, *, job_id: str) -> dict[str, Any] | None:
+        job = await session.get(SupportJob, job_id)
+        return self.job_to_dict(job) if job else None
 
-    async def _run_sync_index_job(self, job_id: str) -> None:
-        job = await self._get_state(job_id)
+    async def claim_next_job(
+        self,
+        session: AsyncSession,
+        *,
+        worker_id: str,
+        stale_after_seconds: int,
+    ) -> dict[str, Any] | None:
+        await self.recover_stale_running_jobs(
+            session,
+            stale_after_seconds=stale_after_seconds,
+        )
+        result = await session.execute(
+            select(SupportJob)
+            .where(SupportJob.status == "queued", SupportJob.job_type == SUPPORT_SYNC_INDEX_JOB)
+            .order_by(SupportJob.created_at)
+            .with_for_update(skip_locked=True)
+            .limit(1)
+        )
+        job = result.scalars().first()
+        if job is None:
+            await session.commit()
+            return None
+
+        now = datetime.utcnow()
+        job.status = "running"
+        job.current_step = "opening_database"
+        job.started_at = job.started_at or now
+        job.locked_by = worker_id
+        job.locked_at = now
+        job.attempt_count = int(job.attempt_count or 0) + 1
+        job.updated_at = now
+        await session.commit()
+        await session.refresh(job)
+        return self.job_to_dict(job)
+
+    async def recover_stale_running_jobs(
+        self,
+        session: AsyncSession,
+        *,
+        stale_after_seconds: int,
+    ) -> int:
+        cutoff = datetime.utcnow() - timedelta(seconds=max(stale_after_seconds, 1))
+        result = await session.execute(
+            select(SupportJob).where(
+                SupportJob.status == "running",
+                or_(SupportJob.locked_at.is_(None), SupportJob.locked_at < cutoff),
+            )
+        )
+        recovered = 0
+        now = datetime.utcnow()
+        for job in result.scalars().all():
+            recovered += 1
+            if int(job.attempt_count or 0) < int(job.max_attempts or 1):
+                job.status = "queued"
+                job.current_step = "requeued_after_stale_lock"
+                job.locked_by = None
+                job.locked_at = None
+                job.error_message = "worker lock expired; job requeued"
+            else:
+                job.status = "failed"
+                job.current_step = "failed"
+                job.finished_at = now
+                job.error_message = "worker lock expired"
+            job.updated_at = now
+        if recovered:
+            await session.flush()
+        return recovered
+
+    async def mark_step(
+        self,
+        session: AsyncSession,
+        *,
+        job_id: str,
+        step: str,
+    ) -> dict[str, Any] | None:
+        job = await session.get(SupportJob, job_id)
+        if job is None:
+            return None
+        now = datetime.utcnow()
+        job.current_step = step
+        job.locked_at = now
+        job.updated_at = now
+        await session.commit()
+        await session.refresh(job)
+        return self.job_to_dict(job)
+
+    async def complete_job(
+        self,
+        session: AsyncSession,
+        *,
+        job_id: str,
+        result: dict[str, Any],
+        errors: list[dict[str, Any]],
+    ) -> dict[str, Any] | None:
+        job = await session.get(SupportJob, job_id)
+        if job is None:
+            return None
+        now = datetime.utcnow()
+        job.status = "failed" if errors else "succeeded"
+        job.current_step = "finished"
+        job.finished_at = now
+        job.result = result
+        job.error_message = _error_summary(errors)
+        job.locked_by = None
+        job.locked_at = None
+        job.updated_at = now
+        await session.commit()
+        await session.refresh(job)
+        return self.job_to_dict(job)
+
+    async def fail_job(
+        self,
+        session: AsyncSession,
+        *,
+        job_id: str,
+        message: str,
+        result: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        job = await session.get(SupportJob, job_id)
+        if job is None:
+            return None
+        now = datetime.utcnow()
+        job.status = "failed"
+        job.current_step = "failed"
+        job.finished_at = now
+        job.result = result
+        job.error_message = message[:500] or "unknown job error"
+        job.locked_by = None
+        job.locked_at = None
+        job.updated_at = now
+        await session.commit()
+        await session.refresh(job)
+        return self.job_to_dict(job)
+
+    def job_to_dict(self, job: SupportJob) -> dict[str, Any]:
+        return {
+            "id": job.id,
+            "tenant_id": job.tenant_id,
+            "requested_by": job.requested_by,
+            "job_type": job.job_type,
+            "providers": job.providers or [],
+            "limit": job.limit,
+            "seed_demo": job.seed_demo,
+            "status": job.status,
+            "created_at": _dt(job.created_at),
+            "started_at": _dt(job.started_at),
+            "finished_at": _dt(job.finished_at),
+            "current_step": job.current_step,
+            "result": job.result,
+            "error_message": job.error_message,
+            "attempt_count": job.attempt_count,
+            "max_attempts": job.max_attempts,
+            "locked_by": job.locked_by,
+            "locked_at": _dt(job.locked_at),
+        }
+
+
+class SupportJobWorker:
+    """Polls durable support jobs and executes them outside the request path."""
+
+    def __init__(self, manager: SupportJobManager, worker_id: str | None = None) -> None:
+        self._manager = manager
+        self._worker_id = worker_id or f"support-worker-{uuid.uuid4().hex[:8]}"
+        self._session_factory: SessionFactory | None = None
+        self._poll_seconds = 2.0
+        self._stale_after_seconds = 900
+        self._task: asyncio.Task | None = None
+        self._stop_event: asyncio.Event | None = None
+        self._wake_event: asyncio.Event | None = None
+
+    def start(
+        self,
+        session_factory: SessionFactory,
+        *,
+        poll_seconds: float = 2.0,
+        stale_after_seconds: int = 900,
+    ) -> None:
+        if self._task is not None and not self._task.done():
+            return
+        self.configure(
+            session_factory,
+            poll_seconds=poll_seconds,
+            stale_after_seconds=stale_after_seconds,
+        )
+        self._stop_event = asyncio.Event()
+        self._wake_event = asyncio.Event()
+        self._task = asyncio.create_task(self._run_loop(), name="support-job-worker")
+        logger.info("support job worker started worker_id=%s", self._worker_id)
+
+    def configure(
+        self,
+        session_factory: SessionFactory,
+        *,
+        poll_seconds: float = 2.0,
+        stale_after_seconds: int = 900,
+    ) -> None:
+        self._session_factory = session_factory
+        self._poll_seconds = max(float(poll_seconds), 0.1)
+        self._stale_after_seconds = max(int(stale_after_seconds), 1)
+
+    def kick(self) -> None:
+        if self._wake_event is not None:
+            self._wake_event.set()
+
+    async def shutdown(self) -> None:
+        if self._stop_event is not None:
+            self._stop_event.set()
+        self.kick()
+        if self._task is not None:
+            try:
+                await asyncio.wait_for(self._task, timeout=5)
+            except asyncio.TimeoutError:
+                self._task.cancel()
+                try:
+                    await self._task
+                except asyncio.CancelledError:
+                    pass
+        self._task = None
+        logger.info("support job worker stopped worker_id=%s", self._worker_id)
+
+    async def process_next_job(self) -> bool:
+        if self._session_factory is None:
+            return False
+        async with self._session_factory() as session:
+            job = await self._manager.claim_next_job(
+                session,
+                worker_id=self._worker_id,
+                stale_after_seconds=self._stale_after_seconds,
+            )
+        if job is None:
+            return False
+        await self.process_job(job["id"])
+        return True
+
+    async def process_job(self, job_id: str) -> None:
+        if self._session_factory is None:
+            raise RuntimeError("support job worker is not configured")
+
+        async with self._session_factory() as session:
+            job = await self._manager.get_job_by_id(session, job_id=job_id)
         if job is None:
             return
 
@@ -117,52 +336,38 @@ class SupportJobManager:
             "index": None,
             "errors": [],
         }
-        await self._update_job(
-            job_id,
-            status="running",
-            started_at=datetime.utcnow(),
-            current_step="opening_database",
-        )
-
         try:
-            from app.memory import postgres as pg
-
-            if pg.AsyncSessionLocal is None:
-                raise RuntimeError("database unavailable")
-
-            async with pg.AsyncSessionLocal() as session:
-                if job.seed_demo:
-                    await self._update_job(job_id, current_step="seeding_demo_data")
+            async with self._session_factory() as session:
+                if job["seed_demo"]:
+                    await self._mark_step(job_id, "seeding_demo_data")
                     result["seed"] = await seed_demo_data(
                         session,
-                        tenant_id=job.tenant_id,
-                        requested_by=job.requested_by,
+                        tenant_id=job["tenant_id"],
+                        requested_by=job["requested_by"],
                     )
 
-                for provider in job.providers:
-                    await self._update_job(job_id, current_step=f"syncing_{provider}")
+                for provider in job["providers"]:
+                    await self._mark_step(job_id, f"syncing_{provider}")
                     try:
                         run = await support_sync_runner.sync_provider(
                             session,
-                            tenant_id=job.tenant_id,
+                            tenant_id=job["tenant_id"],
                             provider=provider,
-                            requested_by=job.requested_by,
-                            limit=job.limit,
+                            requested_by=job["requested_by"],
+                            limit=job["limit"],
                         )
                         result["sync_runs"].append(run)
                     except SupportSyncError as e:
                         await session.rollback()
-                        result["errors"].append(
-                            {"step": "sync", "provider": provider, "error": str(e)}
-                        )
+                        result["errors"].append({"step": "sync", "provider": provider, "error": str(e)})
 
-                await self._update_job(job_id, current_step="indexing_support_memory")
+                await self._mark_step(job_id, "indexing_support_memory")
                 try:
                     result["index"] = await support_indexer.index_tickets(
                         session,
-                        tenant_id=job.tenant_id,
-                        provider=job.providers[0] if len(job.providers) == 1 else None,
-                        limit=job.limit,
+                        tenant_id=job["tenant_id"],
+                        provider=job["providers"][0] if len(job["providers"]) == 1 else None,
+                        limit=job["limit"],
                     )
                     for error in result["index"].get("errors", []):
                         result["errors"].append({"step": "index", **error})
@@ -170,47 +375,47 @@ class SupportJobManager:
                     await session.rollback()
                     result["errors"].append({"step": "index", "error": str(e)})
 
-            errors = result["errors"]
-            await self._update_job(
-                job_id,
-                status="failed" if errors else "succeeded",
-                current_step="finished",
-                finished_at=datetime.utcnow(),
-                result=result,
-                error_message=_error_summary(errors),
-            )
+            async with self._session_factory() as session:
+                await self._manager.complete_job(
+                    session,
+                    job_id=job_id,
+                    result=result,
+                    errors=result["errors"],
+                )
         except Exception as e:
-            logger.warning("support background job failed job_id=%s: %s", job_id, e, exc_info=True)
-            await self._update_job(
-                job_id,
-                status="failed",
-                current_step="failed",
-                finished_at=datetime.utcnow(),
-                result=result,
-                error_message=str(e)[:500] or e.__class__.__name__,
-            )
+            logger.warning("support job failed job_id=%s: %s", job_id, e, exc_info=True)
+            async with self._session_factory() as session:
+                await self._manager.fail_job(
+                    session,
+                    job_id=job_id,
+                    message=str(e)[:500] or e.__class__.__name__,
+                    result=result,
+                )
 
-    async def _get_state(self, job_id: str) -> SupportJobState | None:
-        async with self._lock:
-            return self._jobs.get(job_id)
-
-    async def _update_job(self, job_id: str, **updates: Any) -> None:
-        async with self._lock:
-            job = self._jobs.get(job_id)
-            if job is None:
-                return
-            for key, value in updates.items():
-                setattr(job, key, value)
-
-    def _trim_locked(self) -> None:
-        if len(self._jobs) <= self._max_jobs:
+    async def _mark_step(self, job_id: str, step: str) -> None:
+        if self._session_factory is None:
             return
-        ordered = sorted(self._jobs.values(), key=lambda job: job.created_at)
-        for job in ordered[: len(self._jobs) - self._max_jobs]:
-            task = self._tasks.get(job.id)
-            if task is not None and not task.done():
-                continue
-            self._jobs.pop(job.id, None)
+        async with self._session_factory() as session:
+            await self._manager.mark_step(session, job_id=job_id, step=step)
+
+    async def _run_loop(self) -> None:
+        assert self._stop_event is not None
+        assert self._wake_event is not None
+        while not self._stop_event.is_set():
+            try:
+                processed = await self.process_next_job()
+                if processed:
+                    continue
+                self._wake_event.clear()
+                try:
+                    await asyncio.wait_for(self._wake_event.wait(), timeout=self._poll_seconds)
+                except asyncio.TimeoutError:
+                    pass
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.warning("support job worker loop error: %s", e, exc_info=True)
+                await asyncio.sleep(self._poll_seconds)
 
 
 def _normalize_providers(providers: list[str] | None) -> list[str]:
@@ -241,3 +446,4 @@ def _error_summary(errors: list[dict[str, Any]]) -> str | None:
 
 
 support_job_manager = SupportJobManager()
+support_job_worker = SupportJobWorker(support_job_manager)

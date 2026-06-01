@@ -177,6 +177,9 @@ class Settings(BaseSettings):
     SUPPORT_INDEX_VERSION: str = "support-v1"
     SUPPORT_INDEX_CHUNK_CHARS: int = 1800
     SUPPORT_INDEX_CHUNK_OVERLAP_CHARS: int = 200
+    SUPPORT_JOB_WORKER_ENABLED: bool = True
+    SUPPORT_JOB_POLL_SECONDS: float = 2.0
+    SUPPORT_JOB_STALE_SECONDS: int = 900
 
     # Nango handles customer OAuth, token refresh, and proxying.
     NANGO_BASE_URL: str = "https://api.nango.dev"

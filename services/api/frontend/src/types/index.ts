@@ -346,6 +346,7 @@ export interface SupportJob {
   id: string;
   tenant_id: string;
   requested_by: string;
+  job_type: string;
   providers: string[];
   limit: number;
   seed_demo: boolean;
@@ -356,6 +357,10 @@ export interface SupportJob {
   current_step: string | null;
   result: Record<string, unknown> | null;
   error_message: string | null;
+  attempt_count: number;
+  max_attempts: number;
+  locked_by: string | null;
+  locked_at: string | null;
 }
 
 export interface SupportJobsResponse {

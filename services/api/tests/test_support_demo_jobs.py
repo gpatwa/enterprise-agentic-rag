@@ -118,31 +118,108 @@ class TestSupportJobManager:
     @pytest.mark.asyncio
     async def test_sync_index_job_creation_is_tenant_scoped_and_validates_providers(self):
         from app.support.jobs import SupportJobManager
+        from app.support.models import SupportJob
 
+        engine, Session = await _session()
         manager = SupportJobManager()
-        job = await manager.start_sync_index_job(
-            tenant_id="tenant-a",
-            requested_by="alice",
-            providers=["Zendesk", "zendesk"],
-            limit=500,
-            seed_demo=True,
-            start_background=False,
-        )
+        try:
+            async with Session() as session:
+                job = await manager.start_sync_index_job(
+                    session,
+                    tenant_id="tenant-a",
+                    requested_by="alice",
+                    providers=["Zendesk", "zendesk"],
+                    limit=500,
+                    seed_demo=True,
+                )
 
-        assert job["status"] == "queued"
-        assert job["providers"] == ["zendesk"]
-        assert job["limit"] == 200
-        assert job["seed_demo"] is True
+                assert job["status"] == "queued"
+                assert job["providers"] == ["zendesk"]
+                assert job["limit"] == 200
+                assert job["seed_demo"] is True
+                assert job["attempt_count"] == 0
 
-        tenant_jobs = await manager.list_jobs(tenant_id="tenant-a")
-        other_tenant_jobs = await manager.list_jobs(tenant_id="tenant-b")
-        assert [item["id"] for item in tenant_jobs] == [job["id"]]
-        assert other_tenant_jobs == []
+                tenant_jobs = await manager.list_jobs(session, tenant_id="tenant-a")
+                other_tenant_jobs = await manager.list_jobs(session, tenant_id="tenant-b")
+                persisted = await session.get(SupportJob, job["id"])
 
-        with pytest.raises(ValueError):
-            await manager.start_sync_index_job(
-                tenant_id="tenant-a",
-                requested_by="alice",
-                providers=["salesforce"],
-                start_background=False,
-            )
+                assert [item["id"] for item in tenant_jobs] == [job["id"]]
+                assert other_tenant_jobs == []
+                assert persisted is not None
+                assert persisted.status == "queued"
+
+                with pytest.raises(ValueError):
+                    await manager.start_sync_index_job(
+                        session,
+                        tenant_id="tenant-a",
+                        requested_by="alice",
+                        providers=["salesforce"],
+                    )
+        finally:
+            await engine.dispose()
+
+    @pytest.mark.asyncio
+    async def test_worker_processes_persisted_job_status(self, monkeypatch):
+        import app.support.jobs as jobs_mod
+        from app.support.jobs import SupportJobManager, SupportJobWorker
+
+        class FakeSyncRunner:
+            async def sync_provider(self, *args, **kwargs):
+                return {
+                    "id": 123,
+                    "provider": kwargs["provider"],
+                    "status": "succeeded",
+                    "records_seen": 0,
+                    "records_upserted": 0,
+                    "records_skipped": 0,
+                    "metadata": {},
+                }
+
+        class FakeIndexer:
+            async def index_tickets(self, *args, **kwargs):
+                return {
+                    "tenant_id": kwargs["tenant_id"],
+                    "provider": kwargs["provider"],
+                    "tickets_seen": 0,
+                    "tickets_total": 0,
+                    "comments_seen": 0,
+                    "comments_total": 0,
+                    "articles_seen": 0,
+                    "articles_total": 0,
+                    "indexed": 0,
+                    "skipped": 0,
+                    "chunks": 0,
+                    "errors": [],
+                }
+
+        engine, Session = await _session()
+        manager = SupportJobManager()
+        worker = SupportJobWorker(manager, worker_id="test-worker")
+        worker.configure(Session, poll_seconds=0.1, stale_after_seconds=60)
+        monkeypatch.setattr(jobs_mod, "support_sync_runner", FakeSyncRunner())
+        monkeypatch.setattr(jobs_mod, "support_indexer", FakeIndexer())
+
+        try:
+            async with Session() as session:
+                job = await manager.start_sync_index_job(
+                    session,
+                    tenant_id="tenant-a",
+                    requested_by="alice",
+                    providers=["zendesk"],
+                    limit=10,
+                )
+
+            processed = await worker.process_next_job()
+
+            async with Session() as session:
+                persisted = await manager.get_job(session, tenant_id="tenant-a", job_id=job["id"])
+
+            assert processed is True
+            assert persisted is not None
+            assert persisted["status"] == "succeeded"
+            assert persisted["current_step"] == "finished"
+            assert persisted["attempt_count"] == 1
+            assert persisted["result"]["sync_runs"][0]["provider"] == "zendesk"
+            assert persisted["result"]["index"]["indexed"] == 0
+        finally:
+            await engine.dispose()

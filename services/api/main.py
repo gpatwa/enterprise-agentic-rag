@@ -29,6 +29,7 @@ from app.routes import support_integrations as support_integrations_routes
 from app.routes import threads as threads_routes
 from app.routes.health import set_clients as set_health_clients
 from app.support.indexer import set_clients as set_support_index_clients
+from app.support.jobs import support_job_worker
 from app.support.resolver import set_clients as set_support_resolver_clients
 
 logger = logging.getLogger(__name__)
@@ -169,6 +170,14 @@ async def lifespan(app: FastAPI):
     set_health_clients(vectordb_client, graphdb_client)
     set_support_index_clients(vectordb_client, embed_client)
     set_support_resolver_clients(llm_client)
+    if settings.SUPPORT_JOB_WORKER_ENABLED:
+        from app.memory import postgres as pg
+
+        support_job_worker.start(
+            pg.AsyncSessionLocal,
+            poll_seconds=settings.SUPPORT_JOB_POLL_SECONDS,
+            stale_after_seconds=settings.SUPPORT_JOB_STALE_SECONDS,
+        )
 
     # 5. Context Layers — init assembler if enabled
     if settings.CONTEXT_LAYERS_ENABLED:
@@ -281,6 +290,7 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Closing clients...")
+    await support_job_worker.shutdown()
     # Drain MCP pool first so its child subprocesses don't outlive their parents.
     try:
         from app.mcp.manager import mcp_manager as _mgr

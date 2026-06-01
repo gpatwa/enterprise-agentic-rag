@@ -183,3 +183,35 @@ class SupportIndexRecord(Base):
         Index("idx_support_index_tenant_provider", "tenant_id", "provider"),
         Index("idx_support_index_tenant_source", "tenant_id", "source_type", "source_id"),
     )
+
+
+class SupportJob(Base):
+    __tablename__ = "support_jobs"
+
+    id = Column(String(64), primary_key=True)
+    tenant_id = Column(String(255), nullable=False, index=True)
+    requested_by = Column(String(255), nullable=False)
+    job_type = Column(String(64), nullable=False, index=True)
+    status = Column(String(32), nullable=False, default="queued", index=True)
+    providers = Column(JSON, default=list)
+    limit = Column(Integer, nullable=False, default=100)
+    seed_demo = Column(Boolean, nullable=False, default=False)
+    current_step = Column(String(255), nullable=True)
+    result = Column(JSON, nullable=True)
+    error_message = Column(Text, nullable=True)
+    attempt_count = Column(Integer, nullable=False, default=0)
+    max_attempts = Column(Integer, nullable=False, default=1)
+    locked_by = Column(String(255), nullable=True)
+    locked_at = Column(DateTime, nullable=True)
+    started_at = Column(DateTime, nullable=True)
+    finished_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    __table_args__ = (
+        Index("idx_support_job_tenant_status_created", "tenant_id", "status", "created_at"),
+        Index("idx_support_job_status_locked", "status", "locked_at"),
+        Index("idx_support_job_type_status", "job_type", "status"),
+    )

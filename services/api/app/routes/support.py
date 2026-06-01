@@ -12,7 +12,7 @@ from app.audit import manager as audit_mgr
 from app.auth.tenant import TenantContext, get_tenant_context
 from app.support.demo import DEMO_PROVIDER, seed_demo_data
 from app.support.indexer import SupportIndexError, support_indexer
-from app.support.jobs import support_job_manager
+from app.support.jobs import support_job_manager, support_job_worker
 from app.support.models import SupportSyncRun, SupportTicket
 from app.support.resolver import SupportResolveError, support_resolver
 from app.support.store import support_data_store
@@ -169,18 +169,26 @@ async def start_sync_index_job(
     ctx: TenantContext = Depends(get_tenant_context),
 ):
     _require_admin(ctx)
+    from app.memory.postgres import AsyncSessionLocal
+
+    if AsyncSessionLocal is None:
+        raise HTTPException(status_code=503, detail="database unavailable")
+
     start = time.monotonic()
     try:
-        job = await support_job_manager.start_sync_index_job(
-            tenant_id=ctx.tenant_id,
-            requested_by=ctx.user_id,
-            providers=body.providers,
-            limit=body.limit,
-            seed_demo=body.seed_demo,
-        )
+        async with AsyncSessionLocal() as session:
+            job = await support_job_manager.start_sync_index_job(
+                session,
+                tenant_id=ctx.tenant_id,
+                requested_by=ctx.user_id,
+                providers=body.providers,
+                limit=body.limit,
+                seed_demo=body.seed_demo,
+            )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
+    support_job_worker.kick()
     await _audit_job_start(ctx, start, job)
     return {"job": job}
 
@@ -190,7 +198,13 @@ async def list_support_jobs(
     limit: int = Query(default=20, ge=1, le=50),
     ctx: TenantContext = Depends(get_tenant_context),
 ):
-    jobs = await support_job_manager.list_jobs(tenant_id=ctx.tenant_id, limit=limit)
+    from app.memory.postgres import AsyncSessionLocal
+
+    if AsyncSessionLocal is None:
+        raise HTTPException(status_code=503, detail="database unavailable")
+
+    async with AsyncSessionLocal() as session:
+        jobs = await support_job_manager.list_jobs(session, tenant_id=ctx.tenant_id, limit=limit)
     return {"jobs": jobs}
 
 
@@ -199,7 +213,13 @@ async def get_support_job(
     job_id: str,
     ctx: TenantContext = Depends(get_tenant_context),
 ):
-    job = await support_job_manager.get_job(tenant_id=ctx.tenant_id, job_id=job_id)
+    from app.memory.postgres import AsyncSessionLocal
+
+    if AsyncSessionLocal is None:
+        raise HTTPException(status_code=503, detail="database unavailable")
+
+    async with AsyncSessionLocal() as session:
+        job = await support_job_manager.get_job(session, tenant_id=ctx.tenant_id, job_id=job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="support job not found")
     return {"job": job}
