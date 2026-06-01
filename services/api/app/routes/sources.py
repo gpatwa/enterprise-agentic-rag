@@ -119,7 +119,7 @@ async def _with_timeout(coro, timeout: float, fallback: dict) -> dict:
 
 
 @router.get("/health")
-async def sources_health(_: TenantContext = Depends(get_tenant_context)):
+async def sources_health(ctx: TenantContext = Depends(get_tenant_context)):
     """
     Live health for the right-rail Sources panel. Tenant-aware — but the
     underlying datastores are shared, so we don't filter by tenant_id here.
@@ -137,12 +137,26 @@ async def sources_health(_: TenantContext = Depends(get_tenant_context)):
         ),
     )
 
+    support_sources = []
+    try:
+        from app.memory.postgres import AsyncSessionLocal
+        from app.support_integrations.manager import support_integration_manager
+
+        if AsyncSessionLocal is not None and support_integration_manager.enabled:
+            async with AsyncSessionLocal() as session:
+                # Source health is tenant-aware because SaaS connector state is tenant-scoped.
+                support_sources = await support_integration_manager.source_health(
+                    session, tenant_id=ctx.tenant_id
+                )
+    except Exception as e:
+        logger.warning("support integration probe failed: %s", e)
+
     return {
         "sources": [
             pg,
             qd,
             neo,
-            {"type": "slack", "name": "Slack export", "status": "not_connected"},
+            *support_sources,
         ],
         "probed_at": _now_iso(),
     }

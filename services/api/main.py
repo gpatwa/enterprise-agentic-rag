@@ -24,8 +24,11 @@ from app.routes import auth, chat, context, documents, health, home, privacy, sy
 from app.routes import feedback as feedback_routes
 from app.routes import mcp as mcp_routes
 from app.routes import sources as sources_routes
+from app.routes import support as support_routes
+from app.routes import support_integrations as support_integrations_routes
 from app.routes import threads as threads_routes
 from app.routes.health import set_clients as set_health_clients
+from app.support.indexer import set_clients as set_support_index_clients
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +166,7 @@ async def lifespan(app: FastAPI):
     )
     set_semantic_vectordb(vectordb_client)
     set_health_clients(vectordb_client, graphdb_client)
+    set_support_index_clients(vectordb_client, embed_client)
 
     # 5. Context Layers — init assembler if enabled
     if settings.CONTEXT_LAYERS_ENABLED:
@@ -327,6 +331,12 @@ app.include_router(sources_routes.router, prefix="/api/v1/sources", tags=["Sourc
 app.include_router(audit_routes.router, prefix="/api/v1/audit", tags=["Audit"])
 app.include_router(privacy.router, prefix="/api/v1/privacy", tags=["Privacy"])
 app.include_router(mcp_routes.router, prefix="/api/v1/mcp", tags=["MCP"])
+app.include_router(support_routes.router, prefix="/api/v1/support", tags=["Support"])
+app.include_router(
+    support_integrations_routes.router,
+    prefix="/api/v1/support-integrations",
+    tags=["Support Integrations"],
+)
 app.include_router(feedback_routes.router, prefix="/api/v1/feedback", tags=["Feedback"])
 
 # Serve Chat UI at root "/"

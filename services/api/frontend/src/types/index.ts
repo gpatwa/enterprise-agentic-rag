@@ -1,7 +1,16 @@
 /** Shared types between backend and frontend. Keep these in sync with /api/v1/home/landing. */
 
 export type SourceStatus = 'fresh' | 'stale' | 'error' | 'not_connected';
-export type SourceType = 'postgres' | 'qdrant' | 'neo4j' | 's3' | 'slack' | 'notion' | 'github';
+export type SourceType =
+  | 'postgres'
+  | 'qdrant'
+  | 'neo4j'
+  | 's3'
+  | 'slack'
+  | 'notion'
+  | 'github'
+  | 'zendesk'
+  | 'intercom';
 export type Scope = 'auto' | 'data' | 'docs' | 'code' | 'web';
 
 export interface User {
@@ -97,6 +106,7 @@ export interface SourceHealth {
   row_count?: number;
   chunk_count?: number;
   node_count?: number;
+  ticket_count?: number;
   last_synced_at?: string;
   status: SourceStatus;
 }
@@ -170,6 +180,121 @@ export interface MCPToolDescriptor {
   qualified_name: string;
   description: string;
   input_schema: Record<string, unknown>;
+}
+
+// ── Support integrations ──────────────────────────────────────────────
+
+export type SupportAuthMode = 'nango' | 'direct_env';
+export type SupportConnectionStatus = 'pending' | 'connected' | 'error' | 'disabled';
+
+export interface SupportCatalogEntry {
+  provider: 'zendesk' | 'intercom';
+  display_name: string;
+  description: string;
+  category: string;
+  auth_modes: SupportAuthMode[];
+  nango_provider_config_key: string;
+  direct_env_vars: string[];
+  objects: string[];
+  docs_url: string | null;
+}
+
+export interface SupportCatalogResponse {
+  catalog: SupportCatalogEntry[];
+  support_integrations_enabled: boolean;
+}
+
+export interface SupportConnection {
+  provider: 'zendesk' | 'intercom';
+  auth_mode: SupportAuthMode;
+  status: SupportConnectionStatus;
+  nango_connection_id: string | null;
+  provider_config_key: string | null;
+  external_account_id: string | null;
+  metadata: Record<string, unknown>;
+  last_health_check: string | null;
+  error_message: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface SupportConnectionsResponse {
+  connections: SupportConnection[];
+  support_integrations_enabled: boolean;
+}
+
+export interface SupportTicketPreview {
+  id: string;
+  subject: string;
+  status: string | null;
+  requester: string | null;
+  updated_at: string | null;
+  url: string | null;
+}
+
+export interface SupportTicket {
+  id: number;
+  provider: string;
+  external_id: string;
+  subject: string;
+  description: string | null;
+  status: string | null;
+  priority: string | null;
+  category: string | null;
+  channel: string | null;
+  requester_external_id: string | null;
+  assignee_external_id: string | null;
+  organization_external_id: string | null;
+  tags: string[];
+  source_url: string | null;
+  created_at_external: string | null;
+  updated_at_external: string | null;
+  last_synced_at: string;
+}
+
+export interface SupportTicketsResponse {
+  tickets: SupportTicket[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface SupportIndexSummary {
+  tenant_id: string;
+  provider: string | null;
+  tickets_seen: number;
+  tickets_total: number;
+  indexed: number;
+  skipped: number;
+  chunks: number;
+  errors: Array<{
+    provider: string;
+    source_type: string;
+    source_id: string;
+    error: string;
+  }>;
+}
+
+export interface SupportSearchResult {
+  id: string;
+  score: number | null;
+  provider: string | null;
+  source_type: string | null;
+  source_id: string | null;
+  title: string | null;
+  text: string;
+  status: string | null;
+  priority: string | null;
+  tags: string[];
+  source_url: string | null;
+  chunk_index: number | null;
+  chunk_count: number | null;
+}
+
+export interface SupportSearchResponse {
+  results: SupportSearchResult[];
+  query: string;
+  limit: number;
 }
 
 // ── Feedback widget ───────────────────────────────────────────────────

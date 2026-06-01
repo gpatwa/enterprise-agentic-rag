@@ -6,6 +6,7 @@ import {
   Database,
   Brain,
   Bot,
+  LifeBuoy,
   Settings,
   ChevronsUpDown,
   type LucideIcon,
@@ -29,6 +30,7 @@ const primaryNav: NavItem[] = [
 
 const workspaceNav: NavItem[] = [
   { icon: Database, label: 'Sources', to: '/sources' },
+  { icon: LifeBuoy, label: 'Resolution', to: '/support' },
   { icon: Brain, label: 'Knowledge', to: '/knowledge' },
   { icon: Bot, label: 'Agents', to: '/agents', badge: 'Beta' },
 ];

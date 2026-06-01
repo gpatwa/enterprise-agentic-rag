@@ -103,6 +103,92 @@ export const api = {
     return res.json();
   },
 
+  // ── Support integrations ───────────────────────────────────────────
+  async getSupportCatalog(): Promise<import('@/types').SupportCatalogResponse> {
+    const res = await authedFetch('/support-integrations/catalog');
+    if (!res.ok) throw new Error(`getSupportCatalog failed: ${res.status}`);
+    return res.json();
+  },
+  async getSupportConnections(): Promise<import('@/types').SupportConnectionsResponse> {
+    const res = await authedFetch('/support-integrations/connections');
+    if (!res.ok) throw new Error(`getSupportConnections failed: ${res.status}`);
+    return res.json();
+  },
+  async upsertSupportConnection(body: {
+    provider: 'zendesk' | 'intercom';
+    auth_mode: import('@/types').SupportAuthMode;
+    nango_connection_id?: string | null;
+    provider_config_key?: string | null;
+    external_account_id?: string | null;
+  }): Promise<{ connection: import('@/types').SupportConnection }> {
+    const res = await authedFetch('/support-integrations/connections', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`upsertSupportConnection failed: ${res.status}`);
+    return res.json();
+  },
+  async testSupportConnection(provider: 'zendesk' | 'intercom') {
+    const res = await authedFetch(`/support-integrations/connections/${provider}/test`, {
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error(`testSupportConnection failed: ${res.status}`);
+    return res.json();
+  },
+  async removeSupportConnection(provider: 'zendesk' | 'intercom') {
+    const res = await authedFetch(`/support-integrations/connections/${provider}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(`removeSupportConnection failed: ${res.status}`);
+    return res.json();
+  },
+
+  // ── Support Resolution Intelligence ────────────────────────────────
+  async listSupportTickets(opts: {
+    provider?: 'zendesk' | 'intercom';
+    status?: string;
+    limit?: number;
+    offset?: number;
+  } = {}): Promise<import('@/types').SupportTicketsResponse> {
+    const params = new URLSearchParams();
+    if (opts.provider) params.set('provider', opts.provider);
+    if (opts.status) params.set('status', opts.status);
+    if (opts.limit) params.set('limit', String(opts.limit));
+    if (opts.offset) params.set('offset', String(opts.offset));
+    const q = params.toString();
+    const res = await authedFetch(`/support/tickets${q ? `?${q}` : ''}`);
+    if (!res.ok) throw new Error(`listSupportTickets failed: ${res.status}`);
+    return res.json();
+  },
+  async indexSupportTickets(opts: {
+    provider?: 'zendesk' | 'intercom';
+    limit?: number;
+  } = {}): Promise<{ index: import('@/types').SupportIndexSummary }> {
+    const params = new URLSearchParams();
+    if (opts.provider) params.set('provider', opts.provider);
+    if (opts.limit) params.set('limit', String(opts.limit));
+    const q = params.toString();
+    const res = await authedFetch(`/support/index${q ? `?${q}` : ''}`, {
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error(`indexSupportTickets failed: ${res.status}`);
+    return res.json();
+  },
+  async searchSupportIndex(opts: {
+    q: string;
+    provider?: 'zendesk' | 'intercom';
+    status?: string;
+    limit?: number;
+  }): Promise<import('@/types').SupportSearchResponse> {
+    const params = new URLSearchParams({ q: opts.q });
+    if (opts.provider) params.set('provider', opts.provider);
+    if (opts.status) params.set('status', opts.status);
+    if (opts.limit) params.set('limit', String(opts.limit));
+    const res = await authedFetch(`/support/search?${params}`);
+    if (!res.ok) throw new Error(`searchSupportIndex failed: ${res.status}`);
+    return res.json();
+  },
+
   // ── Context layers (Knowledge admin) ─────────────────────────────
   async listAnnotations(annotationType?: string) {
     const q = annotationType ? `?annotation_type=${encodeURIComponent(annotationType)}` : '';
