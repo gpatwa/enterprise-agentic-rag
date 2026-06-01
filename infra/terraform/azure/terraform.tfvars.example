@@ -12,3 +12,14 @@ openai_api_key  = ""                                     # Leave empty if not us
 # cluster_name       = "rag-platform-aks"
 # acr_name           = "ragplatformacr"    # Must be globally unique, alphanumeric only
 # environment        = "prod"
+
+# Cost controls (set false to destroy orphaned/unused resources):
+# appservice_enabled    = false   # saves ~$0.99/day — disable if unused
+# containerapps_enabled = false   # saves ~$2.29/day — disable if unused
+# servicebus_enabled    = false   # saves ~$0.10/day — disable if unused
+# log_retention_days    = 30      # minimum (free); increase for prod
+# log_daily_quota_gb    = 1       # ingestion cap per day; -1 = unlimited
+
+# DNS (set after cluster is up):
+# dns_zone_name = "patwa-rag-platform.com"
+# ingress_ip    = ""              # Fill in after first deploy (terraform output ingress_ip)

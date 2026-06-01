@@ -81,3 +81,67 @@ variable "kubernetes_version" {
   type        = string
   default     = "1.29" # Match AWS EKS version for parity
 }
+
+# ─── Monitoring ──────────────────────────────────────────────────────────────
+
+variable "log_retention_days" {
+  description = "Log Analytics workspace retention in days (30 = minimum/free, max 730)"
+  type        = number
+  default     = 30
+}
+
+variable "log_daily_quota_gb" {
+  description = "Log Analytics daily ingestion cap in GB (-1 = unlimited). Set low for dev to avoid surprise bills."
+  type        = number
+  default     = 1
+}
+
+# ─── DNS ─────────────────────────────────────────────────────────────────────
+
+variable "dns_zone_name" {
+  description = "Public DNS zone name (e.g. patwa-rag-platform.com)"
+  type        = string
+  default     = "patwa-rag-platform.com"
+}
+
+variable "ingress_ip" {
+  description = "Public IP of the ingress Load Balancer. Set after first deploy: terraform output ingress_ip. Leave empty on initial apply."
+  type        = string
+  default     = ""
+}
+
+# ─── App Service ─────────────────────────────────────────────────────────────
+
+variable "appservice_enabled" {
+  description = "Set to false to destroy the App Service and Plan (saves ~$0.99/day). Currently unused by application code."
+  type        = bool
+  default     = true
+}
+
+variable "appservice_sku" {
+  description = "App Service Plan SKU. B1 = Basic (~$13/mo). F1 = Free (limited). S1 = Standard (~$70/mo)."
+  type        = string
+  default     = "B1"
+}
+
+# ─── Container Apps ──────────────────────────────────────────────────────────
+
+variable "containerapps_enabled" {
+  description = "Set to false to destroy the Container Apps environment (saves ~$2.29/day). Currently unused by application code."
+  type        = bool
+  default     = true
+}
+
+# ─── Service Bus ─────────────────────────────────────────────────────────────
+
+variable "servicebus_enabled" {
+  description = "Set to false to destroy the Service Bus namespace (saves ~$0.10/day). Currently unused by application code."
+  type        = bool
+  default     = true
+}
+
+variable "servicebus_sku" {
+  description = "Service Bus SKU. Basic = ~$0.05/mo (queues only). Standard = ~$10/mo (topics + queues)."
+  type        = string
+  default     = "Standard"
+}

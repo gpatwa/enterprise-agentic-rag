@@ -3,6 +3,7 @@
 .PHONY: help install dev up down stop init deploy infra build bootstrap init-cloud smoke-test verify destroy test ingest \
        infra-staging bootstrap-staging deploy-staging deploy-aws \
        deploy-azure infra-azure build-azure bootstrap-azure deploy-api-azure destroy-azure \
+       pause-azure resume-azure import-azure \
        verify-cleanup verify-cleanup-delete verify-cleanup-azure verify-cleanup-azure-delete \
        setup lint format \
        dev-control-plane dev-data-plane dev-split test-control-plane test-data-plane test-all
@@ -40,6 +41,9 @@ help:
 	@echo "    make build-azure       - Build & push Docker image to ACR"
 	@echo "    make bootstrap-azure   - Bootstrap AKS cluster (K8s resources)"
 	@echo "    make deploy-api-azure  - Helm upgrade API only (code changes)"
+	@echo "    make pause-azure       - Pause billing: stop Postgres, delete Redis, release IPs, prune ACR, stop App Service, trim Log Analytics (~\$$19/day saved)"
+	@echo "    make resume-azure      - Resume: start Postgres + App Service back up (Redis recreated on next deploy)"
+	@echo "    make import-azure      - Import manually-created resources into Terraform state (run once)"
 	@echo "    make destroy-azure     - Tear down ALL Azure resources + verify"
 	@echo ""
 	@echo "  Developer Setup:"
@@ -258,6 +262,20 @@ deploy-api-azure:
 		--set image.repository="$${ACR_NAME}.azurecr.io/rag-backend-api" \
 		--set image.tag="$${TAG}" \
 		--namespace default
+
+# Import manually-created Azure resources into Terraform state (run once before first apply)
+import-azure:
+	./scripts/terraform_import_azure.sh
+
+# Stop Postgres, delete Redis, release orphaned IPs, prune ACR — saves ~$17/day
+# Safe to run while cluster is off. No data loss. Reversible with make resume-azure.
+# Use --force flag to skip confirmations: make pause-azure ARGS=--force
+pause-azure:
+	./scripts/pause_azure.sh $(ARGS)
+
+# Start Postgres back up. Redis is recreated on next make infra-azure / deploy-azure.
+resume-azure:
+	./scripts/resume_azure.sh
 
 # Destroy ALL Azure cloud resources (requires confirmation)
 destroy-azure:

@@ -80,3 +80,33 @@ output "key_vault_url" {
   description = "The URL of the Azure Key Vault (for AZURE_KEY_VAULT_URL env var)."
   value       = azurerm_key_vault.main.vault_uri
 }
+
+output "log_analytics_workspace_id" {
+  description = "Resource ID of the Log Analytics workspace."
+  value       = azurerm_log_analytics_workspace.main.id
+}
+
+output "log_analytics_workspace_name" {
+  description = "Name of the Log Analytics workspace."
+  value       = azurerm_log_analytics_workspace.main.name
+}
+
+output "dns_zone_name" {
+  description = "The public DNS zone name."
+  value       = azurerm_dns_zone.main.name
+}
+
+output "dns_nameservers" {
+  description = "Nameservers to configure at your domain registrar."
+  value       = azurerm_dns_zone.main.name_servers
+}
+
+output "appservice_url" {
+  description = "Default hostname of the App Service (if enabled)."
+  value       = var.appservice_enabled ? "https://${azurerm_linux_web_app.main[0].default_hostname}" : "disabled"
+}
+
+output "servicebus_namespace" {
+  description = "Name of the Service Bus namespace (if enabled)."
+  value       = var.servicebus_enabled ? azurerm_servicebus_namespace.main[0].name : "disabled"
+}
