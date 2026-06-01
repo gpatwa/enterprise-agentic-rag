@@ -1,15 +1,16 @@
 #!/bin/bash
 # scripts/pause_azure.sh
-# Pause non-destructive Azure resources to stop billing while the AKS
-# cluster is offline.  Safe to run at any time — no data is lost.
+# Pause non-destructive Azure resources to stop billing during local-first
+# development. Safe to run at any time — no durable data is lost.
 #
 # What this does:
-#   1. Stops PostgreSQL Flexible Server  (billing pauses; data preserved)
-#   2. Deletes Redis Cache               (no persistent data; rebuilt on redeploy)
-#   3. Releases any orphaned public IPs  (left behind by ingress-nginx LB)
-#   4. Prunes old ACR image tags         (keeps last 2; reduces storage billing)
-#   5. Stops App Service + Plan          (stops compute billing; app preserved)
-#   6. Reduces Log Analytics retention   (cuts ingestion + storage cost)
+#   1. Stops AKS cluster compute         (cluster config/data preserved)
+#   2. Stops PostgreSQL Flexible Server  (billing pauses; data preserved)
+#   3. Deletes Redis Cache               (no persistent data; rebuilt on redeploy)
+#   4. Releases orphaned public IPs      (left behind by ingress-nginx LB)
+#   5. Prunes old ACR image tags         (keeps last 2; reduces storage billing)
+#   6. Stops App Service + Plan          (stops compute billing; app preserved)
+#   7. Reduces Log Analytics retention   (cuts ingestion + storage cost)
 #
 # Estimated savings: ~$19-20/day
 #
@@ -23,6 +24,7 @@
 set -euo pipefail
 
 RESOURCE_GROUP="${RESOURCE_GROUP:-rag-platform-rg}"
+AKS_CLUSTER_NAME="${AKS_CLUSTER_NAME:-rag-platform-aks}"
 POSTGRES_NAME="${POSTGRES_NAME:-ragplatform-pgdb-central}"
 REDIS_NAME="${REDIS_NAME:-rag-platform-aks-redis}"
 ACR_NAME="${ACR_NAME:-ragplatformacr}"
@@ -74,9 +76,36 @@ echo "=============================================="
 
 check_az
 
-# ─── 1. Stop PostgreSQL ──────────────────────────────────────────────────────
+# ─── 1. Stop AKS ─────────────────────────────────────────────────────────────
 
-section "Step 1: Stop PostgreSQL Flexible Server (~\$5.20/day saved)"
+section "Step 1: Stop AKS cluster compute (~\$6/day saved)"
+
+AKS_STATE=$(az aks show \
+    --resource-group "$RESOURCE_GROUP" \
+    --name "$AKS_CLUSTER_NAME" \
+    --query "powerState.code" -o tsv 2>/dev/null || echo "NotFound")
+
+if [ "$AKS_STATE" = "NotFound" ]; then
+    echo "  SKIP: AKS cluster '$AKS_CLUSTER_NAME' not found."
+elif [ "$AKS_STATE" = "Stopped" ]; then
+    echo "  SKIP: AKS is already stopped."
+else
+    echo "  Current state: $AKS_STATE"
+    echo "  NOTE: Cluster config and persistent volumes are preserved."
+    if confirm "Stop AKS cluster '$AKS_CLUSTER_NAME'?"; then
+        az aks stop \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$AKS_CLUSTER_NAME"
+        echo "  DONE: AKS cluster stopped."
+        SAVINGS=$((SAVINGS + 6))
+    else
+        echo "  SKIPPED."
+    fi
+fi
+
+# ─── 2. Stop PostgreSQL ──────────────────────────────────────────────────────
+
+section "Step 2: Stop PostgreSQL Flexible Server (~\$5.20/day saved)"
 
 PG_STATE=$(az postgres flexible-server show \
     --resource-group "$RESOURCE_GROUP" \
@@ -101,9 +130,9 @@ else
     fi
 fi
 
-# ─── 2. Delete Redis Cache ───────────────────────────────────────────────────
+# ─── 3. Delete Redis Cache ───────────────────────────────────────────────────
 
-section "Step 2: Delete Redis Cache (~\$6.69/day saved)"
+section "Step 3: Delete Redis Cache (~\$6.69/day saved)"
 
 REDIS_EXISTS=$(az redis show \
     --resource-group "$RESOURCE_GROUP" \
@@ -127,9 +156,9 @@ else
     fi
 fi
 
-# ─── 3. Release orphaned public IPs (Load Balancer) ─────────────────────────
+# ─── 4. Release orphaned public IPs (Load Balancer) ─────────────────────────
 
-section "Step 3: Release orphaned public IPs (~\$3.80/day saved)"
+section "Step 4: Release orphaned public IPs (~\$3.80/day saved)"
 
 echo "  Scanning for unattached public IPs in '$RESOURCE_GROUP'..."
 
@@ -187,9 +216,9 @@ else
     fi
 fi
 
-# ─── 4. Prune ACR images ─────────────────────────────────────────────────────
+# ─── 5. Prune ACR images ─────────────────────────────────────────────────────
 
-section "Step 4: Prune old ACR images (~\$2-3/day saved)"
+section "Step 5: Prune old ACR images (~\$2-3/day saved)"
 
 ACR_EXISTS=$(az acr show \
     --name "$ACR_NAME" \
@@ -216,9 +245,9 @@ else
     fi
 fi
 
-# ─── 5. Stop App Service + App Service Plan ──────────────────────────────────
+# ─── 6. Stop App Service + App Service Plan ──────────────────────────────────
 
-section "Step 5: Stop App Service (~\$0.99/day saved)"
+section "Step 6: Stop App Service (~\$0.99/day saved)"
 
 # Discover all web apps in the resource group
 WEBAPPS=$(az webapp list \
@@ -280,9 +309,9 @@ if [ -n "$APP_PLANS" ]; then
     fi
 fi
 
-# ─── 6. Reduce Log Analytics retention ───────────────────────────────────────
+# ─── 7. Reduce Log Analytics retention ───────────────────────────────────────
 
-section "Step 6: Reduce Log Analytics retention (~\$1/day saved)"
+section "Step 7: Reduce Log Analytics retention (~\$1/day saved)"
 
 # Discover Log Analytics workspaces in the resource group
 WORKSPACES=$(az monitor log-analytics workspace list \
@@ -324,6 +353,7 @@ echo "  Pause Complete!"
 echo "  Estimated savings: ~\$$SAVINGS/day"
 echo ""
 echo "  Remaining baseline costs:"
+echo "    - Stopped AKS control plane         ~\$0.00/day"
 echo "    - Storage account (blobs/backups)   ~\$0.10/day"
 echo "    - Key Vault (API calls)             ~\$0.00/day"
 echo "    - Azure DNS zone                    ~\$0.10/day"
