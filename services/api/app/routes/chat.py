@@ -23,6 +23,7 @@ from app.config import settings
 from app.memory.postgres import PostgresMemory
 from app.memory.postgres import postgres_memory as global_memory
 from app.middleware.rate_limit import check_rate_limit
+from app.tracing import add_span_event, set_span_attributes, start_span
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -267,31 +268,64 @@ async def chat_stream(
 
         # Generator for cached response
         async def stream_cache():
-            stream_start = time.monotonic()
-            yield _ndjson({
-                "type": "stream_start",
-                "session_id": session_id,
-            })
-            first_token_ms = _elapsed_ms(stream_start)
-            yield _ndjson({
-                "type": "first_token",
-                "time_ms": first_token_ms,
-                "source": "cache",
-                "session_id": session_id,
-            })
-            yield _ndjson({
-                "type": "answer",
-                "content": cached_ans,
-                "session_id": session_id
-            })
-            yield _ndjson({
-                "type": "stream_done",
-                "duration_ms": _elapsed_ms(stream_start),
-                "first_token_ms": first_token_ms,
-                "output_chars": len(cached_ans or ""),
-                "cached": True,
-                "session_id": session_id,
-            })
+            with start_span(
+                "chat.stream",
+                tenant_id=tenant_id,
+                session_id=session_id,
+                user_role=ctx.role,
+                cached=True,
+                message_length=len(req.message or ""),
+            ) as span:
+                stream_start = time.monotonic()
+                yield _ndjson({
+                    "type": "stream_start",
+                    "session_id": session_id,
+                })
+                first_token_ms = _elapsed_ms(stream_start)
+                set_span_attributes(
+                    span,
+                    first_token_ms=first_token_ms,
+                    first_token_source="cache",
+                )
+                add_span_event(
+                    span,
+                    "llm.first_token",
+                    time_ms=first_token_ms,
+                    source="cache",
+                )
+                yield _ndjson({
+                    "type": "first_token",
+                    "time_ms": first_token_ms,
+                    "source": "cache",
+                    "session_id": session_id,
+                })
+                yield _ndjson({
+                    "type": "answer",
+                    "content": cached_ans,
+                    "session_id": session_id
+                })
+                duration_ms = _elapsed_ms(stream_start)
+                output_chars = len(cached_ans or "")
+                set_span_attributes(
+                    span,
+                    total_latency_ms=duration_ms,
+                    output_chars=output_chars,
+                )
+                add_span_event(
+                    span,
+                    "llm.total_latency",
+                    duration_ms=duration_ms,
+                    output_chars=output_chars,
+                    cached=True,
+                )
+                yield _ndjson({
+                    "type": "stream_done",
+                    "duration_ms": duration_ms,
+                    "first_token_ms": first_token_ms,
+                    "output_chars": output_chars,
+                    "cached": True,
+                    "session_id": session_id,
+                })
 
         # Async Background: Log interaction even if cached
         background_tasks.add_task(
@@ -356,6 +390,16 @@ async def chat_stream(
 
     # 5. Define Generator for Streaming Response
     async def event_generator() -> AsyncGenerator[str, None]:
+        span_cm = start_span(
+            "chat.stream",
+            tenant_id=tenant_id,
+            session_id=session_id,
+            user_role=ctx.role,
+            cached=False,
+            message_length=len(req.message or ""),
+            llm_stream_response=settings.LLM_STREAM_RESPONSE,
+        )
+        span = span_cm.__enter__()
         final_answer = ""
         streamed_chars = 0
         first_token_ms: int | None = None
@@ -371,6 +415,17 @@ async def chat_stream(
             if first_token_ms is not None:
                 return None
             first_token_ms = _elapsed_ms(stream_start)
+            set_span_attributes(
+                span,
+                first_token_ms=first_token_ms,
+                first_token_source=source,
+            )
+            add_span_event(
+                span,
+                "llm.first_token",
+                time_ms=first_token_ms,
+                source=source,
+            )
             return _ndjson({
                 "type": "first_token",
                 "time_ms": first_token_ms,
@@ -669,20 +724,39 @@ async def chat_stream(
                     )
                 )
 
+            duration_ms = _elapsed_ms(stream_start)
+            output_chars = max(streamed_chars, len(final_answer or ""))
+            set_span_attributes(
+                span,
+                total_latency_ms=duration_ms,
+                output_chars=output_chars,
+                source_count=len(_collected_sources),
+            )
+            add_span_event(
+                span,
+                "llm.total_latency",
+                duration_ms=duration_ms,
+                output_chars=output_chars,
+                cached=False,
+                source_count=len(_collected_sources),
+            )
             yield _ndjson({
                 "type": "stream_done",
-                "duration_ms": _elapsed_ms(stream_start),
+                "duration_ms": duration_ms,
                 "first_token_ms": first_token_ms,
-                "output_chars": max(streamed_chars, len(final_answer or "")),
+                "output_chars": output_chars,
                 "cached": False,
                 "session_id": session_id,
             })
 
         except Exception as e:
             logger.error(f"Error in chat stream: {e}", exc_info=True)
+            set_span_attributes(span, stream_error=True, error_type=e.__class__.__name__)
             yield _ndjson({
                 "type": "error",
                 "content": "An internal error occurred."
             })
+        finally:
+            span_cm.__exit__(None, None, None)
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")

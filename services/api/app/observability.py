@@ -72,7 +72,7 @@ def _setup_otlp(resource, settings) -> None:
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-    endpoint = settings.OTEL_ENDPOINT or "http://localhost:4317"
+    endpoint = settings.get_otel_endpoint() or "http://localhost:4317"
     exporter = OTLPSpanExporter(endpoint=endpoint)
     provider = TracerProvider(resource=resource)
     provider.add_span_processor(BatchSpanProcessor(exporter))
@@ -100,7 +100,7 @@ def _setup_xray(resource, settings) -> None:
         )
         id_generator = None
 
-    endpoint = settings.OTEL_ENDPOINT or "http://localhost:4317"
+    endpoint = settings.get_otel_endpoint() or "http://localhost:4317"
     exporter = OTLPSpanExporter(endpoint=endpoint)
 
     provider_kwargs = {"resource": resource}

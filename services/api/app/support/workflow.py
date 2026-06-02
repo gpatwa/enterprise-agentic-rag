@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.support.insights import repeat_ticket_insights
 from app.support.resolver import SupportResolveError, support_resolver
+from app.tracing import set_span_attributes, start_span
 
 
 class SupportWorkflowError(RuntimeError):
@@ -29,40 +30,66 @@ async def build_repeat_resolution_workflow(
     comes from the support index across all statuses so open-ticket filters do
     not accidentally hide solved cases.
     """
-    insights_result = await repeat_ticket_insights(
-        session,
+    with start_span(
+        "support.workflow",
         tenant_id=tenant_id,
-        provider=provider,
-        status=status,
+        cluster_id=cluster_id or "first",
+        provider=provider or "all",
+        status=status or "any",
         limit=limit,
         min_count=min_count,
-    )
-    insights = insights_result["insights"]
-    if not insights:
-        raise SupportWorkflowError("no repeat issue clusters found")
+    ) as span:
+        insights_result = await repeat_ticket_insights(
+            session,
+            tenant_id=tenant_id,
+            provider=provider,
+            status=status,
+            limit=limit,
+            min_count=min_count,
+        )
+        insights = insights_result["insights"]
+        set_span_attributes(
+            span,
+            repeat_cluster_count=len(insights),
+            tickets_analyzed=insights_result["summary"].get("tickets_analyzed", 0),
+            repeat_ticket_count=insights_result["summary"].get("repeat_ticket_count", 0),
+        )
+        if not insights:
+            raise SupportWorkflowError("no repeat issue clusters found")
 
-    insight = _select_insight(insights, cluster_id=cluster_id)
-    if insight is None:
-        raise SupportWorkflowError("repeat issue cluster not found")
+        insight = _select_insight(insights, cluster_id=cluster_id)
+        if insight is None:
+            raise SupportWorkflowError("repeat issue cluster not found")
 
-    query = insight["related_query"]
-    resolution = await _safe_resolve(
-        session=session,
-        tenant_id=tenant_id,
-        query=query,
-        provider=_single_provider(insight) or provider,
-    )
-    playbook = _playbook(insight, resolution)
-    knowledge_gap = _knowledge_gap(insight, resolution)
-    deflection_estimate = _deflection_estimate(insight, resolution, knowledge_gap)
+        query = insight["related_query"]
+        resolution = await _safe_resolve(
+            session=session,
+            tenant_id=tenant_id,
+            query=query,
+            provider=_single_provider(insight) or provider,
+        )
+        playbook = _playbook(insight, resolution)
+        knowledge_gap = _knowledge_gap(insight, resolution)
+        deflection_estimate = _deflection_estimate(insight, resolution, knowledge_gap)
 
-    return {
-        "cluster": insight,
-        "query": query,
-        "playbook": playbook,
-        "knowledge_gap": knowledge_gap,
-        "deflection_estimate": deflection_estimate,
-    }
+        set_span_attributes(
+            span,
+            selected_cluster_id=insight["id"],
+            selected_cluster_ticket_count=insight.get("count", 0),
+            playbook_status=playbook["status"],
+            playbook_confidence=playbook["confidence"],
+            citation_count=len(playbook["citations"]),
+            knowledge_gap_status=knowledge_gap["status"],
+            deflection_potential_ticket_count=deflection_estimate["potential_ticket_count"],
+            deflection_confidence=deflection_estimate["confidence"],
+        )
+        return {
+            "cluster": insight,
+            "query": query,
+            "playbook": playbook,
+            "knowledge_gap": knowledge_gap,
+            "deflection_estimate": deflection_estimate,
+        }
 
 
 def _select_insight(insights: list[dict[str, Any]], *, cluster_id: str | None) -> dict[str, Any] | None:

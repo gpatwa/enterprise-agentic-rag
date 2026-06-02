@@ -8,6 +8,7 @@ from typing import Any
 
 from app.config import settings
 from app.support.indexer import SupportIndexError, support_indexer
+from app.tracing import set_span_attributes, start_span
 
 logger = logging.getLogger(__name__)
 
@@ -40,39 +41,78 @@ class SupportResolver:
         if len(query) < 2:
             raise SupportResolveError("question must be at least 2 characters")
 
-        try:
-            matches = await support_indexer.search(
+        with start_span(
+            "support.resolve",
+            tenant_id=tenant_id,
+            provider=provider or "all",
+            status=status or "any",
+            limit=limit,
+            question_length=len(query),
+        ) as span:
+            try:
+                matches = await support_indexer.search(
+                    tenant_id=tenant_id,
+                    query=query,
+                    provider=provider,
+                    status=status,
+                    limit=limit,
+                    session=session,
+                )
+            except SupportIndexError as e:
+                raise SupportResolveError(str(e)) from e
+
+            if not matches:
+                set_span_attributes(
+                    span,
+                    match_count=0,
+                    confidence="low",
+                    citation_count=0,
+                    next_action="route_to_human",
+                )
+                return {
+                    "answer": (
+                        "No prior matching support resolutions were found. Sync and index more support "
+                        "tickets or help-center articles before relying on automation for this issue."
+                    ),
+                    "confidence": "low",
+                    "citations": [],
+                    "matches": [],
+                    "next_action": "route_to_human",
+                }
+
+            with start_span(
+                "support.resolve.llm",
                 tenant_id=tenant_id,
+                provider=provider or "all",
+                match_count=len(matches),
+                llm_configured=_llm_client is not None,
+            ) as llm_span:
+                answer = await self._generate_answer(query=query, matches=matches)
+                set_span_attributes(llm_span, answer_length=len(answer or ""))
+
+            answer, verification_status = self._verified_answer(
                 query=query,
-                provider=provider,
-                status=status,
-                limit=limit,
-                session=session,
+                answer=answer,
+                matches=matches,
             )
-        except SupportIndexError as e:
-            raise SupportResolveError(str(e)) from e
-
-        if not matches:
+            confidence = self._confidence(matches)
+            citations = self._citations(matches)
+            next_action = self._next_action(matches)
+            set_span_attributes(
+                span,
+                match_count=len(matches),
+                confidence=confidence,
+                citation_count=len(citations),
+                next_action=next_action,
+                citation_verification_status=verification_status,
+            )
             return {
-                "answer": (
-                    "No prior matching support resolutions were found. Sync and index more support "
-                    "tickets or help-center articles before relying on automation for this issue."
-                ),
-                "confidence": "low",
-                "citations": [],
-                "matches": [],
-                "next_action": "route_to_human",
+                "answer": answer,
+                "confidence": confidence,
+                "citations": citations,
+                "matches": matches,
+                "next_action": next_action,
             }
-
-        answer = await self._generate_answer(query=query, matches=matches)
-        answer = self._verified_answer(query=query, answer=answer, matches=matches)
-        return {
-            "answer": answer,
-            "confidence": self._confidence(matches),
-            "citations": self._citations(matches),
-            "matches": matches,
-            "next_action": self._next_action(matches),
-        }
 
     async def _generate_answer(self, *, query: str, matches: list[dict[str, Any]]) -> str:
         if _llm_client is None:
@@ -129,12 +169,12 @@ class SupportResolver:
         query: str,
         answer: str,
         matches: list[dict[str, Any]],
-    ) -> str:
+    ) -> tuple[str, str]:
         """Require generated answers to cite only retrieved evidence labels."""
         allowed = {str(idx) for idx in range(1, len(matches) + 1)}
         referenced = set(_CITATION_RE.findall(answer or ""))
         if referenced and referenced.issubset(allowed):
-            return answer
+            return answer, "verified"
 
         if referenced:
             logger.warning(
@@ -142,9 +182,11 @@ class SupportResolver:
                 sorted(referenced),
                 sorted(allowed),
             )
+            verification_status = "invalid_citations"
         else:
             logger.info("support resolve answer had no citations; using deterministic fallback")
-        return self._fallback_answer(query=query, matches=matches)
+            verification_status = "missing_citations"
+        return self._fallback_answer(query=query, matches=matches), verification_status
 
     def _confidence(self, matches: list[dict[str, Any]]) -> str:
         top_score = matches[0].get("score") if matches else None

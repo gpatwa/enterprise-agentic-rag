@@ -263,6 +263,7 @@ class Settings(BaseSettings):
     OTEL_EXPORTER: str = "otlp"  # "otlp" | "xray" | "azure_monitor" | "none"
     OTEL_SERVICE_NAME: str = "rag-api-service"
     OTEL_ENDPOINT: Optional[str] = None  # OTLP collector endpoint
+    OTEL_EXPORTER_OTLP_ENDPOINT: Optional[str] = None  # Standard OTel env alias
     AZURE_MONITOR_CONNECTION_STRING: Optional[str] = None  # Azure App Insights
 
     # -----------------------------------------------------------------
@@ -339,6 +340,10 @@ class Settings(BaseSettings):
         raise ValueError(
             "Either REDIS_URL or REDIS_HOST must be set."
         )
+
+    def get_otel_endpoint(self) -> str | None:
+        """Return the OTLP collector endpoint, accepting app-native and standard env names."""
+        return self.OTEL_ENDPOINT or self.OTEL_EXPORTER_OTLP_ENDPOINT
 
     class Config:
         env_file = ".env"
