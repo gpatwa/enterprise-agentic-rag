@@ -1,6 +1,7 @@
 # services/api/app/agents/graph.py
 from langgraph.graph import END, StateGraph
 
+from app.agents.nodes.data_analytics import data_analytics_node
 from app.agents.nodes.evaluator import evaluator_node, retry_node
 from app.agents.nodes.planner import planner_node, step_advance_node
 from app.agents.nodes.responder import generate_node
@@ -78,6 +79,7 @@ workflow.add_node("tool_node", tool_node)
 workflow.add_node("evaluator", evaluator_node)
 workflow.add_node("retry", retry_node)
 workflow.add_node("step_advance", step_advance_node)
+workflow.add_node("data_analytics", data_analytics_node)
 
 # 2. Define Edges
 workflow.set_entry_point("planner")
@@ -87,16 +89,11 @@ _planner_edges = {
     "retriever": "retriever",
     "responder": "responder",
     "tool_node": "tool_node",
+    "data_analytics": "data_analytics",
 }
 
-# Data analytics node — conditional on feature flag
-if settings.DATA_ANALYTICS_ENABLED:
-    from app.agents.nodes.data_analytics import data_analytics_node
-    workflow.add_node("data_analytics", data_analytics_node)
-    workflow.add_edge("data_analytics", "responder")
-    _planner_edges["data_analytics"] = "data_analytics"
-
 workflow.add_conditional_edges("planner", route_after_planner, _planner_edges)
+workflow.add_edge("data_analytics", "responder")
 
 # After retrieval → context enrichment (if enabled) → respond
 if settings.CONTEXT_LAYERS_ENABLED:
