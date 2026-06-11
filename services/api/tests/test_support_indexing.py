@@ -164,6 +164,11 @@ class FakeVectorClient:
         ]
 
 
+class FailingVectorClient(FakeVectorClient):
+    async def search(self, *args, **kwargs) -> list[dict]:
+        raise RuntimeError("vector unavailable")
+
+
 class TestSupportIndexDocuments:
     def test_ticket_document_contains_resolution_context_and_stable_hash(self):
         from app.support.documents import ticket_to_document
@@ -339,3 +344,67 @@ class TestSupportIndexer:
             assert results[0]["text"] == "Known timeout resolution steps."
         finally:
             indexer_mod.set_clients(None, None)
+
+    @pytest.mark.asyncio
+    async def test_search_fuses_vector_and_lexical_results_when_session_is_available(self):
+        import app.support.indexer as indexer_mod
+        from app.support.indexer import support_indexer
+
+        engine, Session = await _session()
+        fake_embed = FakeEmbedClient()
+        fake_vector = FakeVectorClient()
+        indexer_mod.set_clients(fake_vector, fake_embed)
+
+        try:
+            async with Session() as session:
+                session.add(_ticket(status="open"))
+                await session.commit()
+
+                results = await support_indexer.search(
+                    tenant_id="tenant-a",
+                    query="API timeout on export",
+                    provider="zendesk",
+                    status="open",
+                    limit=3,
+                    session=session,
+                )
+
+                assert results[0]["source_id"] == "42"
+                assert results[0]["retrieval_source"] == "hybrid"
+                assert results[0]["vector_score"] == 0.91
+                assert results[0]["lexical_score"] > 0
+                assert results[0]["fusion_score"] > 0
+        finally:
+            indexer_mod.set_clients(None, None)
+            await engine.dispose()
+
+    @pytest.mark.asyncio
+    async def test_search_can_fall_back_to_lexical_when_vector_is_unavailable(self):
+        import app.support.indexer as indexer_mod
+        from app.support.indexer import support_indexer
+
+        engine, Session = await _session()
+        fake_embed = FakeEmbedClient()
+        fake_vector = FailingVectorClient()
+        indexer_mod.set_clients(fake_vector, fake_embed)
+
+        try:
+            async with Session() as session:
+                session.add(_ticket(status="open"))
+                await session.commit()
+
+                results = await support_indexer.search(
+                    tenant_id="tenant-a",
+                    query="API timeout on export",
+                    provider="zendesk",
+                    status="open",
+                    limit=3,
+                    session=session,
+                )
+
+                assert results[0]["source_id"] == "42"
+                assert results[0]["retrieval_source"] == "lexical"
+                assert results[0]["lexical_score"] > 0
+        finally:
+            indexer_mod.set_clients(None, None)
+            await engine.dispose()

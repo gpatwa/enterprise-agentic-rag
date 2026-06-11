@@ -13,11 +13,13 @@ from app.auth.tenant import TenantContext, get_tenant_context
 from app.config import settings
 from app.support.demo import DEMO_PROVIDER, seed_demo_data
 from app.support.indexer import SupportIndexError, support_indexer
+from app.support.insights import repeat_ticket_insights
 from app.support.jobs import support_job_manager, support_job_worker
 from app.support.models import SupportSyncRun, SupportTicket
 from app.support.resolver import SupportResolveError, support_resolver
 from app.support.store import support_data_store
 from app.support.sync import SupportSyncError, support_sync_runner
+from app.support.workflow import SupportWorkflowError, build_repeat_resolution_workflow
 
 router = APIRouter()
 ADMIN_ROLES = ("admin",)
@@ -62,6 +64,10 @@ class SupportSyncRunResponse(BaseModel):
 class SupportSearchResultResponse(BaseModel):
     id: str
     score: Optional[float]
+    vector_score: Optional[float] = None
+    lexical_score: Optional[float] = None
+    fusion_score: Optional[float] = None
+    retrieval_source: Optional[str] = None
     provider: Optional[str]
     source_type: Optional[str]
     source_id: Optional[str]
@@ -104,6 +110,82 @@ class SupportSyncIndexJobRequest(BaseModel):
     providers: list[str] = Field(default_factory=lambda: ["zendesk", "intercom"])
     limit: int = Field(default=100, ge=1, le=200)
     seed_demo: bool = False
+
+
+class SupportRepeatTicketSampleResponse(BaseModel):
+    provider: str
+    external_id: str
+    subject: str
+    status: Optional[str]
+    priority: Optional[str]
+    source_url: Optional[str]
+    updated_at_external: Optional[str]
+
+
+class SupportRepeatTicketInsightResponse(BaseModel):
+    id: str
+    title: str
+    signals: list[str]
+    count: int
+    share: float
+    providers: list[str]
+    statuses: dict[str, int]
+    priorities: dict[str, int]
+    tags: list[str]
+    latest_updated_at: Optional[str]
+    sample_tickets: list[SupportRepeatTicketSampleResponse]
+    related_query: str
+    deflection_candidate: bool
+    potential_deflection_count: int
+    recommended_action: str
+
+
+class SupportRepeatWorkflowRequest(BaseModel):
+    cluster_id: Optional[str] = None
+    provider: Optional[str] = None
+    status: Optional[str] = None
+    limit: int = Field(default=200, ge=1, le=200)
+    min_count: int = Field(default=2, ge=2, le=10)
+
+
+class SupportResolutionPlaybookResponse(BaseModel):
+    title: str
+    status: str
+    verification_status: str
+    issue_signature: list[str]
+    recommended_resolution: str
+    resolution_steps: list[str]
+    customer_response_draft: str
+    confidence: str
+    evidence_count: int
+    citations: list[SupportCitationResponse]
+    next_action: str
+    guardrails: list[str]
+
+
+class SupportKnowledgeGapResponse(BaseModel):
+    status: str
+    severity: str
+    article_title: str
+    recommendation: str
+    rationale: str
+
+
+class SupportDeflectionEstimateResponse(BaseModel):
+    potential_ticket_count: int
+    confidence: str
+    estimated_agent_hours_saved: float
+    basis: str
+    rationale: str
+    assumptions: list[str]
+
+
+class SupportRepeatResolutionWorkflowResponse(BaseModel):
+    cluster: SupportRepeatTicketInsightResponse
+    query: str
+    playbook: SupportResolutionPlaybookResponse
+    knowledge_gap: SupportKnowledgeGapResponse
+    deflection_estimate: SupportDeflectionEstimateResponse
 
 
 def _require_admin(ctx: TenantContext) -> None:
@@ -357,6 +439,77 @@ async def index_support_tickets(
         raise HTTPException(status_code=503, detail=str(e)) from e
 
 
+@router.get("/insights/repeats", response_model=dict)
+async def get_repeat_ticket_insights(
+    provider: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = Query(default=200, ge=1, le=200),
+    min_count: int = Query(default=2, ge=2, le=10),
+    ctx: TenantContext = Depends(get_tenant_context),
+):
+    from app.memory.postgres import AsyncSessionLocal
+
+    if AsyncSessionLocal is None:
+        raise HTTPException(status_code=503, detail="database unavailable")
+
+    async with AsyncSessionLocal() as session:
+        result = await repeat_ticket_insights(
+            session,
+            tenant_id=ctx.tenant_id,
+            provider=provider,
+            status=status,
+            limit=limit,
+            min_count=min_count,
+        )
+    return {
+        "insights": [
+            SupportRepeatTicketInsightResponse(**insight).model_dump()
+            for insight in result["insights"]
+        ],
+        "summary": result["summary"],
+    }
+
+
+@router.post("/insights/repeats/workflow", response_model=dict)
+async def build_repeat_ticket_workflow(
+    body: SupportRepeatWorkflowRequest,
+    ctx: TenantContext = Depends(get_tenant_context),
+):
+    from app.memory.postgres import AsyncSessionLocal
+
+    if AsyncSessionLocal is None:
+        raise HTTPException(status_code=503, detail="database unavailable")
+
+    start = time.monotonic()
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await build_repeat_resolution_workflow(
+                session,
+                tenant_id=ctx.tenant_id,
+                cluster_id=body.cluster_id,
+                provider=body.provider,
+                status=body.status,
+                limit=body.limit,
+                min_count=body.min_count,
+            )
+    except SupportWorkflowError as e:
+        await _audit_workflow(ctx, False, start, {"error": str(e), "cluster_id": body.cluster_id})
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+    await _audit_workflow(
+        ctx,
+        True,
+        start,
+        {
+            "cluster_id": result["cluster"]["id"],
+            "confidence": result["playbook"]["confidence"],
+            "knowledge_gap": result["knowledge_gap"]["status"],
+            "potential_ticket_count": result["deflection_estimate"]["potential_ticket_count"],
+        },
+    )
+    return {"workflow": SupportRepeatResolutionWorkflowResponse(**result).model_dump()}
+
+
 @router.get("/search", response_model=dict)
 async def search_support_resolution_index(
     q: str = Query(..., min_length=2),
@@ -365,14 +518,21 @@ async def search_support_resolution_index(
     limit: int = Query(default=10, ge=1, le=50),
     ctx: TenantContext = Depends(get_tenant_context),
 ):
+    from app.memory.postgres import AsyncSessionLocal
+
+    if AsyncSessionLocal is None:
+        raise HTTPException(status_code=503, detail="database unavailable")
+
     try:
-        results = await support_indexer.search(
-            tenant_id=ctx.tenant_id,
-            query=q,
-            provider=provider,
-            status=status,
-            limit=limit,
-        )
+        async with AsyncSessionLocal() as session:
+            results = await support_indexer.search(
+                tenant_id=ctx.tenant_id,
+                query=q,
+                provider=provider,
+                status=status,
+                limit=limit,
+                session=session,
+            )
     except SupportIndexError as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
 
@@ -388,16 +548,23 @@ async def resolve_support_issue(
     body: SupportResolveRequest,
     ctx: TenantContext = Depends(get_tenant_context),
 ):
+    from app.memory.postgres import AsyncSessionLocal
+
+    if AsyncSessionLocal is None:
+        raise HTTPException(status_code=503, detail="database unavailable")
+
     start = time.monotonic()
     limit = min(max(body.limit, 1), 10)
     try:
-        result = await support_resolver.resolve(
-            tenant_id=ctx.tenant_id,
-            question=body.question,
-            provider=body.provider,
-            status=body.status,
-            limit=limit,
-        )
+        async with AsyncSessionLocal() as session:
+            result = await support_resolver.resolve(
+                tenant_id=ctx.tenant_id,
+                question=body.question,
+                provider=body.provider,
+                status=body.status,
+                limit=limit,
+                session=session,
+            )
     except SupportResolveError as e:
         await _audit_resolve(ctx, False, start, {"error": str(e), "provider": body.provider})
         raise HTTPException(status_code=503, detail=str(e)) from e
@@ -636,5 +803,25 @@ async def _audit_resolve(
         status_code=200 if success else 503,
         duration_ms=int((time.monotonic() - start) * 1000),
         sources_used=[extra["provider"]] if extra.get("provider") else [],
+        extra={"success": success, **extra},
+    )
+
+
+async def _audit_workflow(
+    ctx: TenantContext,
+    success: bool,
+    start: float,
+    extra: dict[str, Any],
+) -> None:
+    await audit_mgr.log_event(
+        tenant_id=ctx.tenant_id,
+        user_id=ctx.user_id,
+        role=ctx.role,
+        event_type="support.workflow",
+        method="POST",
+        path="/api/v1/support/insights/repeats/workflow",
+        status_code=200 if success else 404,
+        duration_ms=int((time.monotonic() - start) * 1000),
+        sources_used=[extra["cluster_id"]] if extra.get("cluster_id") else [],
         extra={"success": success, **extra},
     )

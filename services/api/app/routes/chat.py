@@ -2,8 +2,9 @@
 import asyncio
 import json
 import logging
+import time
 import uuid
-from typing import AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -18,12 +19,22 @@ from app.cache.semantic import SemanticCache
 from app.cache.semantic import semantic_cache as global_cache
 from app.clients.ray_llm import RayLLMClient
 from app.clients.ray_llm import llm_client as global_llm
+from app.config import settings
 from app.memory.postgres import PostgresMemory
 from app.memory.postgres import postgres_memory as global_memory
 from app.middleware.rate_limit import check_rate_limit
+from app.tracing import add_span_event, set_span_attributes, start_span
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _ndjson(payload: dict[str, Any]) -> str:
+    return json.dumps(payload) + "\n"
+
+
+def _elapsed_ms(start: float) -> int:
+    return int((time.monotonic() - start) * 1000)
 
 
 # ── Audit log helper ─────────────────────────────────────────────────
@@ -257,11 +268,64 @@ async def chat_stream(
 
         # Generator for cached response
         async def stream_cache():
-            yield json.dumps({
-                "type": "answer",
-                "content": cached_ans,
-                "session_id": session_id
-            }) + "\n"
+            with start_span(
+                "chat.stream",
+                tenant_id=tenant_id,
+                session_id=session_id,
+                user_role=ctx.role,
+                cached=True,
+                message_length=len(req.message or ""),
+            ) as span:
+                stream_start = time.monotonic()
+                yield _ndjson({
+                    "type": "stream_start",
+                    "session_id": session_id,
+                })
+                first_token_ms = _elapsed_ms(stream_start)
+                set_span_attributes(
+                    span,
+                    first_token_ms=first_token_ms,
+                    first_token_source="cache",
+                )
+                add_span_event(
+                    span,
+                    "llm.first_token",
+                    time_ms=first_token_ms,
+                    source="cache",
+                )
+                yield _ndjson({
+                    "type": "first_token",
+                    "time_ms": first_token_ms,
+                    "source": "cache",
+                    "session_id": session_id,
+                })
+                yield _ndjson({
+                    "type": "answer",
+                    "content": cached_ans,
+                    "session_id": session_id
+                })
+                duration_ms = _elapsed_ms(stream_start)
+                output_chars = len(cached_ans or "")
+                set_span_attributes(
+                    span,
+                    total_latency_ms=duration_ms,
+                    output_chars=output_chars,
+                )
+                add_span_event(
+                    span,
+                    "llm.total_latency",
+                    duration_ms=duration_ms,
+                    output_chars=output_chars,
+                    cached=True,
+                )
+                yield _ndjson({
+                    "type": "stream_done",
+                    "duration_ms": duration_ms,
+                    "first_token_ms": first_token_ms,
+                    "output_chars": output_chars,
+                    "cached": True,
+                    "session_id": session_id,
+                })
 
         # Async Background: Log interaction even if cached
         background_tasks.add_task(
@@ -326,14 +390,218 @@ async def chat_stream(
 
     # 5. Define Generator for Streaming Response
     async def event_generator() -> AsyncGenerator[str, None]:
+        span_cm = start_span(
+            "chat.stream",
+            tenant_id=tenant_id,
+            session_id=session_id,
+            user_role=ctx.role,
+            cached=False,
+            message_length=len(req.message or ""),
+            llm_stream_response=settings.LLM_STREAM_RESPONSE,
+        )
+        span = span_cm.__enter__()
         final_answer = ""
+        streamed_chars = 0
+        first_token_ms: int | None = None
+        stream_start = time.monotonic()
         _collected_sources: list[str] = []
+        answer_stream_queue: asyncio.Queue[dict[str, Any]] | None = None
+        if settings.LLM_STREAM_RESPONSE:
+            answer_stream_queue = asyncio.Queue()
+            initial_state["answer_stream_queue"] = answer_stream_queue
+
+        def first_token_event(source: str) -> str | None:
+            nonlocal first_token_ms
+            if first_token_ms is not None:
+                return None
+            first_token_ms = _elapsed_ms(stream_start)
+            set_span_attributes(
+                span,
+                first_token_ms=first_token_ms,
+                first_token_source=source,
+            )
+            add_span_event(
+                span,
+                "llm.first_token",
+                time_ms=first_token_ms,
+                source=source,
+            )
+            return _ndjson({
+                "type": "first_token",
+                "time_ms": first_token_ms,
+                "source": source,
+                "session_id": session_id,
+            })
+
+        async def emit_graph_event(event: dict[str, Any]) -> AsyncGenerator[str, None]:
+            nonlocal final_answer, streamed_chars
+            # event is a dict like {'retriever': {...state updates...}}
+            node_name = list(event.keys())[0]
+            node_data = event[node_name]
+
+            # Emit Status Update
+            yield _ndjson({
+                "type": "status",
+                "node": node_name,
+                "session_id": session_id,
+                "info": f"Completed step: {node_name}"
+            })
+
+            # Stream tool execution results
+            if node_name == "tool_node":
+                tool_result = node_data.get("tool_result", "")
+                yield _ndjson({
+                    "type": "tool_result",
+                    "tool_name": node_data.get("tool_name", ""),
+                    "content": tool_result[:500],
+                    "session_id": session_id,
+                })
+
+            # Stream evaluation results
+            if node_name == "evaluator":
+                yield _ndjson({
+                    "type": "evaluation",
+                    "score": node_data.get("eval_score", 0),
+                    "reasoning": node_data.get("eval_reasoning", ""),
+                    "session_id": session_id,
+                })
+
+            # Stream retry notification
+            if node_name == "retry":
+                yield _ndjson({
+                    "type": "status",
+                    "node": "retry",
+                    "session_id": session_id,
+                    "info": "Answer quality below threshold, retrying with refined query...",
+                })
+
+            # Stream multi-step progress
+            if node_name == "step_advance":
+                yield _ndjson({
+                    "type": "step_progress",
+                    "current_step": node_data.get("current_step_index", 0),
+                    "session_id": session_id,
+                })
+
+            # Stream retrieved images to frontend (multimodal)
+            if node_name == "retriever":
+                docs = node_data.get("documents", [])
+                # Collect source identifiers for the audit log
+                for d in docs:
+                    if isinstance(d, dict):
+                        fn = d.get("filename") or d.get("source")
+                        if fn and fn not in _collected_sources:
+                            _collected_sources.append(fn)
+                image_docs = [
+                    d for d in docs
+                    if isinstance(d, dict) and d.get("type") == "image"
+                ]
+                if image_docs:
+                    yield _ndjson({
+                        "type": "context_images",
+                        "images": [
+                            {
+                                "url": d.get("url", ""),
+                                "caption": d.get("caption", ""),
+                                "filename": d.get("filename", ""),
+                            }
+                            for d in image_docs
+                        ],
+                        "session_id": session_id,
+                    })
+
+            # Stream context layers to frontend (business context, glossary)
+            if node_name == "context_enricher":
+                ctx_layers = node_data.get("context_layers", "")
+                if ctx_layers:
+                    yield _ndjson({
+                        "type": "context_layers",
+                        "content": ctx_layers,
+                        "session_id": session_id,
+                    })
+
+            # Stream data analytics results
+            if node_name == "data_analytics":
+                sql = node_data.get("data_query_sql", "")
+                time_ms = node_data.get("data_query_time_ms", 0)
+                result_json = node_data.get("data_query_result", "")
+                error = node_data.get("data_query_error", "")
+
+                logger.info(
+                    "data_analytics event: sql=%d chars, result=%d chars, error=%s",
+                    len(sql), len(result_json), error or "none",
+                )
+
+                if sql:
+                    yield _ndjson({
+                        "type": "sql_query",
+                        "sql": sql,
+                        "time_ms": time_ms,
+                        "session_id": session_id,
+                    })
+
+                if result_json:
+                    try:
+                        from app.analytics.formatter import (
+                            format_as_table_html,
+                            suggest_chart_spec,
+                        )
+                        result_data = json.loads(result_json)
+                        chart_spec = suggest_chart_spec(
+                            result_data["columns"],
+                            result_data["rows"],
+                            req.message,
+                        )
+                        yield _ndjson({
+                            "type": "data_result",
+                            "columns": result_data["columns"],
+                            "rows": result_data["rows"][:50],
+                            "row_count": result_data["row_count"],
+                            "table_html": format_as_table_html(
+                                result_data["columns"], result_data["rows"]
+                            ),
+                            "chart_spec": chart_spec,
+                            "session_id": session_id,
+                        })
+                    except Exception as fmt_err:
+                        logger.error("Data result formatting error: %s", fmt_err, exc_info=True)
+
+                if error:
+                    yield _ndjson({
+                        "type": "data_error",
+                        "content": error,
+                        "session_id": session_id,
+                    })
+
+            # Capture Final Answer from Responder Node
+            if node_name == "responder":
+                # The responder node appends the final AI message to state['messages']
+                if "messages" in node_data and node_data["messages"]:
+                    ai_msg = node_data["messages"][-1]
+                    final_answer = ai_msg.get("content", "")
+                    if final_answer:
+                        first_event = first_token_event("llm")
+                        if first_event:
+                            yield first_event
+                        streamed_chars = max(streamed_chars, len(final_answer))
+
+                        # Full-answer event remains for backward compatibility and final reconciliation.
+                        yield _ndjson({
+                            "type": "answer",
+                            "content": final_answer,
+                            "session_id": session_id
+                        })
 
         try:
+            yield _ndjson({
+                "type": "stream_start",
+                "session_id": session_id,
+            })
+
             # Run the LangGraph
             # Pass tenant context in 'configurable' so agent nodes can use it
             # (e.g. retriever node can filter Qdrant/Neo4j by tenant_id)
-            async for event in agent_app.astream(
+            graph_iter = agent_app.astream(
                 initial_state,
                 config={
                     "configurable": {
@@ -342,159 +610,59 @@ async def chat_stream(
                         "tenant_id": tenant_id,
                     }
                 }
-            ):
+            ).__aiter__()
 
-                # event is a dict like {'retriever': {...state updates...}}
-                node_name = list(event.keys())[0]
-                node_data = event[node_name]
+            graph_done = False
+            answer_done = answer_stream_queue is None
+            graph_task: asyncio.Task | None = asyncio.create_task(graph_iter.__anext__())
+            answer_task: asyncio.Task | None = (
+                asyncio.create_task(answer_stream_queue.get())
+                if answer_stream_queue is not None
+                else None
+            )
 
-                # Emit Status Update
-                yield json.dumps({
-                    "type": "status",
-                    "node": node_name,
-                    "session_id": session_id,
-                    "info": f"Completed step: {node_name}"
-                }) + "\n"
+            try:
+                while not graph_done:
+                    tasks = [task for task in (graph_task, answer_task) if task is not None]
+                    if not tasks:
+                        break
+                    done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
 
-                # Stream tool execution results
-                if node_name == "tool_node":
-                    tool_result = node_data.get("tool_result", "")
-                    yield json.dumps({
-                        "type": "tool_result",
-                        "tool_name": node_data.get("tool_name", ""),
-                        "content": tool_result[:500],
-                        "session_id": session_id,
-                    }) + "\n"
+                    if answer_task is not None and answer_task in done:
+                        item = answer_task.result()
+                        if item.get("type") == "delta":
+                            delta = item.get("content", "")
+                            if delta:
+                                first_event = first_token_event("llm_stream")
+                                if first_event:
+                                    yield first_event
+                                streamed_chars += len(delta)
+                                yield _ndjson({
+                                    "type": "answer_delta",
+                                    "delta": delta,
+                                    "session_id": session_id,
+                                })
+                        elif item.get("type") == "done":
+                            answer_done = True
+                            answer_task = None
 
-                # Stream evaluation results
-                if node_name == "evaluator":
-                    yield json.dumps({
-                        "type": "evaluation",
-                        "score": node_data.get("eval_score", 0),
-                        "reasoning": node_data.get("eval_reasoning", ""),
-                        "session_id": session_id,
-                    }) + "\n"
+                        if not answer_done and answer_stream_queue is not None:
+                            answer_task = asyncio.create_task(answer_stream_queue.get())
 
-                # Stream retry notification
-                if node_name == "retry":
-                    yield json.dumps({
-                        "type": "status",
-                        "node": "retry",
-                        "session_id": session_id,
-                        "info": "Answer quality below threshold, retrying with refined query...",
-                    }) + "\n"
-
-                # Stream multi-step progress
-                if node_name == "step_advance":
-                    yield json.dumps({
-                        "type": "step_progress",
-                        "current_step": node_data.get("current_step_index", 0),
-                        "session_id": session_id,
-                    }) + "\n"
-
-                # Stream retrieved images to frontend (multimodal)
-                if node_name == "retriever":
-                    docs = node_data.get("documents", [])
-                    # Collect source identifiers for the audit log
-                    for d in docs:
-                        if isinstance(d, dict):
-                            fn = d.get("filename") or d.get("source")
-                            if fn and fn not in _collected_sources:
-                                _collected_sources.append(fn)
-                    image_docs = [
-                        d for d in docs
-                        if isinstance(d, dict) and d.get("type") == "image"
-                    ]
-                    if image_docs:
-                        yield json.dumps({
-                            "type": "context_images",
-                            "images": [
-                                {
-                                    "url": d.get("url", ""),
-                                    "caption": d.get("caption", ""),
-                                    "filename": d.get("filename", ""),
-                                }
-                                for d in image_docs
-                            ],
-                            "session_id": session_id,
-                        }) + "\n"
-
-                # Stream context layers to frontend (business context, glossary)
-                if node_name == "context_enricher":
-                    ctx_layers = node_data.get("context_layers", "")
-                    if ctx_layers:
-                        yield json.dumps({
-                            "type": "context_layers",
-                            "content": ctx_layers,
-                            "session_id": session_id,
-                        }) + "\n"
-
-                # Stream data analytics results
-                if node_name == "data_analytics":
-                    sql = node_data.get("data_query_sql", "")
-                    time_ms = node_data.get("data_query_time_ms", 0)
-                    result_json = node_data.get("data_query_result", "")
-                    error = node_data.get("data_query_error", "")
-
-                    logger.info(
-                        "data_analytics event: sql=%d chars, result=%d chars, error=%s",
-                        len(sql), len(result_json), error or "none",
-                    )
-
-                    if sql:
-                        yield json.dumps({
-                            "type": "sql_query",
-                            "sql": sql,
-                            "time_ms": time_ms,
-                            "session_id": session_id,
-                        }) + "\n"
-
-                    if result_json:
+                    if graph_task is not None and graph_task in done:
                         try:
-                            from app.analytics.formatter import (
-                                format_as_table_html,
-                                suggest_chart_spec,
-                            )
-                            result_data = json.loads(result_json)
-                            chart_spec = suggest_chart_spec(
-                                result_data["columns"],
-                                result_data["rows"],
-                                req.message,
-                            )
-                            yield json.dumps({
-                                "type": "data_result",
-                                "columns": result_data["columns"],
-                                "rows": result_data["rows"][:50],
-                                "row_count": result_data["row_count"],
-                                "table_html": format_as_table_html(
-                                    result_data["columns"], result_data["rows"]
-                                ),
-                                "chart_spec": chart_spec,
-                                "session_id": session_id,
-                            }) + "\n"
-                        except Exception as fmt_err:
-                            logger.error("Data result formatting error: %s", fmt_err, exc_info=True)
-
-                    if error:
-                        yield json.dumps({
-                            "type": "data_error",
-                            "content": error,
-                            "session_id": session_id,
-                        }) + "\n"
-
-                # Capture Final Answer from Responder Node
-                if node_name == "responder":
-                    # The responder node appends the final AI message to state['messages']
-                    if "messages" in node_data and node_data["messages"]:
-                        ai_msg = node_data["messages"][-1]
-                        final_answer = ai_msg.get("content", "")
-
-                        # Stream the chunk
-                        yield json.dumps({
-                            "type": "answer",
-                            "content": final_answer,
-                            "session_id": session_id
-                        }) + "\n"
+                            event = graph_task.result()
+                        except StopAsyncIteration:
+                            graph_done = True
+                            graph_task = None
+                        else:
+                            async for payload in emit_graph_event(event):
+                                yield payload
+                            graph_task = asyncio.create_task(graph_iter.__anext__())
+            finally:
+                for pending in (graph_task, answer_task):
+                    if pending is not None and not pending.done():
+                        pending.cancel()
 
             # Generate follow-up suggestions before closing the stream.
             # Best-effort, never blocks more than a few hundred ms.
@@ -505,11 +673,11 @@ async def chat_stream(
                         timeout=4.0,
                     )
                     if suggestions:
-                        yield json.dumps({
+                        yield _ndjson({
                             "type": "follow_ups",
                             "suggestions": suggestions,
                             "session_id": session_id,
-                        }) + "\n"
+                        })
                 except (asyncio.TimeoutError, Exception) as fu_err:
                     logger.debug("follow-ups skipped: %s", fu_err)
 
@@ -556,11 +724,39 @@ async def chat_stream(
                     )
                 )
 
+            duration_ms = _elapsed_ms(stream_start)
+            output_chars = max(streamed_chars, len(final_answer or ""))
+            set_span_attributes(
+                span,
+                total_latency_ms=duration_ms,
+                output_chars=output_chars,
+                source_count=len(_collected_sources),
+            )
+            add_span_event(
+                span,
+                "llm.total_latency",
+                duration_ms=duration_ms,
+                output_chars=output_chars,
+                cached=False,
+                source_count=len(_collected_sources),
+            )
+            yield _ndjson({
+                "type": "stream_done",
+                "duration_ms": duration_ms,
+                "first_token_ms": first_token_ms,
+                "output_chars": output_chars,
+                "cached": False,
+                "session_id": session_id,
+            })
+
         except Exception as e:
             logger.error(f"Error in chat stream: {e}", exc_info=True)
-            yield json.dumps({
+            set_span_attributes(span, stream_error=True, error_type=e.__class__.__name__)
+            yield _ndjson({
                 "type": "error",
                 "content": "An internal error occurred."
-            }) + "\n"
+            })
+        finally:
+            span_cm.__exit__(None, None, None)
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")

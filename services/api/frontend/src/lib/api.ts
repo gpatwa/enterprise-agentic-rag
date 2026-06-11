@@ -208,6 +208,36 @@ export const api = {
     if (!res.ok) throw new Error(`seedSupportDemo failed: ${res.status}`);
     return res.json();
   },
+  async getSupportRepeatInsights(opts: {
+    provider?: 'zendesk' | 'intercom';
+    status?: string;
+    limit?: number;
+    min_count?: number;
+  } = {}): Promise<import('@/types').SupportRepeatInsightsResponse> {
+    const params = new URLSearchParams();
+    if (opts.provider) params.set('provider', opts.provider);
+    if (opts.status) params.set('status', opts.status);
+    if (opts.limit) params.set('limit', String(opts.limit));
+    if (opts.min_count) params.set('min_count', String(opts.min_count));
+    const q = params.toString();
+    const res = await authedFetch(`/support/insights/repeats${q ? `?${q}` : ''}`);
+    if (!res.ok) throw new Error(`getSupportRepeatInsights failed: ${res.status}`);
+    return res.json();
+  },
+  async buildSupportResolutionWorkflow(opts: {
+    cluster_id?: string;
+    provider?: 'zendesk' | 'intercom';
+    status?: string;
+    limit?: number;
+    min_count?: number;
+  }): Promise<import('@/types').SupportResolutionWorkflowResponse> {
+    const res = await authedFetch('/support/insights/repeats/workflow', {
+      method: 'POST',
+      body: JSON.stringify(opts),
+    });
+    if (!res.ok) throw new Error(`buildSupportResolutionWorkflow failed: ${res.status}`);
+    return res.json();
+  },
   async startSupportSyncIndexJob(opts: {
     providers?: Array<'zendesk' | 'intercom'>;
     limit?: number;

@@ -25,14 +25,33 @@ function emptyTurn(question: string, sessionId?: string | null): AskTurn {
     dataError: null,
     toolResults: [],
     answer: null,
+    startedAt: Date.now(),
+    firstTokenMs: null,
+    serverFirstTokenMs: null,
+    totalMs: null,
+    serverTotalMs: null,
+    receivedAnswerDelta: false,
     followUps: [],
     error: null,
     streaming: true,
   };
 }
 
-function applyEvent(turn: AskTurn, e: ChatEvent): AskTurn {
+function applyEvent(
+  turn: AskTurn,
+  e: ChatEvent,
+  observed: { firstTokenMs?: number; elapsedMs?: number } = {}
+): AskTurn {
   switch (e.type) {
+    case 'stream_start':
+      return { ...turn, sessionId: turn.sessionId ?? e.session_id ?? null };
+    case 'first_token':
+      return {
+        ...turn,
+        sessionId: turn.sessionId ?? e.session_id ?? null,
+        firstTokenMs: turn.firstTokenMs ?? observed.firstTokenMs ?? e.time_ms,
+        serverFirstTokenMs: e.time_ms,
+      };
     case 'status': {
       // Capture session_id on the first status event
       const sessionId = turn.sessionId ?? e.session_id ?? null;
@@ -66,8 +85,30 @@ function applyEvent(turn: AskTurn, e: ChatEvent): AskTurn {
       return { ...turn, dataResult: e };
     case 'data_error':
       return { ...turn, dataError: e.content };
+    case 'answer_delta':
+      return {
+        ...turn,
+        sessionId: turn.sessionId ?? e.session_id ?? null,
+        answer: `${turn.answer ?? ''}${e.delta}`,
+        firstTokenMs: turn.firstTokenMs ?? observed.firstTokenMs ?? null,
+        receivedAnswerDelta: true,
+      };
     case 'answer':
-      return { ...turn, answer: e.content };
+      return {
+        ...turn,
+        sessionId: turn.sessionId ?? e.session_id ?? null,
+        answer: e.content,
+        firstTokenMs: turn.firstTokenMs ?? observed.firstTokenMs ?? null,
+      };
+    case 'stream_done':
+      return {
+        ...turn,
+        sessionId: turn.sessionId ?? e.session_id ?? null,
+        streaming: false,
+        totalMs: observed.elapsedMs ?? turn.totalMs,
+        serverTotalMs: e.duration_ms,
+        serverFirstTokenMs: e.first_token_ms ?? turn.serverFirstTokenMs,
+      };
     case 'follow_ups':
       return { ...turn, followUps: e.suggestions };
     case 'error':
@@ -109,15 +150,32 @@ export function useAsk() {
       // bubbles to the catch below.
       const streamOnce = async (token: string) => {
         let acc = initial;
+        let firstTokenTracked = false;
         for await (const ev of chatStream({
           message,
           sessionId: opts.sessionId ?? undefined,
           token,
           signal: ctrl.signal,
         })) {
-          acc = applyEvent(acc, ev);
+          const elapsedMs = Math.round(performance.now() - t0);
+          const isFirstTokenEvent =
+            ev.type === 'first_token' || ev.type === 'answer_delta' || ev.type === 'answer';
+          const firstTokenMs =
+            acc.firstTokenMs ?? (isFirstTokenEvent ? elapsedMs : undefined);
+
+          acc = applyEvent(acc, ev, { firstTokenMs, elapsedMs });
           setTurn(acc);
           setLastUpdate(Date.now());
+
+          if (!firstTokenTracked && acc.firstTokenMs !== null) {
+            firstTokenTracked = true;
+            track('answer.first_token', {
+              ttft_ms: acc.firstTokenMs,
+              server_ttft_ms: acc.serverFirstTokenMs,
+              source: ev.type === 'first_token' ? ev.source ?? null : ev.type,
+              is_continuation: Boolean(opts.sessionId),
+            });
+          }
         }
         return acc;
       };
@@ -140,9 +198,19 @@ export function useAsk() {
           }
         }
         // Finalize
-        setTurn((prev) => (prev ? { ...prev, streaming: false } : prev));
+        const durationMs = Math.round(performance.now() - t0);
+        setTurn((prev) =>
+          prev
+            ? { ...prev, streaming: false, totalMs: prev.totalMs ?? durationMs }
+            : prev
+        );
         track('answer.received', {
-          duration_ms: Math.round(performance.now() - t0),
+          duration_ms: durationMs,
+          ttft_ms: acc.firstTokenMs,
+          server_ttft_ms: acc.serverFirstTokenMs,
+          server_duration_ms: acc.serverTotalMs,
+          streamed: acc.receivedAnswerDelta,
+          output_chars: acc.answer?.length ?? 0,
           had_sql: Boolean(acc.sql),
           had_data: Boolean(acc.dataResult),
           eval_score: acc.evalScore ?? null,

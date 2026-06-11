@@ -6,6 +6,12 @@ interface Props {
   streaming: boolean;
   /** Last update timestamp (ms epoch) — used to detect a stalled stream. */
   lastUpdate: number;
+  /** Turn start timestamp (ms epoch), used to show live TTFT while waiting. */
+  startedAt?: number;
+  /** Client-observed time to first token/delta. */
+  firstTokenMs?: number | null;
+  /** Server-observed TTFT when available. */
+  serverFirstTokenMs?: number | null;
   /** ms without an event before we flag the stream as stalled. */
   stallMs?: number;
 }
@@ -14,8 +20,16 @@ interface Props {
  * Tiny badge that shows live/stalled status during a chat stream.
  * Watches `lastUpdate` and flips to "stalled" once the gap exceeds `stallMs`.
  */
-export function StreamHealthBadge({ streaming, lastUpdate, stallMs = 8_000 }: Props) {
+export function StreamHealthBadge({
+  streaming,
+  lastUpdate,
+  startedAt,
+  firstTokenMs,
+  serverFirstTokenMs,
+  stallMs = 8_000,
+}: Props) {
   const [stalled, setStalled] = useState(false);
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     if (!streaming) {
@@ -29,7 +43,25 @@ export function StreamHealthBadge({ streaming, lastUpdate, stallMs = 8_000 }: Pr
     return () => clearInterval(id);
   }, [streaming, lastUpdate, stallMs]);
 
-  if (!streaming) return null;
+  useEffect(() => {
+    if (!streaming || firstTokenMs != null) return;
+    const id = window.setInterval(() => setNow(Date.now()), 100);
+    return () => clearInterval(id);
+  }, [streaming, firstTokenMs]);
+
+  if (!streaming && firstTokenMs == null) return null;
+
+  const liveTtftMs = startedAt ? Math.max(now - startedAt, 0) : null;
+  const ttftLabel =
+    firstTokenMs != null
+      ? `TTFT ${formatLatency(firstTokenMs)}`
+      : liveTtftMs != null
+        ? `TTFT ${formatLatency(liveTtftMs)} waiting`
+        : 'Waiting for first token';
+  const serverLabel =
+    serverFirstTokenMs != null && serverFirstTokenMs !== firstTokenMs
+      ? ` · server ${formatLatency(serverFirstTokenMs)}`
+      : '';
 
   return (
     <div
@@ -45,14 +77,19 @@ export function StreamHealthBadge({ streaming, lastUpdate, stallMs = 8_000 }: Pr
       {stalled ? (
         <>
           <WifiOff className="w-3 h-3" />
-          <span>Connection stalled — still waiting…</span>
+          <span>{ttftLabel} · stalled{serverLabel}</span>
         </>
       ) : (
         <>
           <CircleDot className="w-3 h-3 animate-pulse" />
-          <span>Streaming</span>
+          <span>{firstTokenMs == null ? ttftLabel : `${ttftLabel} · Streaming`}{serverLabel}</span>
         </>
       )}
     </div>
   );
+}
+
+function formatLatency(ms: number) {
+  if (ms < 1000) return `${Math.max(0, Math.round(ms))}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
 }

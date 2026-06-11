@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402,I001
 """
 Internal-alpha seed script.
 
 Populates the database with realistic-looking data so a fresh deploy is
 demo-ready immediately:
 
-    - Sample threads (5) with a few messages each
+    - Sample threads (5) with a few messages each for the local UI demo user
     - Saved questions (6, two pinned)
     - Glossary terms (4) — ARR, Churn, MQL, NRR
     - One MCP demo connection (github) so the App-connectors UI shows
@@ -21,6 +22,7 @@ Usage
     cd services/api
     DATABASE_URL='postgresql://ragadmin:changeme@localhost:5432/rag_db' \
         MCP_ENCRYPTION_KEY='<fernet key>' \
+        DEMO_USER='ui-user' \
         python3 ../../scripts/seed_alpha.py
 
 Or via the Makefile target:
@@ -31,7 +33,7 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # Load .env if available (matches existing seed scripts' convention)
@@ -71,11 +73,16 @@ from app.mcp.models import MCPConnection  # noqa: F401
 
 # Sync URL for seeding (we don't need async overhead here)
 SYNC_URL = os.environ["DATABASE_URL"].replace("+asyncpg", "")
-TENANT_ID = "default"
-DEMO_USER = "alpha-demo"
+TENANT_ID = os.environ.get("DEMO_TENANT_ID", "default")
+DEMO_USER = os.environ.get("DEMO_USER", "ui-user")
 
 
 # ── Sample data ──────────────────────────────────────────────────────
+
+
+def _utcnow() -> datetime:
+    """Naive UTC timestamp for existing timestamp-without-timezone columns."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 SAMPLE_THREADS = [
@@ -259,7 +266,7 @@ def main() -> None:
 
 def _seed_threads_and_messages(session: Session, counts: dict) -> None:
     """One Thread per fixture + one ChatHistory row per message."""
-    base_time = datetime.utcnow() - timedelta(hours=72)
+    base_time = _utcnow() - timedelta(hours=72)
     for i, t in enumerate(SAMPLE_THREADS):
         thread = session.get(Thread, t["id"])
         if thread is None:
@@ -276,6 +283,8 @@ def _seed_threads_and_messages(session: Session, counts: dict) -> None:
             session.add(thread)
             counts["threads"] += 1
         else:
+            thread.tenant_id = TENANT_ID
+            thread.user_id = DEMO_USER
             thread.title = t["title"]
             thread.pinned = t["pinned"]
             thread.message_count = len(t["messages"])
@@ -318,7 +327,7 @@ def _seed_saved_questions(session: Session, counts: dict) -> None:
                     scope=q["scope"],
                     pinned=q["pinned"],
                     last_result_preview=q["preview"],
-                    last_run_at=datetime.utcnow() - timedelta(hours=4),
+                    last_run_at=_utcnow() - timedelta(hours=4),
                 )
             )
             counts["saved_questions"] += 1
@@ -394,7 +403,7 @@ def _seed_mcp_demo_connection(session: Session, counts: dict) -> None:
                 server_name="github",
                 status=MCPConnectionStatus.ENABLED.value,
                 encrypted_config=encrypted,
-                last_health_check=datetime.utcnow(),
+                last_health_check=_utcnow(),
                 error_message=None,
             )
         )
@@ -402,7 +411,7 @@ def _seed_mcp_demo_connection(session: Session, counts: dict) -> None:
     else:
         existing.status = MCPConnectionStatus.ENABLED.value
         existing.encrypted_config = encrypted
-        existing.last_health_check = datetime.utcnow()
+        existing.last_health_check = _utcnow()
         existing.error_message = None
 
 

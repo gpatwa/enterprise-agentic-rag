@@ -62,8 +62,8 @@ class TestSupportDemoData:
 
                 assert first["provider"] == "zendesk"
                 assert first["customers_created"] == 3
-                assert first["tickets_created"] == 3
-                assert first["comments_created"] == 4
+                assert first["tickets_created"] == 6
+                assert first["comments_created"] == 7
                 assert first["articles_created"] == 3
                 assert second["customers_created"] == 0
                 assert second["tickets_created"] == 0
@@ -80,8 +80,8 @@ class TestSupportDemoData:
                 )
 
                 assert customer_count == 3
-                assert ticket_count == 3
-                assert comment_count == 4
+                assert ticket_count == 6
+                assert comment_count == 7
                 assert article_count == 3
                 assert sync_count == 2
                 assert latest_run is not None
@@ -107,10 +107,153 @@ class TestSupportDemoData:
         try:
             body = await routes.seed_support_demo(_ctx())
 
-            assert body["seed"]["tickets_created"] == 3
+            assert body["seed"]["tickets_created"] == 6
             assert body["index_status"] == "failed"
             assert body["index"] is None
             assert "support index clients" in body["index_error"]
+        finally:
+            await engine.dispose()
+
+
+class TestSupportRepeatInsights:
+    @pytest.mark.asyncio
+    async def test_repeat_ticket_insights_find_seeded_demo_clusters(self):
+        from app.support.demo import seed_demo_data
+        from app.support.insights import repeat_ticket_insights
+
+        engine, Session = await _session()
+        try:
+            async with Session() as session:
+                await seed_demo_data(
+                    session,
+                    tenant_id="tenant-a",
+                    requested_by="alice",
+                )
+                result = await repeat_ticket_insights(
+                    session,
+                    tenant_id="tenant-a",
+                    provider="zendesk",
+                )
+
+                assert result["summary"]["tickets_analyzed"] == 6
+                assert result["summary"]["repeat_clusters"] == 2
+                assert result["summary"]["potential_deflection_count"] == 3
+
+                clusters = {insight["title"]: insight for insight in result["insights"]}
+                export = clusters["Export + Timeout"]
+                billing = clusters["Billing + Invoice"]
+
+                assert export["count"] == 3
+                assert export["signals"] == ["export", "timeout"]
+                assert export["deflection_candidate"] is True
+                assert export["potential_deflection_count"] == 2
+                assert export["statuses"]["open"] == 1
+                assert "Search" not in export["related_query"]
+                assert len(export["sample_tickets"]) == 3
+                assert billing["count"] == 2
+        finally:
+            await engine.dispose()
+
+    @pytest.mark.asyncio
+    async def test_repeat_workflow_builds_playbook_gap_and_deflection(self, monkeypatch):
+        import app.support.workflow as workflow_mod
+        from app.support.demo import seed_demo_data
+
+        class FakeResolver:
+            def __init__(self):
+                self.calls = []
+
+            async def resolve(self, **kwargs):
+                self.calls.append(kwargs)
+                return {
+                    "answer": "Restart the export worker and retry the export [1].",
+                    "confidence": "high",
+                    "citations": [
+                        {
+                            "label": "[1]",
+                            "provider": "zendesk",
+                            "source_type": "ticket",
+                            "source_id": "ZD-1001",
+                            "title": "Export timeout after CSV download",
+                            "source_url": "https://example.zendesk.com/tickets/1001",
+                            "score": 0.93,
+                        }
+                    ],
+                    "matches": [
+                        {
+                            "id": "point-1",
+                            "score": 0.93,
+                            "provider": "zendesk",
+                            "source_type": "ticket",
+                            "source_id": "ZD-1001",
+                            "title": "Export timeout after CSV download",
+                            "text": "Restarting the export worker resolved the timeout.",
+                            "status": "solved",
+                            "priority": "high",
+                            "tags": ["export", "timeout"],
+                            "source_url": "https://example.zendesk.com/tickets/1001",
+                            "chunk_index": 0,
+                            "chunk_count": 1,
+                        }
+                    ],
+                    "next_action": "suggest_agent_response",
+                }
+
+        fake_resolver = FakeResolver()
+        monkeypatch.setattr(workflow_mod, "support_resolver", fake_resolver)
+
+        engine, Session = await _session()
+        try:
+            async with Session() as session:
+                await seed_demo_data(
+                    session,
+                    tenant_id="tenant-a",
+                    requested_by="alice",
+                )
+                result = await workflow_mod.build_repeat_resolution_workflow(
+                    session,
+                    tenant_id="tenant-a",
+                    cluster_id="tag:export|timeout",
+                    provider="zendesk",
+                )
+
+                assert result["cluster"]["title"] == "Export + Timeout"
+                assert result["playbook"]["status"] == "ready_for_agent_review"
+                assert result["playbook"]["verification_status"] == "evidence_ready"
+                assert result["knowledge_gap"]["status"] == "missing_kb_or_macro"
+                assert result["deflection_estimate"]["potential_ticket_count"] == 2
+                assert result["deflection_estimate"]["confidence"] == "high"
+                assert fake_resolver.calls[0]["status"] is None
+        finally:
+            await engine.dispose()
+
+    @pytest.mark.asyncio
+    async def test_repeat_ticket_insights_route_is_tenant_scoped(self, monkeypatch):
+        import app.memory.postgres as pg
+        import app.routes.support as routes
+        from app.support.demo import seed_demo_data
+
+        engine, Session = await _session()
+        monkeypatch.setattr(pg, "AsyncSessionLocal", Session)
+
+        try:
+            async with Session() as session:
+                await seed_demo_data(
+                    session,
+                    tenant_id="tenant-a",
+                    requested_by="alice",
+                )
+
+            body = await routes.get_repeat_ticket_insights(limit=200, min_count=2, ctx=_ctx())
+            other_tenant_body = await routes.get_repeat_ticket_insights(
+                limit=200,
+                min_count=2,
+                ctx=_ctx(tenant_id="tenant-b")
+            )
+
+            assert body["summary"]["repeat_clusters"] == 2
+            assert body["insights"][0]["count"] == 3
+            assert other_tenant_body["summary"]["tickets_analyzed"] == 0
         finally:
             await engine.dispose()
 

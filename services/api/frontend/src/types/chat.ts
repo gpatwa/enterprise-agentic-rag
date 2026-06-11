@@ -39,6 +39,18 @@ export interface StepProgressEvent {
   session_id?: string;
 }
 
+export interface StreamStartEvent {
+  type: 'stream_start';
+  session_id?: string;
+}
+
+export interface FirstTokenEvent {
+  type: 'first_token';
+  time_ms: number;
+  source?: 'cache' | 'llm' | 'llm_stream' | string;
+  session_id?: string;
+}
+
 export interface ContextImage {
   url: string;
   caption?: string;
@@ -87,6 +99,21 @@ export interface AnswerEvent {
   session_id?: string;
 }
 
+export interface AnswerDeltaEvent {
+  type: 'answer_delta';
+  delta: string;
+  session_id?: string;
+}
+
+export interface StreamDoneEvent {
+  type: 'stream_done';
+  duration_ms: number;
+  first_token_ms?: number | null;
+  output_chars?: number;
+  cached?: boolean;
+  session_id?: string;
+}
+
 export interface ErrorEvent {
   type: 'error';
   content: string;
@@ -103,12 +130,16 @@ export type ChatEvent =
   | ToolResultEvent
   | EvaluationEvent
   | StepProgressEvent
+  | StreamStartEvent
+  | FirstTokenEvent
   | ContextImagesEvent
   | ContextLayersEvent
   | SqlQueryEvent
   | DataResultEvent
   | DataErrorEvent
   | AnswerEvent
+  | AnswerDeltaEvent
+  | StreamDoneEvent
   | ErrorEvent
   | FollowUpsEvent;
 
@@ -139,6 +170,18 @@ export interface AskTurn {
   toolResults: { tool: string; content: string }[];
   /** final synthesized answer */
   answer: string | null;
+  /** epoch ms when this turn started on the client */
+  startedAt: number;
+  /** client-observed time to first answer token/delta */
+  firstTokenMs: number | null;
+  /** server-measured time to first token when emitted by backend */
+  serverFirstTokenMs: number | null;
+  /** total client-observed stream duration */
+  totalMs: number | null;
+  /** total server-measured stream duration when emitted by backend */
+  serverTotalMs: number | null;
+  /** whether answer text streamed as deltas instead of only final answer */
+  receivedAnswerDelta: boolean;
   /** suggested follow-up questions emitted at end of stream */
   followUps: string[];
   /** terminal error from the stream */

@@ -1,6 +1,6 @@
 # services/api/app/agents/state.py
 import operator
-from typing import Annotated, List, TypedDict, Union
+from typing import Annotated, Any, List, TypedDict, Union
 
 
 class AgentState(TypedDict):
@@ -56,3 +56,7 @@ class AgentState(TypedDict):
     data_query_result: str        # JSON-serialized {columns, rows, row_count}
     data_query_error: str         # Error message if query fails
     data_query_time_ms: int       # Execution time in milliseconds
+
+    # Optional per-request queue used by the chat route to surface answer deltas
+    # while the responder node is still running.
+    answer_stream_queue: Any

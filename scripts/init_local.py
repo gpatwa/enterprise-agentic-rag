@@ -11,8 +11,10 @@ Runs all setup steps:
   4. MinIO    — creates the S3 bucket
 """
 import asyncio
-import sys
 import os
+import sys
+
+from sqlalchemy import text
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "services", "api"))
@@ -22,11 +24,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 async def init_postgres():
     print("\n[1/4] Postgres — creating tables...")
     from services.api.app.memory.postgres import Base, init_engine
+
     init_engine()
     from services.api.app.memory.postgres import engine
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _repair_local_support_jobs_schema(conn)
 
     from sqlalchemy import inspect
     async with engine.connect() as conn:
@@ -35,6 +39,31 @@ async def init_postgres():
         )
     await engine.dispose()
     print(f"  ✅ Tables: {tables}")
+
+
+async def _repair_local_support_jobs_schema(conn):
+    """Repair dev DBs created by ORM metadata before support_jobs migrations existed."""
+    exists = await conn.scalar(text("SELECT to_regclass('public.support_jobs')"))
+    if exists is None:
+        return
+
+    repair_statements = [
+        "ALTER TABLE support_jobs ADD COLUMN IF NOT EXISTS cancel_requested BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE support_jobs ADD COLUMN IF NOT EXISTS canceled_at TIMESTAMP NULL",
+        "ALTER TABLE support_jobs ADD COLUMN IF NOT EXISTS retry_of_job_id VARCHAR(64) NULL",
+        "ALTER TABLE support_jobs ADD COLUMN IF NOT EXISTS next_run_at TIMESTAMP NULL",
+        "CREATE INDEX IF NOT EXISTS ix_support_jobs_tenant_id ON support_jobs (tenant_id)",
+        "CREATE INDEX IF NOT EXISTS ix_support_jobs_job_type ON support_jobs (job_type)",
+        "CREATE INDEX IF NOT EXISTS ix_support_jobs_status ON support_jobs (status)",
+        (
+            "CREATE INDEX IF NOT EXISTS idx_support_job_tenant_status_created "
+            "ON support_jobs (tenant_id, status, created_at)"
+        ),
+        "CREATE INDEX IF NOT EXISTS idx_support_job_status_locked ON support_jobs (status, locked_at)",
+        "CREATE INDEX IF NOT EXISTS idx_support_job_type_status ON support_jobs (job_type, status)",
+    ]
+    for statement in repair_statements:
+        await conn.execute(text(statement))
 
 
 # ── 2. Qdrant ────────────────────────────────────────────────────────────────
@@ -82,7 +111,7 @@ def init_qdrant():
             existing_dim = info.config.params.vectors.size
             if existing_dim != vector_dim:
                 print(f"  ⚠️  '{name}' has dim={existing_dim}, need dim={vector_dim}")
-                print(f"      Recreating collection...")
+                print("      Recreating collection...")
                 client.delete_collection(collection_name=name)
                 client.create_collection(
                     collection_name=name,

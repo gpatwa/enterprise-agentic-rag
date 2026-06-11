@@ -1,8 +1,10 @@
 # services/api/app/agents/nodes/responder.py
 import logging
+from typing import Any
 
 from app.agents.state import AgentState
 from app.clients.ray_llm import llm_client
+from app.config import settings
 from app.tools.web_search import web_search_tool
 
 logger = logging.getLogger(__name__)
@@ -15,6 +17,17 @@ async def generate_node(state: AgentState) -> dict:
     formats them as vision-compatible message parts for the LLM.
     Falls back to web search when no internal documents are found.
     """
+    messages = await build_response_messages(state)
+    answer = await _generate_answer(messages=messages, state=state)
+
+    # Return dictionary to update state (add the AI message)
+    return {
+        "messages": [{"role": "assistant", "content": answer}]
+    }
+
+
+async def build_response_messages(state: AgentState) -> list[dict[str, Any]]:
+    """Build the final responder prompt once for non-streaming and streaming paths."""
     query = state["current_query"]
     documents = state.get("documents", [])
     tool_result = state.get("tool_result", "")
@@ -113,13 +126,41 @@ Question:
 {query}"""
         messages = [{"role": "user", "content": prompt}]
 
-    # Call LLM
-    answer = await llm_client.chat_completion(
+    return messages
+
+
+async def _generate_answer(*, messages: list[dict[str, Any]], state: AgentState) -> str:
+    stream_queue = state.get("answer_stream_queue")
+    if (
+        settings.LLM_STREAM_RESPONSE
+        and stream_queue is not None
+        and hasattr(llm_client, "chat_completion_stream")
+    ):
+        streamed_chunks: list[str] = []
+        try:
+            async for delta in llm_client.chat_completion_stream(
+                messages=messages,
+                temperature=0.3,
+            ):
+                if not delta:
+                    continue
+                streamed_chunks.append(delta)
+                await stream_queue.put({"type": "delta", "content": delta})
+
+            streamed_answer = "".join(streamed_chunks).strip()
+            if streamed_answer:
+                await stream_queue.put({"type": "done"})
+                return streamed_answer
+        except Exception as e:
+            logger.warning("Streaming responder failed; falling back to non-streaming LLM: %s", e, exc_info=True)
+
+        answer = await llm_client.chat_completion(messages=messages, temperature=0.3)
+        if not streamed_chunks:
+            await stream_queue.put({"type": "delta", "content": answer})
+        await stream_queue.put({"type": "done"})
+        return answer
+
+    return await llm_client.chat_completion(
         messages=messages,
         temperature=0.3
     )
-
-    # Return dictionary to update state (add the AI message)
-    return {
-        "messages": [{"role": "assistant", "content": answer}]
-    }

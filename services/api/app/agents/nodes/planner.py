@@ -82,11 +82,12 @@ def _fast_classify(query: str, has_tool_result: bool) -> str | None:
     if q in _GREETINGS:
         return "direct_answer"
 
-    # Data analytics queries — quantitative business questions
-    if settings.DATA_ANALYTICS_ENABLED:
-        data_hits = sum(1 for kw in _DATA_KEYWORDS if kw in q)
-        if data_hits >= 2:
-            return "data_query"
+    # Data analytics queries — quantitative business questions. The graph
+    # decides whether the analytics node is enabled; classification can still
+    # identify the user's intent.
+    data_hits = sum(1 for kw in _DATA_KEYWORDS if kw in q)
+    if data_hits >= 2:
+        return "data_query"
 
     # Clear question patterns → retrieve from knowledge base
     if "?" in q or q.startswith(_QUESTION_PREFIXES):
