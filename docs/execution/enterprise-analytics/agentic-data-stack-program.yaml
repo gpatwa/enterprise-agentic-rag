@@ -43,7 +43,7 @@ milestones:
     human_gate: architecture_and_security
   M1:
     name: Ontology and context layer
-    status: planned
+    status: in_progress
     waves:
       - [ADS-010, ADS-012, ADS-013, ADS-014]
       - [ADS-011, ADS-015]
@@ -110,11 +110,11 @@ tasks:
   ADS-007: {milestone: M0, status: review, depends_on: []}
   ADS-008: {milestone: M0, status: complete, depends_on: [ADS-001]}
   ADS-009: {milestone: M0, status: complete, depends_on: [ADS-003, ADS-004, ADS-005, ADS-006, ADS-007, ADS-008]}
-  ADS-010: {milestone: M1, status: planned, depends_on: [ADS-008]}
+  ADS-010: {milestone: M1, status: complete, depends_on: [ADS-008]}
   ADS-011: {milestone: M1, status: planned, depends_on: [ADS-008, ADS-010]}
-  ADS-012: {milestone: M1, status: planned, depends_on: [ADS-010]}
-  ADS-013: {milestone: M1, status: planned, depends_on: [ADS-010]}
-  ADS-014: {milestone: M1, status: planned, depends_on: [ADS-010]}
+  ADS-012: {milestone: M1, status: complete, depends_on: [ADS-010]}
+  ADS-013: {milestone: M1, status: complete, depends_on: [ADS-010]}
+  ADS-014: {milestone: M1, status: complete, depends_on: [ADS-010]}
   ADS-015: {milestone: M1, status: planned, depends_on: [ADS-012, ADS-013, ADS-014]}
   ADS-016: {milestone: M1, status: planned, depends_on: [ADS-015]}
   ADS-017: {milestone: M1, status: planned, depends_on: [ADS-016]}

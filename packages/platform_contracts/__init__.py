@@ -34,6 +34,7 @@ from packages.platform_contracts.metadata import (
     MetadataSearchResult,
     MetadataSnapshot,
 )
+from packages.platform_contracts.ontology import OntologyEdge, OntologyNode, OntologyProvenance, OntologySnapshot
 from packages.platform_contracts.operations import (
     AlertDecision,
     BackupManifest,
@@ -93,4 +94,8 @@ __all__ = [
     "ImpressionToken",
     "DecisionTrace",
     "TrustedAuthorizationArtifact",
+    "OntologyEdge",
+    "OntologyNode",
+    "OntologyProvenance",
+    "OntologySnapshot",
 ]

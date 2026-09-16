@@ -1,10 +1,15 @@
 """Normalization tests for catalog metadata providers and quality ranking."""
 from __future__ import annotations
 
+from pathlib import Path
+
+import duckdb
+import pytest
 from sqlalchemy import create_engine, text
 
 from app.metadata import (
     DbtManifestProvider,
+    DuckDBMetadataProvider,
     MetadataQualityGate,
     OpenMetadataProvider,
     PostgresMetadataProvider,
@@ -52,6 +57,34 @@ def test_dbt_provider_merges_manifest_and_catalog_details():
     assert asset.columns[0].data_type == "integer"
 
 
+def test_dbt_provider_normalizes_tests_exposures_metrics_lineage_and_quality():
+    provider = DbtManifestProvider(
+        {
+            "nodes": {
+                "model.demo.orders": {
+                    "resource_type": "model", "name": "orders", "columns": {},
+                    "depends_on": {"nodes": ["model.demo.customers", "test.demo.orders_id"]},
+                    "checksum": {"checksum": "abc123"},
+                },
+                "test.demo.orders_id": {"resource_type": "test", "name": "orders_id_not_null", "depends_on": {"nodes": ["model.demo.orders"]}},
+            },
+            "exposures": {"exposure.demo.dashboard": {"name": "sales_dashboard", "type": "dashboard", "depends_on": {"nodes": ["model.demo.orders"]}}},
+            "metrics": {"metric.demo.revenue": {"name": "revenue", "label": "Revenue", "calculation_method": "sum", "depends_on": {"nodes": ["model.demo.orders"]}}},
+        },
+        {"nodes": {"model.demo.orders": {"stats": {"row_count": {"value": 42}}}}},
+        {"results": [{"unique_id": "model.demo.orders", "status": "success", "timing": [{"started_at": "2026-09-15T12:00:00+00:00"}]}]},
+    )
+
+    asset = provider.get_snapshot("orders").assets[0]
+
+    assert asset.upstream_asset_ids == ["model.demo.customers", "test.demo.orders_id"]
+    assert asset.tests[0].name == "orders_id_not_null"
+    assert asset.exposures[0].name == "sales_dashboard"
+    assert asset.metrics[0].expression == "sum"
+    assert asset.quality and asset.quality.row_count == 42
+    assert asset.freshness and asset.freshness.last_updated_at is not None
+
+
 class FakeResponse:
     def __init__(self, payload: dict):
         self.payload = payload
@@ -91,6 +124,39 @@ def test_openmetadata_provider_normalizes_catalog_response():
     assert client.urls == ["https://metadata.example/api/v1/tables/name/orders"]
     assert snapshot.assets[0].certified is True
     assert snapshot.assets[0].columns[0].nullable is False
+
+
+def test_openmetadata_provider_maps_lineage_glossary_quality_and_classification():
+    class RichClient(FakeClient):
+        def get(self, url: str) -> FakeResponse:
+            response = super().get(url)
+            response.payload["data"]["upstreamLineage"] = [{"fullyQualifiedName": "warehouse.customers"}]
+            response.payload["data"]["glossaryTerms"] = [{"fullyQualifiedName": "Sales.Revenue", "displayName": "Revenue", "description": "Recognized sales"}]
+            response.payload["data"]["quality"] = {"completeness": 0.99, "nullRate": 0.01, "rowCount": 100}
+            response.payload["data"]["freshness"] = {"intervalSeconds": 3600, "stale": False}
+            response.payload["data"]["tags"].append({"tagFQN": "Classification.Confidential"})
+            return response
+
+    asset = OpenMetadataProvider("https://metadata.example", "token", RichClient()).get_snapshot("orders").assets[0]
+
+    assert asset.upstream_asset_ids == ["warehouse.customers"]
+    assert asset.glossary_terms[0].name == "Revenue"
+    assert asset.quality and asset.quality.row_count == 100
+    assert asset.freshness and asset.freshness.expected_interval_seconds == 3600
+    assert asset.classification == "confidential"
+
+
+def test_duckdb_provider_is_read_only_and_path_allowlisted(tmp_path: Path):
+    database = tmp_path / "warehouse.duckdb"
+    connection = duckdb.connect(str(database))
+    connection.execute("CREATE TABLE orders (id INTEGER NOT NULL, status VARCHAR)")
+    connection.close()
+
+    snapshot = DuckDBMetadataProvider(database, allowed_paths=(tmp_path,)).get_snapshot("orders")
+    assert snapshot.provider == "duckdb"
+    assert [(column.name, column.nullable) for column in snapshot.assets[0].columns] == [("id", False), ("status", True)]
+    with pytest.raises(PermissionError):
+        DuckDBMetadataProvider(database, allowed_paths=(tmp_path / "other",))
 
 
 def test_quality_gate_and_ranking_are_deterministic():

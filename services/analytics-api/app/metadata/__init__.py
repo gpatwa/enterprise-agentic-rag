@@ -5,6 +5,7 @@ from app.metadata.exploration import ExploratoryDiscovery, create_exploratory_di
 from app.metadata.providers import (
     ContractPolicyProvider,
     DbtManifestProvider,
+    DuckDBMetadataProvider,
     GitSemanticModelProvider,
     MetadataProvider,
     OpenMetadataProvider,
@@ -16,6 +17,7 @@ from app.metadata.quality import MetadataQualityGate, rank_assets
 
 __all__ = [
     "DbtManifestProvider",
+    "DuckDBMetadataProvider",
     "DataHubMetadataProvider",
     "ExploratoryDiscovery",
     "GitSemanticModelProvider",

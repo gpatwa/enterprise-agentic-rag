@@ -10,7 +10,17 @@ import httpx
 from sqlalchemy import inspect
 
 from app.semantic_registry import SemanticRegistry
-from packages.platform_contracts.metadata import MetadataAsset, MetadataColumn, MetadataSnapshot
+from packages.platform_contracts.metadata import (
+    MetadataAsset,
+    MetadataColumn,
+    MetadataExposure,
+    MetadataFreshness,
+    MetadataGlossaryTerm,
+    MetadataMetric,
+    MetadataQualitySignals,
+    MetadataSnapshot,
+    MetadataTest,
+)
 from packages.platform_contracts.semantic import SemanticContract, SemanticPolicy
 
 
@@ -66,15 +76,27 @@ class PostgresMetadataProvider:
 class DbtManifestProvider:
     provider_name = "dbt"
 
-    def __init__(self, manifest: dict[str, Any], catalog: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        manifest: dict[str, Any],
+        catalog: dict[str, Any] | None = None,
+        run_results: dict[str, Any] | None = None,
+    ):
         self.manifest = manifest
         self.catalog = catalog or {}
+        self.run_results = run_results or {}
 
     @classmethod
-    def from_files(cls, manifest_path: Path | str, catalog_path: Path | str | None = None) -> "DbtManifestProvider":
+    def from_files(
+        cls,
+        manifest_path: Path | str,
+        catalog_path: Path | str | None = None,
+        run_results_path: Path | str | None = None,
+    ) -> "DbtManifestProvider":
         manifest = json.loads(Path(manifest_path).read_text())
         catalog = json.loads(Path(catalog_path).read_text()) if catalog_path else None
-        return cls(manifest, catalog)
+        run_results = json.loads(Path(run_results_path).read_text()) if run_results_path else None
+        return cls(manifest, catalog, run_results)
 
     def get_snapshot(self, asset_name: str) -> MetadataSnapshot:
         assets = []
@@ -83,6 +105,38 @@ class DbtManifestProvider:
                 continue
             catalog_node = self.catalog.get("nodes", {}).get(node_id, {})
             catalog_columns = catalog_node.get("columns", {})
+            result = next(
+                (item for item in self.run_results.get("results", []) if item.get("unique_id") == node_id),
+                None,
+            )
+            tests = [
+                MetadataTest(
+                    name=test.get("name", test_id),
+                    status="pass" if test.get("status") == "pass" else "fail" if test.get("status") == "fail" else "not_run",
+                    failure_message=test.get("message"),
+                )
+                for test_id, test in self.manifest.get("nodes", {}).items()
+                if test.get("resource_type") == "test" and node_id in test.get("depends_on", {}).get("nodes", [])
+            ]
+            exposures = [
+                MetadataExposure(
+                    name=exposure.get("name", exposure_id),
+                    exposure_type=exposure.get("type", "dashboard"),
+                    owner_ids=[str(exposure.get("owner", {}).get("name"))]
+                    if exposure.get("owner", {}).get("name") else [],
+                    url=exposure.get("meta", {}).get("url"),
+                )
+                for exposure_id, exposure in self.manifest.get("exposures", {}).items()
+                if node_id in exposure.get("depends_on", {}).get("nodes", [])
+            ]
+            metrics = [
+                MetadataMetric(
+                    name=metric.get("name", metric_id), label=metric.get("label"),
+                    expression=metric.get("calculation_method"), type=metric.get("type"),
+                )
+                for metric_id, metric in self.manifest.get("metrics", {}).items()
+                if node_id in metric.get("depends_on", {}).get("nodes", [])
+            ]
             columns = [
                 MetadataColumn(
                     name=name,
@@ -103,6 +157,17 @@ class DbtManifestProvider:
                     tags=[str(tag) for tag in node.get("tags", [])],
                     certified=bool(node.get("meta", {}).get("certified", False)),
                     columns=columns,
+                    upstream_asset_ids=[str(item) for item in node.get("depends_on", {}).get("nodes", [])],
+                    tests=tests,
+                    exposures=exposures,
+                    metrics=metrics,
+                    quality=MetadataQualitySignals(
+                        row_count=catalog_node.get("stats", {}).get("row_count", {}).get("value")
+                    ) if catalog_node.get("stats", {}).get("row_count", {}).get("value") is not None else None,
+                    freshness=MetadataFreshness(
+                        last_updated_at=datetime.fromisoformat(result["timing"][0]["started_at"])
+                    ) if result and result.get("timing") and result["timing"][0].get("started_at") else None,
+                    source_version=str(node.get("checksum", {}).get("checksum")) if node.get("checksum") else None,
                 )
             )
         return MetadataSnapshot(provider=self.provider_name, assets=assets)
@@ -132,6 +197,19 @@ class OpenMetadataProvider:
             for column in payload.get("columns", [])
         ]
         owner = payload.get("owner") or {}
+        lineage = payload.get("upstreamLineage", []) or payload.get("lineage", {}).get("upstream", [])
+        glossary_terms = payload.get("glossaryTerms", [])
+        quality_payload = payload.get("quality") or {}
+        freshness_payload = payload.get("freshness") or {}
+        classifications = [
+            str(tag.get("tagFQN", tag)).split(".")[-1].lower()
+            for tag in payload.get("tags", [])
+            if isinstance(tag, dict) or tag
+        ]
+        classification = next(
+            (value for value in classifications if value in {"public", "internal", "confidential", "restricted"}),
+            "internal",
+        )
         return MetadataSnapshot(
             provider=self.provider_name,
             assets=[
@@ -145,8 +223,65 @@ class OpenMetadataProvider:
                     tags=[str(tag.get("tagFQN", tag)) if isinstance(tag, dict) else str(tag) for tag in payload.get("tags", [])],
                     certified=bool(payload.get("certification")),
                     columns=columns,
+                    upstream_asset_ids=[
+                        str(item.get("fullyQualifiedName", item.get("name", item)))
+                        if isinstance(item, dict) else str(item)
+                        for item in lineage
+                    ],
+                    glossary_terms=[
+                        MetadataGlossaryTerm(
+                            term_id=str(item.get("fullyQualifiedName", item.get("name", "term"))),
+                            name=str(item.get("displayName", item.get("name", "term"))),
+                            description=item.get("description"), source="openmetadata",
+                        )
+                        for item in glossary_terms
+                    ],
+                    quality=MetadataQualitySignals(
+                        completeness=quality_payload.get("completeness"),
+                        null_rate=quality_payload.get("nullRate"),
+                        row_count=quality_payload.get("rowCount"),
+                        issues=[str(item) for item in quality_payload.get("issues", [])],
+                    ) if quality_payload else None,
+                    freshness=MetadataFreshness(
+                        expected_interval_seconds=freshness_payload.get("intervalSeconds"),
+                        stale=bool(freshness_payload.get("stale", False)),
+                    ) if freshness_payload else None,
+                    classification=classification,
                 )
             ],
+        )
+
+
+class DuckDBMetadataProvider:
+    """Read-only DuckDB provider restricted to an explicit allowlisted path."""
+
+    provider_name = "duckdb"
+
+    def __init__(self, database_path: str | Path, allowed_paths: tuple[str | Path, ...] = ()):
+        self.database_path = Path(database_path).expanduser().resolve()
+        allowed = tuple(Path(path).expanduser().resolve() for path in allowed_paths)
+        if allowed and not any(self.database_path == path or path in self.database_path.parents for path in allowed):
+            raise PermissionError("DuckDB database path is outside the allowlist")
+
+    def get_snapshot(self, asset_name: str) -> MetadataSnapshot:
+        import duckdb
+
+        connection = duckdb.connect(str(self.database_path), read_only=True)
+        try:
+            rows = connection.execute(
+                """SELECT column_name, data_type, is_nullable
+                FROM information_schema.columns WHERE table_name = ? ORDER BY ordinal_position""",
+                [asset_name],
+            ).fetchall()
+        finally:
+            connection.close()
+        return MetadataSnapshot(
+            provider=self.provider_name,
+            assets=[MetadataAsset(
+                id=f"{self.database_path}:{asset_name}", display_name=asset_name, physical_name=asset_name,
+                provider=self.provider_name,
+                columns=[MetadataColumn(name=name, data_type=data_type, nullable=nullable == "YES") for name, data_type, nullable in rows],
+            )],
         )
 
 
