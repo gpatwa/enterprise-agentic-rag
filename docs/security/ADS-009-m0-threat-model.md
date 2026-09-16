@@ -48,8 +48,7 @@ route/registry contracts fail closed. SQLite migration tests exercise the same
 composite constraints and append-only facts intended for PostgreSQL. The fake
 graph uses deterministic synthetic identifiers and does not execute tools or SQL.
 
-Residual risks remain: the updated local PostgreSQL drill has not run because
-Docker was unavailable; production topology and RLS are out of scope; the
+Residual risks remain: production topology and RLS are out of scope; the
 harness is not a distributed crash drill; adapter idempotency beyond the
 control-store dedupe contract requires live integration evidence; and no
 security reviewer has signed off. These risks block a security approval and

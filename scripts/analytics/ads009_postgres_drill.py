@@ -50,6 +50,13 @@ def main() -> None:
             VALUES (%s, 1, 'tenant-live', %s, 'fake-v1', 'create', 'bootstrap', 'active', 'active', 1, %s, '{}'::jsonb)""",
             (run_id, purpose, f"{prefix}-transition-1"),
         )
+        cursor.execute(
+            """UPDATE analytics_agent_runs SET current_node='bootstrap', transition_seq=1,
+            state_payload='{"node":"bootstrap"}'::jsonb
+            WHERE run_id=%s AND tenant_id='tenant-live' AND purpose=%s""",
+            (run_id, purpose),
+        )
+        assert cursor.rowcount == 1
         connection.commit()
 
         cursor.execute(

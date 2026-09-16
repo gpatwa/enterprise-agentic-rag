@@ -37,9 +37,19 @@ this packet does not reproduce or alter them.
 
 ## Live local PostgreSQL evidence
 
-The updated live drill is ready to run against disposable PostgreSQL. On
-2026-09-15 Docker was unavailable on the local host, so this evidence is
-pending and no current live PostgreSQL result is claimed.
+On 2026-09-15, the updated live drill passed against a disposable PostgreSQL
+15 database after Docker was restarted. The shared local `rag_db` was not used.
+Current result:
+
+```text
+fencing_cas=pass
+append_only_transition=pass
+immutable_checkpoint=pass
+tenant_purpose_fk=pass
+terminal_replay=pass
+outbox_dedupe=pass
+skip_locked_contention=pass
+```
 
 Previously, on 2026-09-06, PostgreSQL 15.0 was started from the local Docker Compose
 `postgres:15-alpine` service. Alembic upgraded a disposable database through
@@ -53,9 +63,8 @@ outbox_dedupe=pass
 skip_locked_contention=pass
 ```
 
-The disposable database was removed after the run. That prior result predates
-the remediation schema and is not treated as current acceptance evidence. The shared local `rag_db`
-was not used for drill data. This is local PostgreSQL evidence only; it does
+The prior result predates the remediation schema and is retained only as
+historical context. This is local PostgreSQL evidence only; it does
 not substitute for production topology, authorization/RLS, or security sign-off.
 
 ## Independent review
@@ -74,7 +83,7 @@ decision authority.
   boundaries have negative assertions.
 - [x] No production graph runtime, API, provider, cloud, manifest, or ADS-030
   change is included.
-- [ ] Updated local PostgreSQL concurrency/locking drill completed with the
+- [x] Updated local PostgreSQL concurrency/locking drill completed with the
   remediation schema, expiry takeover, fenced CAS, immutable checkpoints,
   tenant/purpose foreign keys, outbox dedupe, and `SKIP LOCKED` contention.
 - [ ] Independent engineering review completed.

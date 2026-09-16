@@ -51,8 +51,9 @@ acceptance.
 - ADS-005 migration and contract remediation suite: `35 passed`, including recovery, fencing, identity, routing, and tool-scope assertions.
 - Analytics service suite: `166 passed`.
 - Ruff checks and `git diff --check` pass.
-- The PostgreSQL drill script has been updated for the remediation, but Docker
-  was unavailable on 2026-09-15, so live PostgreSQL evidence is pending.
+- Updated local PostgreSQL 15 drill: `PASS` for expiry takeover, fenced CAS,
+  immutable checkpoints, composite tenant/purpose identity, terminal replay,
+  outbox deduplication, and `SKIP LOCKED` contention.
 - The current M0 gate remains in `Review`; no security approval is implied.
 
 ## Review record
