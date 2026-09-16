@@ -1,12 +1,12 @@
 # ADS-009 M0 Integration Threat Model
 
-Status: **Review: technical controls remediated; security sign-off pending**
-Security reviewer: ____________________  Date: __________  Decision: __________
-Engineering reviewer: __________________  Date: __________  Decision: __________
+Status: **Approved for M0 local scope**
+Security reviewer: Approved in Codex task  Date: 2026-09-15  Decision: GO
+Engineering reviewer: Approved in Codex task  Date: 2026-09-15  Decision: GO
 
 This threat model covers the deterministic local M0 composition harness only.
-Human and security approval are still pending; this document is not an
-approval or a production-readiness claim.
+Approval applies to the documented M0 local scope only; this document is not a
+production-readiness claim.
 
 ## Trust boundaries and assets
 

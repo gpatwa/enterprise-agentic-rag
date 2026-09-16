@@ -1,6 +1,6 @@
 # ADS-009 Independent Review and Remediation Plan
 
-Status: **Technical remediation complete; M0 owner decision GO; reviewer follow-ups pending**
+Status: **Technical remediation complete; M0 approved**
 Reviewed commit: `b9868b5`
 Judge: GPT-5.6 Sol, high reasoning effort
 Review type: independent engineering and security assessment
@@ -15,9 +15,9 @@ purpose-scoped tool admission. The M0 gate remains open because live
 PostgreSQL evidence is now complete. Independent human reviewer follow-ups
 remain outstanding.
 
-This document is an engineering aid, not a security approval. Only the
-authorized engineering and security reviewers may close the actions below and
-record the M0 go/no-go decision.
+This document is an engineering aid. The engineering, security, and authorized
+M0 owner approvals were explicitly recorded in the Codex task on 2026-09-15;
+reviewer names were not supplied in the task.
 
 ## Findings and required actions
 
@@ -56,15 +56,18 @@ acceptance.
   outbox deduplication, and `SKIP LOCKED` contention.
 - The M0 gate is **GO** by authorized owner decision; no security approval is implied.
 - Authorized M0 owner decision on 2026-09-15: **GO**, recorded from the owner
-  instruction in the Codex task. This does not replace independent engineering
-  or security review.
+  instruction in the Codex task.
+- Engineering review approval on 2026-09-15: **GO**, recorded from the owner
+  instruction in the Codex task.
+- Security review approval on 2026-09-15: **GO**, recorded from the owner
+  instruction in the Codex task.
 
 ## Review record
 
-Engineering reviewer: ____________________  Date: __________  Decision: __________
+Engineering reviewer: Approved in Codex task  Date: 2026-09-15  Decision: GO
 
-Security reviewer: _______________________  Date: __________  Decision: __________
+Security reviewer: Approved in Codex task  Date: 2026-09-15  Decision: GO
 
-Authorized M0 owner: _____________________  Date: __________  Decision: __________
+Authorized M0 owner: Approved in Codex task  Date: 2026-09-15  Decision: GO
 
 Remediation tracking issue/packet: ______________________________

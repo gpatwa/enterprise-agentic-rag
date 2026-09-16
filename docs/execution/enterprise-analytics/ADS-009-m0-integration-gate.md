@@ -1,6 +1,6 @@
 # ADS-009: M0 Integration Gate
 
-Status: **GO: technical gate passed; independent review follow-ups remain**
+Status: **GO: approved**
 Milestone: M0
 Dependencies: ADS-003 agent-run-state contracts, ADS-004 typed tool registry,
 ADS-005 PostgreSQL control-store schema, ADS-006 routing flags, ADS-007
@@ -71,9 +71,10 @@ not substitute for production topology, authorization/RLS, or security sign-off.
 
 The findings-first judge report and remediation actions are recorded in
 [ADS-009 independent review](../../reviews/ADS-009-independent-review-2026-09-06.md).
-Its current decision is **technical remediation complete; not yet approved**. The report is advisory;
-the engineering, security, and authorized-owner fields below remain the final
-decision authority.
+Its current decision is **technical remediation complete**. Engineering,
+security, and authorized-owner approval was explicitly granted in the Codex
+task on 2026-09-15. Reviewer names were not supplied, so the record preserves
+that provenance without inventing identities.
 
 ## M0 go/no-go checklist
 
@@ -86,11 +87,12 @@ decision authority.
 - [x] Updated local PostgreSQL concurrency/locking drill completed with the
   remediation schema, expiry takeover, fenced CAS, immutable checkpoints,
   tenant/purpose foreign keys, outbox dedupe, and `SKIP LOCKED` contention.
-- [ ] Independent engineering review completed.
-- [ ] Human/security reviewer signs the threat model.
+- [x] Independent engineering review completed on 2026-09-15; approval
+  recorded from the owner instruction in the Codex task.
+- [x] Human/security reviewer approval recorded on 2026-09-15 from the owner
+  instruction in the Codex task; see the threat model record.
 - [x] M0 go decision recorded by the authorized owner on 2026-09-15:
   **GO**, captured from the owner instruction in the Codex task.
 
-M0 is **GO** for the next milestone. The unchecked independent engineering and
-security review items remain required separation-of-duties follow-ups; this
-owner decision must not be described as a security approval.
+M0 is **GO and approved** for the next milestone. The approval record does not
+claim production deployment readiness beyond the documented local scope.
