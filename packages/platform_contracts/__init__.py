@@ -26,6 +26,13 @@ from packages.platform_contracts.context_merge import (
     MetadataTombstone,
     merge_metadata_snapshots,
 )
+from packages.platform_contracts.context_snapshot import (
+    ContextPack,
+    ContextPackItem,
+    ContextPackRelation,
+    ContextSnapshot,
+    build_context_pack,
+)
 from packages.platform_contracts.discovery import (
     DecisionTrace,
     DiscoveryComponentVersion,
@@ -112,4 +119,9 @@ __all__ = [
     "MetadataTombstone",
     "MergedMetadataSnapshot",
     "merge_metadata_snapshots",
+    "ContextPack",
+    "ContextPackItem",
+    "ContextPackRelation",
+    "ContextSnapshot",
+    "build_context_pack",
 ]

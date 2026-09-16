@@ -116,10 +116,10 @@ tasks:
   ADS-013: {milestone: M1, status: complete, depends_on: [ADS-010]}
   ADS-014: {milestone: M1, status: complete, depends_on: [ADS-010]}
   ADS-015: {milestone: M1, status: complete, depends_on: [ADS-012, ADS-013, ADS-014]}
-  ADS-016: {milestone: M1, status: planned, depends_on: [ADS-015]}
-  ADS-017: {milestone: M1, status: planned, depends_on: [ADS-016]}
-  ADS-018: {milestone: M1, status: planned, depends_on: [ADS-017]}
-  ADS-019: {milestone: M1, status: planned, depends_on: [ADS-011, ADS-012, ADS-013, ADS-014, ADS-015, ADS-016, ADS-017, ADS-018]}
+  ADS-016: {milestone: M1, status: complete, depends_on: [ADS-015]}
+  ADS-017: {milestone: M1, status: complete, depends_on: [ADS-016]}
+  ADS-018: {milestone: M1, status: complete, depends_on: [ADS-017]}
+  ADS-019: {milestone: M1, status: complete, depends_on: [ADS-011, ADS-012, ADS-013, ADS-014, ADS-015, ADS-016, ADS-017, ADS-018]}
   ADS-020: {milestone: M2, status: planned, depends_on: [ADS-003]}
   ADS-021: {milestone: M2, status: planned, depends_on: [ADS-020]}
   ADS-022: {milestone: M2, status: planned, depends_on: [ADS-020]}
