@@ -55,7 +55,7 @@ def main() -> None:
         wait_for_opensearch(client)
         client.delete(f"{BASE_URL}/{INDEX}")
         adapter = OpenSearchContextIndex(BASE_URL, INDEX, client)
-        adapter.create_index()
+        adapter.ensure_index()
         tenant_a = make_snapshot("tenant-a", "snapshot-a")
         tenant_b = make_snapshot("tenant-b", "snapshot-b")
         assert adapter.index_snapshot(tenant_a) == 2

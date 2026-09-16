@@ -8,6 +8,9 @@ from packages.platform_contracts.context_snapshot import ContextPackItem, Contex
 
 
 class ContextSearchClient(Protocol):
+    def head(self, url: str) -> Any:
+        ...
+
     def put(self, url: str, *, json: dict[str, Any]) -> Any:
         ...
 
@@ -42,6 +45,14 @@ class OpenSearchContextIndex:
             f"{self.base_url}/{self.index_name}", json=build_context_index_mapping()
         )
         response.raise_for_status()
+
+    def ensure_index(self) -> None:
+        response = self.client.head(f"{self.base_url}/{self.index_name}")
+        if response.status_code == 200:
+            return
+        if response.status_code != 404:
+            response.raise_for_status()
+        self.create_index()
 
     def index_snapshot(self, snapshot: ContextSnapshot) -> int:
         documents = [self._document(snapshot, asset) for asset in snapshot.metadata_assets]

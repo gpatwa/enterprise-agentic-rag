@@ -89,6 +89,18 @@ curl -X POST http://localhost:8090/api/v1/analytics/query \
 `ANALYTICS_API_KEY` is optional for local development. When set, clients must
 send the value in `X-API-Key`.
 
+For the product-style local stack, startup provisions OpenSearch, creates the
+`context-v1` index mapping, loads the certified local semantic contract, and
+creates the matching OpenSearch Dashboards index pattern:
+
+```bash
+docker compose --profile analytics up --build -d
+curl http://localhost:8090/health
+```
+
+No dashboard setup or seed command is required. The health response reports
+`context_index_ready`, `context_documents_indexed`, and `dashboard_ready`.
+
 ## Local Context Verification
 
 The M1 context layer can be verified against the local OpenSearch profile
@@ -101,4 +113,4 @@ make verify-context-local
 The drill creates a disposable `context-m1-verify` index, indexes certified and
 uncertified assets for two tenants, verifies tenant and certification filters,
 checks snapshot fingerprint round-trip, and confirms stale metadata is blocked.
-Stop the local profile with `docker compose --profile search down` when done.
+Stop the local profile with `docker compose --profile analytics down` when done.

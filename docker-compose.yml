@@ -46,7 +46,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 20
-    profiles: ["search", "observability"]
+    profiles: ["search", "analytics", "products", "observability"]
 
   # Local-only search administration UI. Security is intentionally disabled in
   # the dev OpenSearch profile; keep this service behind an SSH tunnel.
@@ -60,7 +60,7 @@ services:
     depends_on:
       opensearch:
         condition: service_healthy
-    profiles: ["search", "observability"]
+    profiles: ["search", "analytics", "products", "observability"]
 
   # 4. Neo4j (Graph DB)
   neo4j:
@@ -156,13 +156,20 @@ services:
       - ENV=dev
       - ANALYTICS_DB_URL=postgresql://ragadmin:changeme@postgres:5432/rag_db
       - ANALYTICS_DEMO_MODE=${ANALYTICS_DEMO_MODE:-true}
+      - ANALYTICS_OPENSEARCH_URL=${ANALYTICS_OPENSEARCH_URL:-http://opensearch:9200}
+      - ANALYTICS_CONTEXT_INDEX=${ANALYTICS_CONTEXT_INDEX:-context-v1}
+      - ANALYTICS_DASHBOARDS_URL=${ANALYTICS_DASHBOARDS_URL:-http://opensearch-dashboards:5601}
+      - ANALYTICS_CONTEXT_BOOTSTRAP=${ANALYTICS_CONTEXT_BOOTSTRAP:-true}
       - ANALYTICS_LLM_MODEL=${ANALYTICS_LLM_MODEL:-gpt-4o-mini}
       - ANALYTICS_LLM_BASE_URL=${ANALYTICS_LLM_BASE_URL:-}
       - ANALYTICS_LLM_API_KEY=${ANALYTICS_LLM_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANALYTICS_CORS_ORIGINS=http://localhost:5174
     depends_on:
-      - postgres
+      postgres:
+        condition: service_started
+      opensearch:
+        condition: service_healthy
     profiles: ["analytics", "products"]
 
   analytics-web:

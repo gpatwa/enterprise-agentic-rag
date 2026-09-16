@@ -30,6 +30,10 @@ class Settings(BaseSettings):
 
     ANALYTICS_API_KEY: str | None = None
     ANALYTICS_CORS_ORIGINS: str = "http://localhost:5174"
+    ANALYTICS_OPENSEARCH_URL: str | None = None
+    ANALYTICS_CONTEXT_INDEX: str = "context-v1"
+    ANALYTICS_DASHBOARDS_URL: str | None = None
+    ANALYTICS_CONTEXT_BOOTSTRAP: bool = False
 
     @property
     def database_url(self) -> str | None:
@@ -55,6 +59,22 @@ class Settings(BaseSettings):
             for origin in self.ANALYTICS_CORS_ORIGINS.split(",")
             if origin.strip()
         ]
+
+    @property
+    def opensearch_url(self) -> str | None:
+        return self.ANALYTICS_OPENSEARCH_URL
+
+    @property
+    def context_index(self) -> str:
+        return self.ANALYTICS_CONTEXT_INDEX
+
+    @property
+    def dashboards_url(self) -> str | None:
+        return self.ANALYTICS_DASHBOARDS_URL
+
+    @property
+    def context_bootstrap_enabled(self) -> bool:
+        return self.ANALYTICS_CONTEXT_BOOTSTRAP
 
 
 @lru_cache

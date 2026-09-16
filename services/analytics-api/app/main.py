@@ -53,11 +53,21 @@ async def verify_api_key(x_api_key: str | None = Header(default=None)) -> None:
 
 @app.get("/health", response_model=AnalyticsHealthResponse)
 async def health() -> AnalyticsHealthResponse:
-    ready = analytics_service.database_configured and analytics_service.llm_configured
+    ready = (
+        analytics_service.database_configured
+        and analytics_service.llm_configured
+        and analytics_service.context_index_ready
+    )
     return AnalyticsHealthResponse(
         status="ready" if ready else "degraded",
         database_configured=analytics_service.database_configured,
         llm_configured=analytics_service.llm_configured,
+        context_index_configured=analytics_service.context_bootstrap.state.configured,
+        context_index_ready=analytics_service.context_bootstrap.state.ready,
+        context_documents_indexed=analytics_service.context_bootstrap.state.indexed_documents,
+        dashboard_configured=analytics_service.context_bootstrap.state.dashboard_configured,
+        dashboard_ready=analytics_service.context_bootstrap.state.dashboard_ready,
+        context_bootstrap_error=analytics_service.context_bootstrap.state.error,
     )
 
 

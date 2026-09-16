@@ -4,6 +4,7 @@ from app.analytics.engine import AnalyticsEngine
 from app.analytics.formatter import suggest_chart_spec
 from app.analytics.schema_context import COMMON_METRICS, get_all_table_names
 from app.config import Settings
+from app.context import ContextBootstrap
 from app.llm import OpenAICompatibleClient
 from packages.platform_contracts.analytics import (
     AnalyticsQueryRequest,
@@ -17,6 +18,7 @@ class AnalyticsService:
         self.config = config
         self.llm = OpenAICompatibleClient(config)
         self.engine = AnalyticsEngine(config, self.llm)
+        self.context_bootstrap = ContextBootstrap(config)
 
     @property
     def database_configured(self) -> bool:
@@ -26,13 +28,19 @@ class AnalyticsService:
     def llm_configured(self) -> bool:
         return self.config.ANALYTICS_DEMO_MODE or self.llm.configured
 
+    @property
+    def context_index_ready(self) -> bool:
+        return not self.context_bootstrap.state.configured or self.context_bootstrap.state.ready
+
     async def start(self) -> None:
         await self.llm.start()
         self.engine.start()
+        self.context_bootstrap.start()
 
     async def close(self) -> None:
         self.engine.close()
         await self.llm.close()
+        self.context_bootstrap.close()
 
     async def query(self, request: AnalyticsQueryRequest) -> AnalyticsQueryResponse:
         result = (

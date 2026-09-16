@@ -3,7 +3,14 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from app.context import OpenSearchContextIndex, build_context_index_mapping, evaluate_context_quality
+from app.config import Settings
+from app.context import (
+    ContextBootstrap,
+    OpenSearchContextIndex,
+    build_context_index_mapping,
+    build_registry_snapshot,
+    evaluate_context_quality,
+)
 from packages.platform_contracts.context_snapshot import ContextPackItem, ContextSnapshot, build_context_pack
 from packages.platform_contracts.metadata import MetadataAsset, MetadataColumn, MetadataFreshness
 from packages.platform_contracts.ontology import OntologyEdge, OntologyNode, OntologyProvenance, OntologySnapshot
@@ -88,8 +95,13 @@ def test_context_pack_adds_bounded_certified_graph_closure():
 
 
 class Response:
-    def __init__(self, payload):
+    def __init__(self, payload, status_code=200):
         self.payload = payload
+        self.status_code = status_code
+
+    @property
+    def is_success(self):
+        return 200 <= self.status_code < 300
 
     def raise_for_status(self):
         return None
@@ -106,6 +118,10 @@ class Client:
         self.calls.append((url, json, None))
         return Response({"acknowledged": True})
 
+    def head(self, url):
+        self.calls.append((url, None, None))
+        return Response({}, status_code=404)
+
     def post(self, url, *, json=None, content=None, headers=None):
         self.calls.append((url, json, content, headers))
         if url.endswith("/_search"):
@@ -116,7 +132,7 @@ class Client:
 def test_opensearch_index_owns_tenant_and_certification_filters():
     client = Client()
     index = OpenSearchContextIndex("http://opensearch:9200", "context-v1", client)
-    index.create_index()
+    index.ensure_index()
     assert index.index_snapshot(snapshot()) == 1
     results = index.search("orders", tenant_id="tenant-a")
     body = client.calls[-1][1]
@@ -138,3 +154,40 @@ def test_quality_gate_blocks_stale_or_unprovenanced_context():
     report = evaluate_context_quality(snapshot(source_version=None))
     assert report.actionable is False
     assert report.blocking_reasons == ("incomplete provenance",)
+
+
+def test_registry_snapshot_is_loaded_from_certified_local_contract():
+    current = build_registry_snapshot("semantic_registry")
+    assert current is not None
+    assert current.tenant_id == "local-demo"
+    assert {asset.id for asset in current.metadata_assets} == {"order_items", "orders"}
+    assert all(asset.certified for asset in current.metadata_assets)
+
+
+class BootstrapClient(Client):
+    def get(self, url):
+        self.calls.append((url, None, None))
+        return Response({"status": "green"})
+
+    def head(self, url):
+        self.calls.append((url, None, None))
+        return Response({}, status_code=404)
+
+    def close(self):
+        return None
+
+
+def test_context_bootstrap_provisions_index_and_indexes_registry_snapshot():
+    client = BootstrapClient()
+    config = Settings(
+        _env_file=None, ANALYTICS_CONTEXT_BOOTSTRAP=True,
+        ANALYTICS_OPENSEARCH_URL="http://opensearch:9200",
+        ANALYTICS_CONTEXT_INDEX="context-v1", ANALYTICS_DASHBOARDS_URL=None,
+        ANALYTICS_SEMANTIC_REGISTRY_PATH="semantic_registry",
+    )
+    bootstrap = ContextBootstrap(config, client)
+    state = bootstrap.start()
+    assert state.ready is True
+    assert state.indexed_documents == 2
+    assert state.dashboard_ready is False
+    assert any(call[0].endswith("/_bulk") for call in client.calls)
