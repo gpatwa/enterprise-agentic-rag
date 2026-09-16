@@ -20,6 +20,12 @@ from packages.platform_contracts.analytics_planning import (
     AnalyticsReviewRequest,
     SavedAnalysis,
 )
+from packages.platform_contracts.context_merge import (
+    MergedMetadataSnapshot,
+    MetadataConflict,
+    MetadataTombstone,
+    merge_metadata_snapshots,
+)
 from packages.platform_contracts.discovery import (
     DecisionTrace,
     DiscoveryComponentVersion,
@@ -42,6 +48,7 @@ from packages.platform_contracts.operations import (
     RetentionPolicy,
     SLOTarget,
 )
+from packages.platform_contracts.ossie import OssieCompatibilityReport, export_ossie, import_ossie
 from packages.platform_contracts.routing import TrustedAuthorizationArtifact
 from packages.platform_contracts.runtime import QueryBudget, QueryTelemetry, RuntimeQueryRequest, UsageRecord
 from packages.platform_contracts.security import AnalyticsIdentity, AuditEvent, AuthorizationDecision
@@ -98,4 +105,11 @@ __all__ = [
     "OntologyNode",
     "OntologyProvenance",
     "OntologySnapshot",
+    "OssieCompatibilityReport",
+    "export_ossie",
+    "import_ossie",
+    "MetadataConflict",
+    "MetadataTombstone",
+    "MergedMetadataSnapshot",
+    "merge_metadata_snapshots",
 ]
