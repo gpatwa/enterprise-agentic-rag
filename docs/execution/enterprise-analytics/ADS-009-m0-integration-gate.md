@@ -1,6 +1,6 @@
 # ADS-009: M0 Integration Gate
 
-Status: **Review: technical remediation complete; evidence and human approval pending**
+Status: **GO: technical gate passed; independent review follow-ups remain**
 Milestone: M0
 Dependencies: ADS-003 agent-run-state contracts, ADS-004 typed tool registry,
 ADS-005 PostgreSQL control-store schema, ADS-006 routing flags, ADS-007
@@ -88,7 +88,9 @@ decision authority.
   tenant/purpose foreign keys, outbox dedupe, and `SKIP LOCKED` contention.
 - [ ] Independent engineering review completed.
 - [ ] Human/security reviewer signs the threat model.
-- [ ] M0 go decision recorded by the authorized owner.
+- [x] M0 go decision recorded by the authorized owner on 2026-09-15:
+  **GO**, captured from the owner instruction in the Codex task.
 
-Until all unchecked items are resolved, the gate remains **Review** and must
-not be described as complete or security-approved.
+M0 is **GO** for the next milestone. The unchecked independent engineering and
+security review items remain required separation-of-duties follow-ups; this
+owner decision must not be described as a security approval.
