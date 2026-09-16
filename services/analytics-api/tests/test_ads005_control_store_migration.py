@@ -56,16 +56,16 @@ def test_checkpoint_is_resume_boundary_and_duplicate_sequence_is_rejected(tmp_pa
         _run_row(connection)
         connection.execute(
             text("""INSERT INTO analytics_run_checkpoints
-            (run_id, checkpoint_seq, tenant_id, graph_version, state_version, current_node,
+            (run_id, checkpoint_seq, tenant_id, purpose, graph_version, state_version, current_node,
              transition_seq, lease_fencing_seq, state_payload)
-            VALUES ('run-1', 1, 'tenant-a', 'g-1', 'v1', 'retrieve', 1, 1, '{"step": "retrieve"}')""")
+            VALUES ('run-1', 1, 'tenant-a', 'analytics', 'g-1', 'v1', 'retrieve', 1, 1, '{"step": "retrieve"}')""")
         )
         with pytest.raises(IntegrityError):
             connection.execute(
                 text("""INSERT INTO analytics_run_checkpoints
-                (run_id, checkpoint_seq, tenant_id, graph_version, state_version, current_node,
+                (run_id, checkpoint_seq, tenant_id, purpose, graph_version, state_version, current_node,
                  transition_seq, lease_fencing_seq, state_payload)
-                VALUES ('run-1', 2, 'tenant-a', 'g-1', 'v1', 'resolve', 1, 1, '{}')""")
+                VALUES ('run-1', 2, 'tenant-a', 'analytics', 'g-1', 'v1', 'resolve', 1, 1, '{}')""")
             )
 
 
@@ -76,19 +76,19 @@ def test_stale_fencing_and_non_monotonic_transitions_are_rejected(tmp_path, monk
         _run_row(connection)
         connection.execute(
             text("""INSERT INTO analytics_run_leases
-            (run_id, tenant_id, owner_id, lease_token, fencing_seq, expires_at)
-            VALUES ('run-1', 'tenant-a', 'worker-a', 'lease-1', 2, CURRENT_TIMESTAMP)""")
+            (run_id, tenant_id, purpose, owner_id, lease_token, fencing_seq, expires_at)
+            VALUES ('run-1', 'tenant-a', 'analytics', 'worker-a', 'lease-1', 2, CURRENT_TIMESTAMP)""")
         )
         connection.execute(
             text("""INSERT INTO analytics_run_transitions
-            (run_id, transition_seq, tenant_id, from_node, to_node, to_status, fencing_seq, idempotency_key)
-            VALUES ('run-1', 1, 'tenant-a', 'create', 'bootstrap', 'active', 2, 't-1')""")
+            (run_id, transition_seq, tenant_id, purpose, graph_version, from_node, to_node, from_status, to_status, fencing_seq, idempotency_key)
+            VALUES ('run-1', 1, 'tenant-a', 'analytics', 'g-1', 'create', 'bootstrap', 'active', 'active', 2, 't-1')""")
         )
         with pytest.raises(IntegrityError):
             connection.execute(
                 text("""INSERT INTO analytics_run_transitions
-                (run_id, transition_seq, tenant_id, from_node, to_node, to_status, fencing_seq, idempotency_key)
-                VALUES ('run-1', 1, 'tenant-a', 'bootstrap', 'retrieve', 'active', 1, 't-stale')""")
+                (run_id, transition_seq, tenant_id, purpose, graph_version, from_node, to_node, from_status, to_status, fencing_seq, idempotency_key)
+                VALUES ('run-1', 1, 'tenant-a', 'analytics', 'g-1', 'bootstrap', 'retrieve', 'active', 'active', 1, 't-stale')""")
             )
         with pytest.raises((OperationalError, IntegrityError)):
             connection.execute(text("UPDATE analytics_run_transitions SET to_node = 'tampered' WHERE run_id = 'run-1'"))
@@ -100,8 +100,8 @@ def test_outbox_dedupe_allows_one_delivery_record(tmp_path, monkeypatch):
     with engine.begin() as connection:
         _run_row(connection)
         statement = text("""INSERT INTO analytics_run_outbox
-            (tenant_id, run_id, event_type, dedupe_key, payload)
-            VALUES ('tenant-a', 'run-1', 'checkpoint', 'run-1:1', '{}')""")
+            (tenant_id, run_id, purpose, event_type, dedupe_key, payload)
+            VALUES ('tenant-a', 'run-1', 'analytics', 'checkpoint', 'run-1:1', '{}')""")
         connection.execute(statement)
         with pytest.raises(IntegrityError):
             connection.execute(statement)

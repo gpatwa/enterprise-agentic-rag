@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytest
@@ -9,6 +10,7 @@ from packages.platform_contracts.routing import (
     RoutingContext,
     RoutingRefusal,
     RoutingTransitionError,
+    TrustedAuthorizationArtifact,
     require_governed_action,
     resolve_route,
     validate_mode_transition,
@@ -56,17 +58,52 @@ def test_disabled_refuses_clearly_and_cannot_execute_action() -> None:
 
 
 def test_governed_requires_explicit_rollout_approval_and_audit_context() -> None:
-    with pytest.raises(RoutingRefusal, match="explicit enablement"):
+    with pytest.raises(RoutingRefusal, match="trusted authorization"):
         resolve_route(RoutingConfig(default_mode="governed"), context())
+    issued = datetime.now(timezone.utc)
+    artifact = TrustedAuthorizationArtifact.issue(
+        artifact_id="artifact-1", tenant_id="tenant-a", request_id="request-1", purpose="analytics",
+        rollout_id="rollout-1", approval_reference="approval-1", audit_event_id="audit-1",
+        signing_key="test-key", issued_at=issued, expires_at=issued + timedelta(minutes=5),
+    )
     governed = context(
         rollout_id="rollout-1",
         governed_enabled=True,
         approval_reference="approval-1",
         audit_event_id="audit-1",
+        authorization_artifact=artifact,
     )
-    decision = resolve_route(RoutingConfig(default_mode="governed"), governed)
+    decision = resolve_route(RoutingConfig(default_mode="governed"), governed, authorization_key="test-key")
     assert decision.execute_governed is True
+    assert decision.audit_event_id == "audit-1"
     require_governed_action(decision)
+
+
+def test_governed_route_rejects_tampered_or_mismatched_artifact() -> None:
+    issued = datetime.now(timezone.utc)
+    artifact = TrustedAuthorizationArtifact.issue(
+        artifact_id="artifact-1", tenant_id="tenant-a", request_id="request-1", purpose="analytics",
+        rollout_id="rollout-1", approval_reference="approval-1", audit_event_id="audit-1",
+        signing_key="test-key", issued_at=issued, expires_at=issued + timedelta(minutes=5),
+    )
+    with pytest.raises(RoutingRefusal, match="invalid or mismatched"):
+            resolve_route(
+                RoutingConfig(default_mode="governed"),
+            context(
+                governed_enabled=True, rollout_id="rollout-1", approval_reference="approval-1",
+                audit_event_id="audit-1", authorization_artifact=artifact,
+            ),
+            authorization_key="wrong-key",
+        )
+    with pytest.raises(RoutingRefusal, match="invalid or mismatched"):
+        resolve_route(
+            RoutingConfig(default_mode="governed"),
+            context(
+                governed_enabled=True, rollout_id="rollout-1", approval_reference="approval-1",
+                audit_event_id="audit-1", authorization_artifact=artifact, purpose="billing",
+            ),
+            authorization_key="test-key",
+        )
 
 
 @pytest.mark.parametrize("field", ["rollout_id", "approval_reference", "audit_event_id"])

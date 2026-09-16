@@ -1,4 +1,3 @@
-from packages.platform_contracts.aiops import ComponentVersion, DriftSignal, RolloutState, ValidatedCorrection
 from packages.platform_contracts.agent_runtime import (
     AGENT_RUNTIME_SCHEMA_VERSION,
     AgentRunState,
@@ -12,12 +11,7 @@ from packages.platform_contracts.agent_runtime import (
     Transition,
     is_legal_transition,
 )
-from packages.platform_contracts.discovery import (
-    DecisionTrace,
-    DiscoveryComponentVersion,
-    DiscoveryRequestContext,
-    ImpressionToken,
-)
+from packages.platform_contracts.aiops import ComponentVersion, DriftSignal, RolloutState, ValidatedCorrection
 from packages.platform_contracts.analytics_planning import (
     AnalyticsAmbiguity,
     AnalyticsClarificationState,
@@ -25,6 +19,12 @@ from packages.platform_contracts.analytics_planning import (
     AnalyticsPlan,
     AnalyticsReviewRequest,
     SavedAnalysis,
+)
+from packages.platform_contracts.discovery import (
+    DecisionTrace,
+    DiscoveryComponentVersion,
+    DiscoveryRequestContext,
+    ImpressionToken,
 )
 from packages.platform_contracts.evaluation import EvaluationCase, EvaluationResult, EvaluationSuite, ReleaseGateReport
 from packages.platform_contracts.metadata import (
@@ -41,6 +41,7 @@ from packages.platform_contracts.operations import (
     RetentionPolicy,
     SLOTarget,
 )
+from packages.platform_contracts.routing import TrustedAuthorizationArtifact
 from packages.platform_contracts.runtime import QueryBudget, QueryTelemetry, RuntimeQueryRequest, UsageRecord
 from packages.platform_contracts.security import AnalyticsIdentity, AuditEvent, AuthorizationDecision
 
@@ -91,4 +92,5 @@ __all__ = [
     "DiscoveryComponentVersion",
     "ImpressionToken",
     "DecisionTrace",
+    "TrustedAuthorizationArtifact",
 ]

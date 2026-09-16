@@ -1,6 +1,6 @@
 # ADS-009 M0 Integration Threat Model
 
-Status: **Review**
+Status: **Review: technical controls remediated; security sign-off pending**
 Security reviewer: ____________________  Date: __________  Decision: __________
 Engineering reviewer: __________________  Date: __________  Decision: __________
 
@@ -33,8 +33,8 @@ duplicate delivery. The harness tests these cases:
 
 - stale fencing is rejected after a resumed worker owns a newer sequence;
 - duplicate outbox delivery has one dedupe record;
-- cross-tenant/purpose use is not admitted by the declared scope boundary;
-- governed routing requires explicit rollout, approval, and audit evidence;
+- cross-tenant/purpose use is rejected by composite foreign keys and declared scope boundaries;
+- governed routing requires a short-lived signed authorization artifact;
 - disabled and implicit governed routes refuse action;
 - raw SQL and tool-execution capabilities cannot be registered;
 - a registry result exposes metadata, not an executable handle.
@@ -42,15 +42,15 @@ duplicate delivery. The harness tests these cases:
 ## Mitigations and residual risks
 
 Typed Pydantic contracts reject unknown fields and malformed state, transitions
-are authored and evidence-bearing, SQLite and local PostgreSQL migration
-constraints exercise checkpoint uniqueness and append-only facts, and the
-route/registry contracts fail closed. The fake graph uses deterministic
-synthetic identifiers and does not execute tools or SQL.
+are authored and evidence-bearing, the durable `ControlStore` makes
+projection, transition, checkpoint, and outbox writes atomic, and the
+route/registry contracts fail closed. SQLite migration tests exercise the same
+composite constraints and append-only facts intended for PostgreSQL. The fake
+graph uses deterministic synthetic identifiers and does not execute tools or SQL.
 
-Residual risks are material: the local PostgreSQL drill does not prove
-production topology or isolation; the harness is not a distributed crash
-drill; repository compare-and-set and authorization/RLS wiring remain future
-work; adapter idempotency beyond the control-store dedupe contract requires
-live integration evidence; and no security reviewer has signed off. These
-risks block a security approval and must remain visible at the M0 go/no-go
-review.
+Residual risks remain: the updated local PostgreSQL drill has not run because
+Docker was unavailable; production topology and RLS are out of scope; the
+harness is not a distributed crash drill; adapter idempotency beyond the
+control-store dedupe contract requires live integration evidence; and no
+security reviewer has signed off. These risks block a security approval and
+must remain visible at the M0 go/no-go review.

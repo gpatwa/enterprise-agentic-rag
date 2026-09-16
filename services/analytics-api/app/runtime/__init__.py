@@ -2,6 +2,7 @@
 
 from app.runtime.budgets import BudgetExceeded, BudgetGuard
 from app.runtime.control import CancellationRegistry, GatewayRegistration, GatewayRegistry, UsageMeter
+from app.runtime.control_store import ControlStore, ControlStoreError, Lease, LeaseUnavailable, StaleWorkerError
 
 __all__ = [
     "BudgetExceeded",
@@ -10,4 +11,9 @@ __all__ = [
     "GatewayRegistry",
     "GatewayRegistration",
     "UsageMeter",
+    "ControlStore",
+    "ControlStoreError",
+    "Lease",
+    "LeaseUnavailable",
+    "StaleWorkerError",
 ]

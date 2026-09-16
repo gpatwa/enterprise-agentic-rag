@@ -12,6 +12,12 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 TOOL_REGISTRY_SCHEMA_VERSION = "v1"
+_ALLOWED_CAPABILITIES = frozenset(
+    {
+        "context.read", "metadata.read", "semantic.read", "evidence.read", "analytics.explain",
+        "search.read", "catalog.read",
+    }
+)
 
 
 class ToolRegistryError(ValueError):
@@ -69,6 +75,8 @@ class ToolSpec(BaseModel):
             raise ValueError("destructive tools require tenant_and_purpose scope")
         if any(not purpose or len(purpose) > 255 for purpose in self.allowed_purposes):
             raise ValueError("allowed_purposes must contain non-empty values of at most 255 characters")
+        if self.required_scope in {"purpose", "tenant_and_purpose"} and not self.allowed_purposes:
+            raise ValueError("purpose-scoped tools require allowed_purposes")
         return self
 
 
@@ -101,7 +109,7 @@ class ToolRegistry:
             self.register(spec)
 
     def register(self, spec: ToolSpec) -> None:
-        if spec.capability in {"execute_sql", "raw_sql", "authorize_policy", "tool_execution"}:
+        if spec.capability not in _ALLOWED_CAPABILITIES:
             raise ToolRegistryError(f"unsafe capability is not registerable: {spec.capability}")
         key = (spec.tool_id, spec.version)
         if key in self._specs:
@@ -115,6 +123,8 @@ class ToolRegistry:
         *,
         input_contract_version: str,
         output_contract_version: str,
+        tenant_id: str | None = None,
+        purpose: str | None = None,
     ) -> ToolMetadata:
         spec = self._specs.get((tool_id, version))
         if spec is None:
@@ -124,6 +134,10 @@ class ToolRegistry:
             or output_contract_version != spec.output_contract_version
         ):
             raise IncompatibleContractError(f"incompatible contracts for {tool_id}@{version}")
+        if spec.required_scope in {"tenant", "tenant_and_purpose"} and not tenant_id:
+            raise ToolRegistryError(f"tenant scope is required for {tool_id}@{version}")
+        if spec.required_scope in {"purpose", "tenant_and_purpose"} and purpose not in spec.allowed_purposes:
+            raise ToolRegistryError(f"purpose is not allowed for {tool_id}@{version}")
         return ToolMetadata.model_validate(spec.model_dump())
 
     def metadata(self) -> tuple[ToolMetadata, ...]:

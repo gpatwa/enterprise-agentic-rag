@@ -16,7 +16,7 @@ def spec(**overrides: object) -> ToolSpec:
     values = {
         "tool_id": "catalog.lookup",
         "version": "v1",
-        "capability": "catalog_read",
+        "capability": "catalog.read",
         "risk_class": RiskClass.READ,
         "timeout_ms": 2_000,
         "retry_policy": RetryPolicy(max_attempts=2, backoff_ms=100),
@@ -24,6 +24,7 @@ def spec(**overrides: object) -> ToolSpec:
         "input_contract_version": "v1",
         "output_contract_version": "v1",
         "required_scope": "tenant_and_purpose",
+        "allowed_purposes": ("analytics",),
     }
     values.update(overrides)
     return ToolSpec(**values)
@@ -32,7 +33,10 @@ def spec(**overrides: object) -> ToolSpec:
 def test_register_and_lookup_returns_metadata_only() -> None:
     registry = ToolRegistry()
     registry.register(spec())
-    result = registry.lookup("catalog.lookup", "v1", input_contract_version="v1", output_contract_version="v1")
+    result = registry.lookup(
+        "catalog.lookup", "v1", input_contract_version="v1", output_contract_version="v1",
+        tenant_id="tenant-a", purpose="analytics",
+    )
     assert result.tool_id == "catalog.lookup"
     assert not hasattr(result, "execute")
 
@@ -81,3 +85,20 @@ def test_unsafe_capability_fails_closed(capability: str) -> None:
 def test_destructive_tool_requires_both_scopes() -> None:
     with pytest.raises(ValidationError, match="tenant_and_purpose"):
         spec(risk_class=RiskClass.DESTRUCTIVE, required_scope="tenant")
+
+
+def test_purpose_scope_requires_allowlist_and_rejects_other_purposes() -> None:
+    with pytest.raises(ValidationError, match="allowed_purposes"):
+        spec(allowed_purposes=())
+    registry = ToolRegistry((spec(),))
+    with pytest.raises(ToolRegistryError, match="purpose is not allowed"):
+        registry.lookup(
+            "catalog.lookup", "v1", input_contract_version="v1", output_contract_version="v1",
+            tenant_id="tenant-a", purpose="billing",
+        )
+
+
+def test_registry_allowlist_rejects_sql_and_execution_aliases() -> None:
+    for capability in ("sql", "execute", "shell.command", "policy.authorize"):
+        with pytest.raises(ToolRegistryError, match="unsafe capability"):
+            ToolRegistry((spec(capability=capability),))
