@@ -1,13 +1,20 @@
 """OpenSearch context index adapter with provider-owned scope filters."""
 from __future__ import annotations
 
+import json
 from typing import Any, Protocol
 
 from packages.platform_contracts.context_snapshot import ContextPackItem, ContextSnapshot
 
 
 class ContextSearchClient(Protocol):
-    def post(self, url: str, *, json: dict[str, Any]) -> Any:
+    def put(self, url: str, *, json: dict[str, Any]) -> Any:
+        ...
+
+    def post(
+        self, url: str, *, json: dict[str, Any] | None = None,
+        content: str | None = None, headers: dict[str, str] | None = None,
+    ) -> Any:
         ...
 
 
@@ -30,12 +37,26 @@ class OpenSearchContextIndex:
         self.index_name = index_name
         self.client = client
 
+    def create_index(self) -> None:
+        response = self.client.put(
+            f"{self.base_url}/{self.index_name}", json=build_context_index_mapping()
+        )
+        response.raise_for_status()
+
     def index_snapshot(self, snapshot: ContextSnapshot) -> int:
         documents = [self._document(snapshot, asset) for asset in snapshot.metadata_assets]
         if documents:
-            operations = [{"index": {"_index": self.index_name, "_id": document["asset_id"]}} for document in documents]
-            operations.extend(documents)
-            response = self.client.post(f"{self.base_url}/_bulk", json={"operations": operations})
+            operations: list[str] = []
+            for document in documents:
+                operations.append(json.dumps(
+                    {"index": {"_index": self.index_name, "_id": self._document_id(document)}},
+                    separators=(",", ":"),
+                ))
+                operations.append(json.dumps(document, separators=(",", ":")))
+            response = self.client.post(
+                f"{self.base_url}/_bulk", content="\n".join(operations) + "\n",
+                headers={"content-type": "application/x-ndjson"},
+            )
             response.raise_for_status()
         return len(documents)
 
@@ -62,7 +83,12 @@ class OpenSearchContextIndex:
             )
             for hit in hits
             if hit.get("_source", {}).get("tenant_id") == tenant_id
+            and (not certified_only or bool(hit.get("_source", {}).get("certified", False)))
         )
+
+    @staticmethod
+    def _document_id(document: dict[str, Any]) -> str:
+        return ":".join((document["tenant_id"], document["snapshot_id"], document["asset_id"]))
 
     @staticmethod
     def _document(snapshot: ContextSnapshot, asset: Any) -> dict[str, Any]:

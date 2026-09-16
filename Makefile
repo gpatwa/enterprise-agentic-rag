@@ -6,7 +6,7 @@
        pause-azure resume-azure import-azure \
        azure-dev-up azure-dev-sync azure-dev-start azure-dev-stop azure-dev-status azure-dev-ssh azure-dev-tunnel azure-dev-destroy observability-up observability-down \
        verify-cleanup verify-cleanup-delete verify-cleanup-azure verify-cleanup-azure-delete \
-       setup lint format architecture-check architecture-build \
+       setup lint format architecture-check architecture-build verify-context-local \
        dev-control-plane dev-data-plane dev-split test-control-plane test-data-plane test-all
 
 help:
@@ -187,6 +187,10 @@ test:
 
 test-analytics:
 	cd services/analytics-api && PYTHONPATH=.:../.. pytest
+
+verify-context-local:
+	docker compose --profile search up -d opensearch
+	PYTHONPATH=.:services/analytics-api python3 scripts/verify_context_local.py
 
 seed-context:
 	python3 scripts/seed_context_layers.py

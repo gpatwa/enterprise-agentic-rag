@@ -17,8 +17,10 @@ reasons and make the context non-actionable.
 
 - `services/analytics-api/app/context/quality.py`
 - `services/analytics-api/tests/test_context_m1.py`
+- `scripts/verify_context_local.py` via `make verify-context-local`
 - Stale and incomplete-provenance cases produce actionable=false with specific
   blocking reasons.
+- Live local verification passed for healthy and stale context snapshots.
 
 ## Boundary
 

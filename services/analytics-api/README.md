@@ -88,3 +88,17 @@ curl -X POST http://localhost:8090/api/v1/analytics/query \
 
 `ANALYTICS_API_KEY` is optional for local development. When set, clients must
 send the value in `X-API-Key`.
+
+## Local Context Verification
+
+The M1 context layer can be verified against the local OpenSearch profile
+without Azure or an LLM key:
+
+```bash
+make verify-context-local
+```
+
+The drill creates a disposable `context-m1-verify` index, indexes certified and
+uncertified assets for two tenants, verifies tenant and certification filters,
+checks snapshot fingerprint round-trip, and confirms stale metadata is blocked.
+Stop the local profile with `docker compose --profile search down` when done.

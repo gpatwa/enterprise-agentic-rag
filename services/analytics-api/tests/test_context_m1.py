@@ -102,8 +102,12 @@ class Client:
     def __init__(self):
         self.calls = []
 
-    def post(self, url, *, json):
-        self.calls.append((url, json))
+    def put(self, url, *, json):
+        self.calls.append((url, json, None))
+        return Response({"acknowledged": True})
+
+    def post(self, url, *, json=None, content=None, headers=None):
+        self.calls.append((url, json, content, headers))
         if url.endswith("/_search"):
             return Response({"hits": {"hits": [{"_score": 2, "_source": {"tenant_id": "tenant-a", "asset_id": "orders", "snapshot_id": "snapshot-1", "text": "orders", "certified": True}}]}})
         return Response({"errors": False})
@@ -112,6 +116,7 @@ class Client:
 def test_opensearch_index_owns_tenant_and_certification_filters():
     client = Client()
     index = OpenSearchContextIndex("http://opensearch:9200", "context-v1", client)
+    index.create_index()
     assert index.index_snapshot(snapshot()) == 1
     results = index.search("orders", tenant_id="tenant-a")
     body = client.calls[-1][1]
@@ -119,6 +124,10 @@ def test_opensearch_index_owns_tenant_and_certification_filters():
     assert {tuple(item["term"].items())[0] for item in body["query"]["bool"]["filter"]} == {
         ("tenant_id", "tenant-a"), ("certified", True)
     }
+    bulk_call = client.calls[-2]
+    assert bulk_call[2].endswith("\n")
+    assert bulk_call[3] == {"content-type": "application/x-ndjson"}
+    assert '"_id":"tenant-a:snapshot-1:orders"' in bulk_call[2]
     assert build_context_index_mapping()["mappings"]["properties"]["tenant_id"]["type"] == "keyword"
 
 
