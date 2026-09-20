@@ -123,7 +123,7 @@ tasks:
   ADS-020: {milestone: M2, status: complete, depends_on: [ADS-003]}
   ADS-021: {milestone: M2, status: complete, depends_on: [ADS-020]}
   ADS-022: {milestone: M2, status: complete, depends_on: [ADS-020]}
-  ADS-023: {milestone: M2, status: planned, depends_on: [ADS-020, ADS-021, ADS-022]}
+  ADS-023: {milestone: M2, status: complete, depends_on: [ADS-020, ADS-021, ADS-022]}
   ADS-024: {milestone: M2, status: planned, depends_on: [ADS-023]}
   ADS-025: {milestone: M2, status: planned, depends_on: [ADS-023]}
   ADS-026: {milestone: M2, status: planned, depends_on: [ADS-023]}
