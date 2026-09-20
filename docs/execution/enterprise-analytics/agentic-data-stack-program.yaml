@@ -51,7 +51,7 @@ milestones:
     human_gate: semantic_certification
   M2:
     name: Deterministic agent harness
-    status: planned
+    status: in_progress
     waves:
       - [ADS-020, ADS-021, ADS-022]
       - [ADS-023, ADS-024, ADS-025]
@@ -120,9 +120,9 @@ tasks:
   ADS-017: {milestone: M1, status: complete, depends_on: [ADS-016]}
   ADS-018: {milestone: M1, status: complete, depends_on: [ADS-017]}
   ADS-019: {milestone: M1, status: complete, depends_on: [ADS-011, ADS-012, ADS-013, ADS-014, ADS-015, ADS-016, ADS-017, ADS-018]}
-  ADS-020: {milestone: M2, status: planned, depends_on: [ADS-003]}
-  ADS-021: {milestone: M2, status: planned, depends_on: [ADS-020]}
-  ADS-022: {milestone: M2, status: planned, depends_on: [ADS-020]}
+  ADS-020: {milestone: M2, status: complete, depends_on: [ADS-003]}
+  ADS-021: {milestone: M2, status: complete, depends_on: [ADS-020]}
+  ADS-022: {milestone: M2, status: complete, depends_on: [ADS-020]}
   ADS-023: {milestone: M2, status: planned, depends_on: [ADS-020, ADS-021, ADS-022]}
   ADS-024: {milestone: M2, status: planned, depends_on: [ADS-023]}
   ADS-025: {milestone: M2, status: planned, depends_on: [ADS-023]}

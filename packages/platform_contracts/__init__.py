@@ -33,6 +33,14 @@ from packages.platform_contracts.context_snapshot import (
     ContextSnapshot,
     build_context_pack,
 )
+from packages.platform_contracts.determinism import (
+    DeterministicBudgetExceeded,
+    DeterministicClock,
+    DeterministicControls,
+    DeterministicIdFactory,
+    DeterministicRandom,
+    TokenCostController,
+)
 from packages.platform_contracts.discovery import (
     DecisionTrace,
     DiscoveryComponentVersion,
@@ -40,6 +48,7 @@ from packages.platform_contracts.discovery import (
     ImpressionToken,
 )
 from packages.platform_contracts.evaluation import EvaluationCase, EvaluationResult, EvaluationSuite, ReleaseGateReport
+from packages.platform_contracts.harness import ExpectedTrace, ExpectedTraceStep, HarnessReport, HarnessScenario
 from packages.platform_contracts.metadata import (
     MetadataAsset,
     MetadataColumn,
@@ -107,6 +116,16 @@ __all__ = [
     "DiscoveryComponentVersion",
     "ImpressionToken",
     "DecisionTrace",
+    "DeterministicBudgetExceeded",
+    "DeterministicClock",
+    "DeterministicControls",
+    "DeterministicIdFactory",
+    "DeterministicRandom",
+    "TokenCostController",
+    "ExpectedTrace",
+    "ExpectedTraceStep",
+    "HarnessReport",
+    "HarnessScenario",
     "TrustedAuthorizationArtifact",
     "OntologyEdge",
     "OntologyNode",
