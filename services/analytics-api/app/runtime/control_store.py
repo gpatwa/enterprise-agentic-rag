@@ -9,7 +9,7 @@ from typing import Any
 
 from sqlalchemy import Engine, text
 
-from packages.platform_contracts.agent_runtime import AgentRunState, Transition
+from packages.platform_contracts.agent_runtime import AgentRunState, CancellationRequest, Transition
 
 
 class ControlStoreError(RuntimeError):
@@ -148,8 +148,64 @@ class ControlStore:
                 {"run_id": run_id, "tenant_id": tenant_id, "purpose": purpose},
             ).first()
             if row is None:
-                raise ControlStoreError("no checkpoint exists for run identity")
+                return self.load_run_state(run_id=run_id, tenant_id=tenant_id, purpose=purpose)
             return AgentRunState.model_validate(_payload(row[0]))
+
+    def load_run_state(self, *, run_id: str, tenant_id: str, purpose: str) -> AgentRunState:
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                text("""SELECT state_payload FROM analytics_agent_runs
+                WHERE run_id=:run_id AND tenant_id=:tenant_id AND purpose=:purpose"""),
+                {"run_id": run_id, "tenant_id": tenant_id, "purpose": purpose},
+            ).first()
+            if row is None:
+                raise ControlStoreError("run does not exist for tenant and purpose")
+            return AgentRunState.model_validate(_payload(row[0]))
+
+    def cancellation_requested(self, *, run_id: str, tenant_id: str, purpose: str) -> bool:
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                text("""SELECT cancel_requested FROM analytics_agent_runs
+                WHERE run_id=:run_id AND tenant_id=:tenant_id AND purpose=:purpose"""),
+                {"run_id": run_id, "tenant_id": tenant_id, "purpose": purpose},
+            ).first()
+            if row is None:
+                raise ControlStoreError("run does not exist for tenant and purpose")
+            return bool(row[0])
+
+    def request_cancellation(
+        self,
+        *,
+        run_id: str,
+        tenant_id: str,
+        purpose: str,
+        cancellation: CancellationRequest,
+    ) -> None:
+        with self.engine.begin() as connection:
+            lock = " FOR UPDATE" if connection.dialect.name == "postgresql" else ""
+            row = connection.execute(
+                text("""SELECT state_payload, status FROM analytics_agent_runs
+                WHERE run_id=:run_id AND tenant_id=:tenant_id AND purpose=:purpose""" + lock),
+                {"run_id": run_id, "tenant_id": tenant_id, "purpose": purpose},
+            ).first()
+            if row is None:
+                raise ControlStoreError("run does not exist for tenant and purpose")
+            if row[1] == "terminal":
+                raise LeaseUnavailable("terminal run cannot be cancelled")
+            state = AgentRunState.model_validate(_payload(row[0]))
+            updated = state.model_copy(update={"status": "cancel_requested", "cancellation": cancellation})
+            result = connection.execute(
+                text("""UPDATE analytics_agent_runs SET status='cancel_requested', cancel_requested=true,
+                state_payload=:state_payload, updated_at=:updated_at
+                WHERE run_id=:run_id AND tenant_id=:tenant_id AND purpose=:purpose AND status <> 'terminal'"""),
+                {
+                    "run_id": run_id, "tenant_id": tenant_id, "purpose": purpose,
+                    "state_payload": _json(updated.model_dump(mode="json")),
+                    "updated_at": _timestamp(datetime.now(timezone.utc)),
+                },
+            )
+            if result.rowcount != 1:
+                raise StaleWorkerError("run became terminal while cancellation was requested")
 
     def replay_transitions(self, *, run_id: str, tenant_id: str, purpose: str) -> tuple[dict[str, Any], ...]:
         with self.engine.connect() as connection:

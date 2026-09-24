@@ -27,4 +27,6 @@ Markdown artifacts.
 ## Boundary
 
 The baseline is a local evaluation lock, not a production customer threshold.
-The M2 human threshold-and-harness review remains required before promoting it.
+The M2 threshold-and-harness review was approved by the user on 2026-09-24;
+the approved record is in `agentic-data-stack-program.yaml`. Threshold changes
+still require independent approval.

@@ -51,15 +51,18 @@ milestones:
     human_gate: semantic_certification
   M2:
     name: Deterministic agent harness
-    status: in_progress
+    status: complete
     waves:
       - [ADS-020, ADS-021, ADS-022]
       - [ADS-023, ADS-024, ADS-025]
       - [ADS-026, ADS-027, ADS-028, ADS-029]
     human_gate: threshold_and_harness_review
+    human_gate_status: approved
+    human_gate_approved_at: 2026-09-24
+    human_gate_approval_record: "User approved M2 threshold-and-harness review in conversation."
   M3:
     name: Governed agent graph
-    status: planned
+    status: in_progress
     waves:
       - [ADS-030, ADS-031, ADS-032, ADS-033]
       - [ADS-034, ADS-035, ADS-036]
@@ -130,7 +133,7 @@ tasks:
   ADS-027: {milestone: M2, status: complete, depends_on: [ADS-023]}
   ADS-028: {milestone: M2, status: complete, depends_on: [ADS-027]}
   ADS-029: {milestone: M2, status: complete, depends_on: [ADS-024, ADS-025, ADS-026, ADS-027, ADS-028]}
-  ADS-030: {milestone: M3, status: planned, depends_on: [ADS-009, ADS-023]}
+  ADS-030: {milestone: M3, status: complete, depends_on: [ADS-009, ADS-023]}
   ADS-031: {milestone: M3, status: planned, depends_on: [ADS-030]}
   ADS-032: {milestone: M3, status: planned, depends_on: [ADS-018, ADS-030]}
   ADS-033: {milestone: M3, status: planned, depends_on: [ADS-018, ADS-030]}
