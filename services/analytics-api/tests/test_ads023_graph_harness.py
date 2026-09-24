@@ -93,6 +93,17 @@ def test_illegal_edge_is_rejected_by_transition_contract():
         GraphHarness(node_handlers).run(scenario(trace()), DeterministicControls.from_seed("ads023"))
 
 
+def test_successful_terminal_signal_is_restricted_to_terminal_capable_nodes():
+    node_handlers = handlers()
+
+    def premature_success(node: NodeInput) -> NodeOutput:
+        return NodeOutput(run_id=node.run_id, node_id=node.node_id, status="completed", next_node=TERMINAL_NODE)
+
+    node_handlers["create"] = premature_success
+    with pytest.raises(GraphHarnessError, match="successful terminal"):
+        GraphHarness(node_handlers).run(scenario(trace()), DeterministicControls.from_seed("ads023"))
+
+
 def test_terminal_kind_and_transition_budget_are_asserted():
     with pytest.raises(GraphHarnessError, match="terminal outcome mismatch"):
         GraphHarness(handlers()).run(

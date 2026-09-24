@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import Callable
 
+from app.harness.node_contracts import NodeContractKit
 from packages.platform_contracts.agent_runtime import (
     AgentRunState,
     EvidenceReference,
@@ -18,6 +19,7 @@ from packages.platform_contracts.determinism import DeterministicControls
 from packages.platform_contracts.harness import ExpectedTraceStep, HarnessScenario
 
 TERMINAL_NODE = "terminal"
+SUCCESS_TERMINAL_NODES = frozenset({"policy", "estimate", "approve", "result_validate", "explain"})
 GraphNode = Callable[[NodeInput], NodeOutput]
 
 
@@ -42,6 +44,7 @@ class GraphHarness:
         self.nodes = dict(nodes)
         self.deadline_minutes = deadline_minutes
         self.max_transitions = max_transitions
+        self.node_contracts = NodeContractKit()
 
     def run(self, scenario: HarnessScenario, controls: DeterministicControls) -> GraphExecutionResult:
         if scenario.graph_version != "graph-v1":
@@ -84,11 +87,11 @@ class GraphHarness:
                 remaining_budget=state.budget,
             )
             try:
-                output = handler(node_input)
+                output = self.node_contracts.invoke(handler, node_input)
             except Exception as exc:  # noqa: BLE001 - the harness must fail closed.
                 raise GraphHarnessError(f"node {node_id} raised {type(exc).__name__}") from exc
             self._validate_output(output, state)
-            target, to_status, terminal_kind = self._interpret_output(output)
+            target, to_status, terminal_kind = self._interpret_output(output, node_id)
             if target is not None and target in visited:
                 raise GraphHarnessError(f"cycle detected at node {target}")
 
@@ -161,16 +164,20 @@ class GraphHarness:
             raise GraphHarnessError("waiting node outputs are deferred to the approval harness")
 
     @staticmethod
-    def _interpret_output(output: NodeOutput) -> tuple[str | None, str, str]:
+    def _interpret_output(output: NodeOutput, node_id: str) -> tuple[str | None, str, str]:
         if output.status == "completed":
             if output.next_node == TERMINAL_NODE:
+                if node_id not in SUCCESS_TERMINAL_NODES:
+                    raise GraphHarnessError(f"successful terminal is not legal from node {node_id}")
                 return None, "terminal", "succeeded"
             assert output.next_node is not None
             return output.next_node, "active", "succeeded"
         if output.status == "cancelled":
             return None, "terminal", "cancelled"
         if output.status == "failed":
-            return None, "terminal", "failed"
+            code = output.error.code if output.error else "node_failed"
+            terminal_kind = "refused" if code == "policy_denied" else "review_required" if code == "stale_context" else "failed"
+            return None, "terminal", terminal_kind
         raise GraphHarnessError(f"unsupported node output status: {output.status}")
 
     @staticmethod

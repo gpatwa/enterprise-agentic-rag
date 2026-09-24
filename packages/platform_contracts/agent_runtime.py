@@ -190,5 +190,7 @@ LEGAL_TRANSITIONS: dict[str, tuple[str, ...]] = {
 def is_legal_transition(from_node: str, to_node: str | None, to_status: RunStatus) -> bool:
     """Return whether the authored bounded graph permits the transition."""
     if to_status == "terminal":
-        return "terminal" in LEGAL_TRANSITIONS.get(from_node, ())
+        # Typed failure and cancellation may terminate at any registered node;
+        # ordinary successful progress still follows the authored edge list.
+        return from_node in LEGAL_TRANSITIONS
     return to_node in LEGAL_TRANSITIONS.get(from_node, ())
