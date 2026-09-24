@@ -1,0 +1,15 @@
+{
+  "lock_version": "v1",
+  "baseline_id": "ads-m2-local-v1",
+  "suite_version": "ads-m2-v1",
+  "fixture_digest": "ads-m2-fixtures-v1",
+  "thresholds": {
+    "retrieval": 1.0,
+    "intent": 1.0,
+    "ast": 1.0,
+    "result": 1.0,
+    "policy": 1.0,
+    "trace": 1.0,
+    "evidence": 1.0
+  }
+}

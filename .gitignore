@@ -69,6 +69,7 @@ data/test-docs/*.docx
 *.log
 .local/
 .cache/archify/
+artifacts/
 docs/diagrams/*.visual-check.*
 .pytest_cache/
 .coverage
