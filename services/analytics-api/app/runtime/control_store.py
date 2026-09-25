@@ -10,6 +10,8 @@ from typing import Any
 from sqlalchemy import Engine, text
 
 from packages.platform_contracts.agent_runtime import AgentRunState, CancellationRequest, Transition
+from packages.platform_contracts.analytics_planning import DurableReviewDecision
+from packages.platform_contracts.security import AnalyticsIdentity
 
 
 class ControlStoreError(RuntimeError):
@@ -93,31 +95,44 @@ class ControlStore:
         expires = current + timedelta(seconds=self.lease_seconds)
         with self.engine.begin() as connection:
             lock = " FOR UPDATE" if connection.dialect.name == "postgresql" else ""
-            run = connection.execute(
-                text(
-                    f"SELECT run_id, tenant_id, purpose, status, lease_fencing_seq "
-                    f"FROM analytics_agent_runs WHERE run_id=:run_id{lock}"
-                ),
-                {"run_id": run_id},
-            ).mappings().first()
+            run = (
+                connection.execute(
+                    text(
+                        f"SELECT run_id, tenant_id, purpose, status, lease_fencing_seq "
+                        f"FROM analytics_agent_runs WHERE run_id=:run_id{lock}"
+                    ),
+                    {"run_id": run_id},
+                )
+                .mappings()
+                .first()
+            )
             if run is None or run["tenant_id"] != tenant_id or run["purpose"] != purpose:
                 raise ControlStoreError("run identity does not match tenant and purpose")
             if run["status"] == "terminal":
                 raise LeaseUnavailable("terminal run cannot be leased")
-            existing = connection.execute(
-                text(
-                    f"SELECT owner_id, lease_token, fencing_seq, expires_at "
-                    f"FROM analytics_run_leases WHERE run_id=:run_id{lock}"
-                ),
-                {"run_id": run_id},
-            ).mappings().first()
+            existing = (
+                connection.execute(
+                    text(
+                        f"SELECT owner_id, lease_token, fencing_seq, expires_at "
+                        f"FROM analytics_run_leases WHERE run_id=:run_id{lock}"
+                    ),
+                    {"run_id": run_id},
+                )
+                .mappings()
+                .first()
+            )
             if existing is not None and str(existing["expires_at"]) > _timestamp(current):
                 raise LeaseUnavailable("run lease is held by a live worker")
             fencing = int(existing["fencing_seq"]) + 1 if existing is not None else 1
             params = {
-                "run_id": run_id, "tenant_id": tenant_id, "purpose": purpose,
-                "owner_id": owner_id, "lease_token": lease_token, "fencing_seq": fencing,
-                "expires_at": _timestamp(expires), "now": _timestamp(current),
+                "run_id": run_id,
+                "tenant_id": tenant_id,
+                "purpose": purpose,
+                "owner_id": owner_id,
+                "lease_token": lease_token,
+                "fencing_seq": fencing,
+                "expires_at": _timestamp(expires),
+                "now": _timestamp(current),
             }
             if existing is None:
                 connection.execute(
@@ -184,8 +199,11 @@ class ControlStore:
         with self.engine.begin() as connection:
             lock = " FOR UPDATE" if connection.dialect.name == "postgresql" else ""
             row = connection.execute(
-                text("""SELECT state_payload, status FROM analytics_agent_runs
-                WHERE run_id=:run_id AND tenant_id=:tenant_id AND purpose=:purpose""" + lock),
+                text(
+                    """SELECT state_payload, status FROM analytics_agent_runs
+                WHERE run_id=:run_id AND tenant_id=:tenant_id AND purpose=:purpose"""
+                    + lock
+                ),
                 {"run_id": run_id, "tenant_id": tenant_id, "purpose": purpose},
             ).first()
             if row is None:
@@ -199,7 +217,9 @@ class ControlStore:
                 state_payload=:state_payload, updated_at=:updated_at
                 WHERE run_id=:run_id AND tenant_id=:tenant_id AND purpose=:purpose AND status <> 'terminal'"""),
                 {
-                    "run_id": run_id, "tenant_id": tenant_id, "purpose": purpose,
+                    "run_id": run_id,
+                    "tenant_id": tenant_id,
+                    "purpose": purpose,
                     "state_payload": _json(updated.model_dump(mode="json")),
                     "updated_at": _timestamp(datetime.now(timezone.utc)),
                 },
@@ -207,15 +227,225 @@ class ControlStore:
             if result.rowcount != 1:
                 raise StaleWorkerError("run became terminal while cancellation was requested")
 
+    def release_lease(self, lease: Lease) -> None:
+        with self.engine.begin() as connection:
+            result = connection.execute(
+                text("""DELETE FROM analytics_run_leases WHERE run_id=:run_id AND tenant_id=:tenant_id
+                AND purpose=:purpose AND owner_id=:owner_id AND lease_token=:lease_token
+                AND fencing_seq=:fencing_seq"""),
+                {
+                    "run_id": lease.run_id,
+                    "tenant_id": lease.tenant_id,
+                    "purpose": lease.purpose,
+                    "owner_id": lease.owner_id,
+                    "lease_token": lease.lease_token,
+                    "fencing_seq": lease.fencing_seq,
+                },
+            )
+            if result.rowcount != 1:
+                raise StaleWorkerError("stale worker cannot release a newer lease")
+
+    def create_review(self, review: DurableReviewDecision) -> None:
+        if review.state != "pending" or review.resolved_at is not None:
+            raise ControlStoreError("new review must be pending and unresolved")
+        with self.engine.begin() as connection:
+            existing = (
+                connection.execute(
+                    text("SELECT * FROM analytics_run_reviews WHERE review_id=:review_id"),
+                    {"review_id": review.review_id},
+                )
+                .mappings()
+                .first()
+            )
+            if existing is not None:
+                current = _review_from_row(existing)
+                if current == review:
+                    return
+                raise ControlStoreError("review ID already exists with different content")
+            run = connection.execute(
+                text("""SELECT status FROM analytics_agent_runs
+                WHERE run_id=:run_id AND tenant_id=:tenant_id AND purpose=:purpose"""),
+                {"run_id": review.run_id, "tenant_id": review.tenant_id, "purpose": review.purpose},
+            ).first()
+            if run is None or run[0] == "terminal":
+                raise ControlStoreError("review must reference an active scoped run")
+            _insert_review(connection, review)
+
+    def get_review(self, review_id: str, *, tenant_id: str, purpose: str) -> DurableReviewDecision:
+        with self.engine.begin() as connection:
+            lock = " FOR UPDATE" if connection.dialect.name == "postgresql" else ""
+            row = (
+                connection.execute(
+                    text(
+                        """SELECT * FROM analytics_run_reviews WHERE review_id=:review_id
+                AND tenant_id=:tenant_id AND purpose=:purpose"""
+                        + lock
+                    ),
+                    {"review_id": review_id, "tenant_id": tenant_id, "purpose": purpose},
+                )
+                .mappings()
+                .first()
+            )
+            if row is None:
+                raise ControlStoreError("review does not exist for tenant and purpose")
+            review = _review_from_row(row)
+            if review.state == "pending" and review.expires_at <= datetime.now(timezone.utc):
+                connection.execute(
+                    text(
+                        "UPDATE analytics_run_reviews SET state='expired' WHERE review_id=:review_id AND state='pending'"
+                    ),
+                    {"review_id": review_id},
+                )
+                review = review.model_copy(update={"state": "expired"})
+            return review
+
+    def resolve_review(
+        self,
+        review_id: str,
+        *,
+        tenant_id: str,
+        purpose: str,
+        identity: AnalyticsIdentity,
+        decision: str,
+        plan_fingerprint: str,
+        note: str | None = None,
+        now: datetime | None = None,
+    ) -> DurableReviewDecision:
+        if identity.tenant_id != tenant_id or purpose not in identity.purposes:
+            raise ControlStoreError("reviewer identity is not authorized for this tenant and purpose")
+        reviewer_id = identity.user_id
+        if decision not in {"approved", "rejected"}:
+            raise ValueError("review decision must be approved or rejected")
+        current = now or datetime.now(timezone.utc)
+        with self.engine.begin() as connection:
+            lock = " FOR UPDATE" if connection.dialect.name == "postgresql" else ""
+            row = (
+                connection.execute(
+                    text(
+                        """SELECT * FROM analytics_run_reviews WHERE review_id=:review_id
+                AND tenant_id=:tenant_id AND purpose=:purpose"""
+                        + lock
+                    ),
+                    {"review_id": review_id, "tenant_id": tenant_id, "purpose": purpose},
+                )
+                .mappings()
+                .first()
+            )
+            if row is None:
+                raise ControlStoreError("review does not exist for tenant and purpose")
+            review = _review_from_row(row)
+            if review.state == "pending" and review.expires_at <= current:
+                connection.execute(
+                    text("UPDATE analytics_run_reviews SET state='expired' WHERE review_id=:review_id"),
+                    {"review_id": review_id},
+                )
+                return review.model_copy(update={"state": "expired"})
+            if review.state != "pending":
+                raise StaleWorkerError("review is no longer pending")
+            run = connection.execute(
+                text(
+                    """SELECT status, state_payload FROM analytics_agent_runs
+                WHERE run_id=:run_id AND tenant_id=:tenant_id AND purpose=:purpose"""
+                    + lock
+                ),
+                {"run_id": review.run_id, "tenant_id": tenant_id, "purpose": purpose},
+            ).first()
+            if run is None or run[0] != "waiting_approval":
+                raise StaleWorkerError("review is not attached to a paused active run")
+            run_state = AgentRunState.model_validate(_payload(run[1]))
+            approval = run_state.approval_state or {}
+            if run_state.budget.deadline <= current:
+                connection.execute(
+                    text("UPDATE analytics_run_reviews SET state='expired' WHERE review_id=:review_id"),
+                    {"review_id": review_id},
+                )
+                return review.model_copy(update={"state": "expired"})
+            if (
+                approval.get("review_id") != review.review_id
+                or approval.get("plan_fingerprint") != review.plan_fingerprint
+            ):
+                raise StaleWorkerError("review no longer matches the paused run state")
+            if reviewer_id == review.requested_by:
+                raise ControlStoreError("requester cannot approve their own plan")
+            if plan_fingerprint != review.plan_fingerprint:
+                raise StaleWorkerError("approval plan fingerprint is stale")
+            result = connection.execute(
+                text("""UPDATE analytics_run_reviews SET state=:state, resolved_by=:reviewer_id,
+                resolved_at=:resolved_at, resolution_note=:note
+                WHERE review_id=:review_id AND state='pending'"""),
+                {
+                    "state": decision,
+                    "reviewer_id": reviewer_id,
+                    "resolved_at": current,
+                    "note": note,
+                    "review_id": review_id,
+                },
+            )
+            if result.rowcount != 1:
+                raise StaleWorkerError("review was resolved concurrently")
+        return review.model_copy(
+            update={
+                "state": decision,
+                "resolved_by": reviewer_id,
+                "resolved_at": current,
+                "resolution_note": note,
+            }
+        )
+
+    def revise_review(
+        self, previous_review_id: str, revised: DurableReviewDecision, *, identity: AnalyticsIdentity
+    ) -> DurableReviewDecision:
+        if (
+            identity.tenant_id != revised.tenant_id
+            or revised.purpose not in identity.purposes
+            or revised.requested_by != identity.user_id
+        ):
+            raise ControlStoreError("review revision identity is not authorized")
+        previous = self.get_review(
+            previous_review_id,
+            tenant_id=revised.tenant_id,
+            purpose=revised.purpose,
+        )
+        if previous.state != "pending" or previous.requested_by != identity.user_id:
+            raise StaleWorkerError("only the original requester can revise a pending review")
+        if previous.run_id == revised.run_id or (previous.tenant_id, previous.purpose) != (
+            revised.tenant_id,
+            revised.purpose,
+        ):
+            raise ControlStoreError("an edited plan requires a new run in the same tenant and purpose")
+        if revised.plan_fingerprint == previous.plan_fingerprint:
+            raise ControlStoreError("revised review must bind to a changed plan fingerprint")
+        revised = revised.model_copy(update={"revision": previous.revision + 1})
+        with self.engine.begin() as connection:
+            run = connection.execute(
+                text("""SELECT status FROM analytics_agent_runs WHERE run_id=:run_id
+                AND tenant_id=:tenant_id AND purpose=:purpose"""),
+                {"run_id": revised.run_id, "tenant_id": revised.tenant_id, "purpose": revised.purpose},
+            ).first()
+            if run is None or run[0] == "terminal":
+                raise ControlStoreError("edited review must reference a nonterminal replacement run")
+            result = connection.execute(
+                text("UPDATE analytics_run_reviews SET state='superseded' WHERE review_id=:id AND state='pending'"),
+                {"id": previous_review_id},
+            )
+            if result.rowcount != 1:
+                raise StaleWorkerError("review changed while being revised")
+            _insert_review(connection, revised)
+        return revised
+
     def replay_transitions(self, *, run_id: str, tenant_id: str, purpose: str) -> tuple[dict[str, Any], ...]:
         with self.engine.connect() as connection:
-            rows = connection.execute(
-                text("""SELECT transition_seq, graph_version, from_node, to_node, from_status,
+            rows = (
+                connection.execute(
+                    text("""SELECT transition_seq, graph_version, from_node, to_node, from_status,
                 to_status, fencing_seq, idempotency_key, evidence_payload
                 FROM analytics_run_transitions WHERE run_id=:run_id AND tenant_id=:tenant_id AND purpose=:purpose
                 ORDER BY transition_seq"""),
-                {"run_id": run_id, "tenant_id": tenant_id, "purpose": purpose},
-            ).mappings().all()
+                    {"run_id": run_id, "tenant_id": tenant_id, "purpose": purpose},
+                )
+                .mappings()
+                .all()
+            )
         expected = 1
         replay: list[dict[str, Any]] = []
         for row in rows:
@@ -241,13 +471,19 @@ class ControlStore:
                   AND status=:from_status AND transition_seq=:expected_seq
                   AND lease_fencing_seq=:fencing_seq AND status <> 'terminal'"""),
                 {
-                    "run_id": state.run_id, "tenant_id": state.tenant_id, "purpose": state.purpose,
-                    "graph_version": state.graph_version, "current_node": state.current_node,
+                    "run_id": state.run_id,
+                    "tenant_id": state.tenant_id,
+                    "purpose": state.purpose,
+                    "graph_version": state.graph_version,
+                    "current_node": state.current_node,
                     "state_payload": _json(state.model_dump(mode="json")),
-                    "transition_seq": transition.sequence, "updated_at": _timestamp(datetime.now(timezone.utc)),
+                    "transition_seq": transition.sequence,
+                    "updated_at": _timestamp(datetime.now(timezone.utc)),
                     "status": state.status,
-                    "from_node": transition.from_node, "from_status": transition.from_status,
-                    "expected_seq": expected_seq, "fencing_seq": fencing_seq,
+                    "from_node": transition.from_node,
+                    "from_status": transition.from_status,
+                    "expected_seq": expected_seq,
+                    "fencing_seq": fencing_seq,
                 },
             )
             if result.rowcount != 1:
@@ -259,11 +495,17 @@ class ControlStore:
                 VALUES (:run_id, :sequence, :tenant_id, :purpose, :graph_version, :from_node, :to_node,
                         :from_status, :to_status, :fencing_seq, :idempotency_key, :evidence_payload)"""),
                 {
-                    "run_id": state.run_id, "sequence": transition.sequence, "tenant_id": state.tenant_id,
-                    "purpose": state.purpose, "graph_version": state.graph_version,
-                    "from_node": transition.from_node, "to_node": transition.to_node,
-                    "from_status": transition.from_status, "to_status": transition.to_status,
-                    "fencing_seq": fencing_seq, "idempotency_key": transition.idempotency_key,
+                    "run_id": state.run_id,
+                    "sequence": transition.sequence,
+                    "tenant_id": state.tenant_id,
+                    "purpose": state.purpose,
+                    "graph_version": state.graph_version,
+                    "from_node": transition.from_node,
+                    "to_node": transition.to_node,
+                    "from_status": transition.from_status,
+                    "to_status": transition.to_status,
+                    "fencing_seq": fencing_seq,
+                    "idempotency_key": transition.idempotency_key,
                     "evidence_payload": _json([item.model_dump(mode="json") for item in transition.evidence]),
                 },
             )
@@ -274,9 +516,13 @@ class ControlStore:
                 VALUES (:run_id, :sequence, :tenant_id, :purpose, :graph_version, 'v1', :current_node,
                         :sequence, :fencing_seq, :state_payload)"""),
                 {
-                    "run_id": state.run_id, "sequence": transition.sequence, "tenant_id": state.tenant_id,
-                    "purpose": state.purpose, "graph_version": state.graph_version,
-                    "current_node": state.current_node, "fencing_seq": fencing_seq,
+                    "run_id": state.run_id,
+                    "sequence": transition.sequence,
+                    "tenant_id": state.tenant_id,
+                    "purpose": state.purpose,
+                    "graph_version": state.graph_version,
+                    "current_node": state.current_node,
+                    "fencing_seq": fencing_seq,
                     "state_payload": _json(state.model_dump(mode="json")),
                 },
             )
@@ -285,8 +531,40 @@ class ControlStore:
                 (tenant_id, run_id, purpose, event_type, dedupe_key, payload)
                 VALUES (:tenant_id, :run_id, :purpose, 'agent.transition', :dedupe_key, :payload)"""),
                 {
-                    "tenant_id": state.tenant_id, "run_id": state.run_id, "purpose": state.purpose,
+                    "tenant_id": state.tenant_id,
+                    "run_id": state.run_id,
+                    "purpose": state.purpose,
                     "dedupe_key": f"{state.run_id}:{transition.sequence}",
                     "payload": _json({"run_id": state.run_id, "sequence": transition.sequence}),
                 },
             )
+
+
+def _insert_review(connection: Any, review: DurableReviewDecision) -> None:
+    connection.execute(
+        text("""INSERT INTO analytics_run_reviews
+        (review_id, run_id, tenant_id, purpose, plan_fingerprint, requested_by,
+         created_at, expires_at, state, resolved_by, resolved_at, resolution_note, revision)
+        VALUES (:review_id, :run_id, :tenant_id, :purpose, :plan_fingerprint, :requested_by,
+         :created_at, :expires_at, 'pending', NULL, NULL, NULL, :revision)"""),
+        {
+            "review_id": review.review_id,
+            "run_id": review.run_id,
+            "tenant_id": review.tenant_id,
+            "purpose": review.purpose,
+            "plan_fingerprint": review.plan_fingerprint,
+            "requested_by": review.requested_by,
+            "created_at": review.created_at,
+            "expires_at": review.expires_at,
+            "revision": review.revision,
+        },
+    )
+
+
+def _review_from_row(row: Any) -> DurableReviewDecision:
+    values = dict(row)
+    for key in ("created_at", "expires_at", "resolved_at"):
+        value = values.get(key)
+        if isinstance(value, datetime) and value.tzinfo is None:
+            values[key] = value.replace(tzinfo=timezone.utc)
+    return DurableReviewDecision.model_validate(values)

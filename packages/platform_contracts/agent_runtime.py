@@ -11,6 +11,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from packages.platform_contracts.context_snapshot import ContextPack
+
 AGENT_RUNTIME_SCHEMA_VERSION = "v1"
 
 RunStatus = Literal["active", "waiting_approval", "cancel_requested", "terminal"]
@@ -34,6 +36,8 @@ class RunBudget(_Contract):
     max_node_attempts: int = Field(default=3, ge=1, le=100)
     deadline: datetime
     max_cost_units: float = Field(default=100, gt=0)
+    max_context_tokens: int = Field(default=4_000, ge=1, le=32_000)
+    max_retrieval_candidates: int = Field(default=20, ge=1, le=100)
 
     @model_validator(mode="after")
     def require_timezone(self) -> "RunBudget":
@@ -78,6 +82,8 @@ class AgentRunState(_Contract):
     tenant_id: str = Field(min_length=1, max_length=255)
     purpose: str = Field(min_length=1, max_length=255)
     request_text: str | None = Field(default=None, min_length=3, max_length=2_000)
+    context_pack: ContextPack | None = None
+    clarification_state: dict[str, Any] | None = None
     graph_version: str = Field(min_length=1, max_length=255)
     current_node: str = Field(min_length=1, max_length=255)
     status: RunStatus = "active"
@@ -168,7 +174,7 @@ class Transition(_Contract):
             raise ValueError("non-terminal transition requires to_node")
         if self.from_status == "terminal":
             raise ValueError("terminal state cannot transition")
-        if not is_legal_transition(self.from_node, self.to_node, self.to_status):
+        if not is_legal_transition(self.from_node, self.to_node, self.to_status, self.graph_version):
             raise ValueError(f"illegal transition from {self.from_node} to {self.to_node or self.to_status}")
         return self
 
@@ -189,11 +195,28 @@ LEGAL_TRANSITIONS: dict[str, tuple[str, ...]] = {
     "explain": ("terminal",),
 }
 
+GOVERNED_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    **LEGAL_TRANSITIONS,
+    "retrieve": ("extract_intent",),
+    "extract_intent": ("resolve",),
+    "resolve": ("clarify", "plan"),
+    "clarify": ("resolve", "clarify"),
+    "validate": ("policy", "approve"),
+    "policy": ("compile", "approve", "terminal"),
+    "compile": ("estimate",),
+}
+TRANSITIONS_BY_VERSION = {"graph-v1": LEGAL_TRANSITIONS, "graph-v2": GOVERNED_TRANSITIONS}
 
-def is_legal_transition(from_node: str, to_node: str | None, to_status: RunStatus) -> bool:
+
+def is_legal_transition(
+    from_node: str, to_node: str | None, to_status: RunStatus, graph_version: str = "graph-v1"
+) -> bool:
     """Return whether the authored bounded graph permits the transition."""
+    transitions = TRANSITIONS_BY_VERSION.get(graph_version)
+    if transitions is None:
+        return False
     if to_status == "terminal":
         # Typed failure and cancellation may terminate at any registered node;
         # ordinary successful progress still follows the authored edge list.
-        return from_node in LEGAL_TRANSITIONS
-    return to_node in LEGAL_TRANSITIONS.get(from_node, ())
+        return from_node in transitions
+    return to_node in transitions.get(from_node, ())

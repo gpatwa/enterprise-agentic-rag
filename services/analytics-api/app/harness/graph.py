@@ -1,4 +1,5 @@
 """Deterministic graph execution harness for versioned local scenarios."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -56,6 +57,7 @@ class GraphHarness:
             request_id=scenario.scenario_id,
             tenant_id=scenario.tenant_id,
             purpose=scenario.purpose,
+            request_text=scenario.request,
             graph_version=scenario.graph_version,
             current_node="create",
             context_snapshot_id=scenario.context_snapshot_id,
@@ -178,14 +180,14 @@ class GraphHarness:
             return None, "terminal", "cancelled"
         if output.status == "failed":
             code = output.error.code if output.error else "node_failed"
-            terminal_kind = "refused" if code == "policy_denied" else "review_required" if code == "stale_context" else "failed"
+            terminal_kind = (
+                "refused" if code == "policy_denied" else "review_required" if code == "stale_context" else "failed"
+            )
             return None, "terminal", terminal_kind
         raise GraphHarnessError(f"unsupported node output status: {output.status}")
 
     @staticmethod
-    def _assert_expected_trace(
-        scenario: HarnessScenario, actual: list[Transition], state: AgentRunState
-    ) -> None:
+    def _assert_expected_trace(scenario: HarnessScenario, actual: list[Transition], state: AgentRunState) -> None:
         expected = scenario.expected_trace.steps
         common = min(len(actual), len(expected))
         for index in range(common):

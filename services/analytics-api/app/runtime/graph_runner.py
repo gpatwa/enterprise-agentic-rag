@@ -1,4 +1,5 @@
 """Lease-fenced graph runner with bounded transitions and deterministic guards."""
+
 from __future__ import annotations
 
 import hashlib
@@ -11,7 +12,7 @@ from app.harness.graph import TERMINAL_NODE, GraphNode
 from app.harness.node_contracts import NodeContractKit
 from app.runtime.control_store import ControlStore, Lease
 from packages.platform_contracts.agent_runtime import (
-    LEGAL_TRANSITIONS,
+    TRANSITIONS_BY_VERSION,
     AgentRunState,
     EvidenceReference,
     NodeInput,
@@ -31,17 +32,22 @@ class GraphDefinition:
     version: str
     nodes: Mapping[str, GraphNode]
     output_fields: Mapping[str, frozenset[str]] = field(default_factory=dict)
+    transitions: Mapping[str, tuple[str, ...]] | None = None
 
     def __post_init__(self) -> None:
         if not self.version.strip() or not self.nodes:
             raise ValueError("graph definition requires a version and at least one node")
-        unknown = set(self.nodes) - set(LEGAL_TRANSITIONS)
+        transitions = self.transitions or TRANSITIONS_BY_VERSION.get(self.version)
+        if transitions is None:
+            raise ValueError(f"unsupported graph version: {self.version}")
+        object.__setattr__(self, "transitions", transitions)
+        unknown = set(self.nodes) - set(transitions)
         if unknown:
             raise ValueError(f"graph definition contains unknown node: {sorted(unknown)[0]}")
         missing_targets = {
             target
             for node_id in self.nodes
-            for target in LEGAL_TRANSITIONS[node_id]
+            for target in transitions[node_id]
             if target != "terminal" and target not in self.nodes
         }
         if missing_targets:
@@ -49,8 +55,21 @@ class GraphDefinition:
         if set(self.output_fields) - set(self.nodes):
             raise ValueError("node output declarations contain an unregistered node")
         unsupported_fields = {
-            name for names in self.output_fields.values() for name in names
-            if name not in {"request_text", "intent", "policy_decision", "cost_decision", "approval_state", "compiled_plan_reference", "execution_reference"}
+            name
+            for names in self.output_fields.values()
+            for name in names
+            if name
+            not in {
+                "request_text",
+                "context_pack",
+                "clarification_state",
+                "intent",
+                "policy_decision",
+                "cost_decision",
+                "approval_state",
+                "compiled_plan_reference",
+                "execution_reference",
+            }
         }
         if unsupported_fields:
             raise ValueError(f"node output field is not writable: {sorted(unsupported_fields)[0]}")
@@ -92,8 +111,12 @@ class AgentGraphRunner:
             raise GraphRunError("new run must be active with transition budget remaining")
         self.store.create_run(state)
         lease = self.store.acquire_lease(
-            run_id=state.run_id, tenant_id=state.tenant_id, purpose=state.purpose,
-            owner_id=owner_id, lease_token=lease_token, now=self.now(),
+            run_id=state.run_id,
+            tenant_id=state.tenant_id,
+            purpose=state.purpose,
+            owner_id=owner_id,
+            lease_token=lease_token,
+            now=self.now(),
         )
         return self._execute(state, lease)
 
@@ -105,28 +128,37 @@ class AgentGraphRunner:
         purpose: str,
         owner_id: str,
         lease_token: str,
+        resume_payload: Mapping[str, object] | None = None,
     ) -> GraphRunResult:
-        lease = self.store.acquire_lease(
-            run_id=run_id, tenant_id=tenant_id, purpose=purpose,
-            owner_id=owner_id, lease_token=lease_token, now=self.now(),
-        )
         state = self.store.load_latest_checkpoint(run_id=run_id, tenant_id=tenant_id, purpose=purpose)
         if state.graph_version != self.graph.version:
             raise GraphRunError("checkpoint graph version does not match registered graph")
-        return self._execute(state, lease)
+        review_id = (state.approval_state or {}).get("review_id") if isinstance(state.approval_state, dict) else None
+        cancelled = self.store.cancellation_requested(run_id=run_id, tenant_id=tenant_id, purpose=purpose)
+        if state.status == "waiting_approval" and review_id and not cancelled:
+            review = self.store.get_review(review_id, tenant_id=tenant_id, purpose=purpose)
+            if review.state == "pending":
+                raise GraphRunError("review is still pending; resume only after a durable decision")
+        lease = self.store.acquire_lease(
+            run_id=run_id,
+            tenant_id=tenant_id,
+            purpose=purpose,
+            owner_id=owner_id,
+            lease_token=lease_token,
+            now=self.now(),
+        )
+        return self._execute(state, lease, resume_payload=resume_payload)
 
-    def _execute(self, state: AgentRunState, lease: Lease) -> GraphRunResult:
+    def _execute(
+        self, state: AgentRunState, lease: Lease, *, resume_payload: Mapping[str, object] | None = None
+    ) -> GraphRunResult:
         transitions: list[Transition] = []
         fingerprints: set[str] = set()
         previous_cost = state.cost_decision or {}
         cost_units = float(previous_cost.get("observed_cost_units", 0.0)) if isinstance(previous_cost, dict) else 0.0
         while state.status != "terminal":
-            if self.store.cancellation_requested(
-                run_id=state.run_id, tenant_id=state.tenant_id, purpose=state.purpose
-            ):
-                state = self.store.load_run_state(
-                    run_id=state.run_id, tenant_id=state.tenant_id, purpose=state.purpose
-                )
+            if self.store.cancellation_requested(run_id=state.run_id, tenant_id=state.tenant_id, purpose=state.purpose):
+                state = self.store.load_run_state(run_id=state.run_id, tenant_id=state.tenant_id, purpose=state.purpose)
                 if state.cancellation is None:
                     raise GraphRunError("cancel flag exists without a typed cancellation request")
                 state, transition = self._terminalize(state, lease, "cancelled", "run_cancelled", cost_units=cost_units)
@@ -147,12 +179,20 @@ class AgentGraphRunner:
                 transitions.append(transition)
                 break
             node_input = NodeInput(
-                run_id=state.run_id, tenant_id=state.tenant_id, purpose=state.purpose,
-                request_id=state.request_id, request_text=state.request_text,
-                node_id=state.current_node, state_version=state.transition_count,
-                context_snapshot_id=state.context_snapshot_id, payload=self._payload(state),
+                run_id=state.run_id,
+                tenant_id=state.tenant_id,
+                purpose=state.purpose,
+                request_id=state.request_id,
+                request_text=state.request_text,
+                node_id=state.current_node,
+                state_version=state.transition_count,
+                context_snapshot_id=state.context_snapshot_id,
+                payload=self._payload(state),
                 remaining_budget=state.budget,
             )
+            if resume_payload:
+                node_input = node_input.model_copy(update={"payload": {**node_input.payload, **dict(resume_payload)}})
+                resume_payload = None
             fingerprint = _state_fingerprint(node_input)
             if fingerprint in fingerprints:
                 state, transition = self._terminalize(state, lease, "failed", "cycle_detected")
@@ -174,22 +214,60 @@ class AgentGraphRunner:
                 node_cost = 0
             cost_units += float(node_cost)
             if cost_units > state.budget.max_cost_units:
-                state, transition = self._terminalize(state, lease, "failed", "cost_budget_exceeded", cost_units=cost_units)
+                state, transition = self._terminalize(
+                    state, lease, "failed", "cost_budget_exceeded", cost_units=cost_units
+                )
                 transitions.append(transition)
                 break
             if output.status == "waiting":
-                state, transition = self._terminalize(state, lease, "review_required", "approval_pause_not_enabled", cost_units=cost_units)
+                if output.next_node is None or not is_legal_transition(
+                    state.current_node, output.next_node, "waiting_approval", state.graph_version
+                ):
+                    state, transition = self._terminalize(
+                        state, lease, "failed", "illegal_pause_transition", cost_units=cost_units
+                    )
+                else:
+                    patch, patch_error = self._state_patch(state, output.payload)
+                    if patch_error:
+                        state, transition = self._terminalize(
+                            state, lease, "failed", patch_error, cost_units=cost_units
+                        )
+                    else:
+                        state, transition = self._commit_step(
+                            state,
+                            lease,
+                            next_node=output.next_node,
+                            terminal_kind=None,
+                            error=None,
+                            output_evidence=output.evidence,
+                            cost_units=cost_units,
+                            state_patch=patch,
+                            new_status="waiting_approval",
+                        )
+                transitions.append(transition)
+                if state.status == "waiting_approval":
+                    self.store.release_lease(lease)
+                break
+            if (
+                output.status == "completed"
+                and output.next_node == TERMINAL_NODE
+                and state.current_node not in {"policy", "estimate", "approve", "result_validate", "explain"}
+            ):
+                state, transition = self._terminalize(
+                    state, lease, "failed", "illegal_success_terminal", cost_units=cost_units
+                )
                 transitions.append(transition)
                 break
-            if output.status == "completed" and output.next_node == TERMINAL_NODE and state.current_node not in {
-                "policy", "estimate", "approve", "result_validate", "explain"
-            }:
-                state, transition = self._terminalize(state, lease, "failed", "illegal_success_terminal", cost_units=cost_units)
-                transitions.append(transition)
-                break
-            next_node, terminal_kind, error = self._interpret(output.status, output.error, state.current_node, output.next_node)
-            if terminal_kind is None and (next_node is None or not is_legal_transition(state.current_node, next_node, "active")):
-                state, transition = self._terminalize(state, lease, "failed", "illegal_transition", cost_units=cost_units)
+            next_node, terminal_kind, error = self._interpret(
+                output.status, output.error, state.current_node, output.next_node
+            )
+            if terminal_kind is None and (
+                next_node is None
+                or not is_legal_transition(state.current_node, next_node, "active", state.graph_version)
+            ):
+                state, transition = self._terminalize(
+                    state, lease, "failed", "illegal_transition", cost_units=cost_units
+                )
                 transitions.append(transition)
                 break
             patch, patch_error = self._state_patch(state, output.payload)
@@ -198,8 +276,14 @@ class AgentGraphRunner:
                 transitions.append(transition)
                 break
             state, transition = self._commit_step(
-                state, lease, next_node=next_node, terminal_kind=terminal_kind,
-                error=error, output_evidence=output.evidence, cost_units=cost_units, state_patch=patch,
+                state,
+                lease,
+                next_node=next_node,
+                terminal_kind=terminal_kind,
+                error=error,
+                output_evidence=output.evidence,
+                cost_units=cost_units,
+                state_patch=patch,
             )
             transitions.append(transition)
         return GraphRunResult(state=state, lease=lease, transitions=tuple(transitions))
@@ -208,6 +292,8 @@ class AgentGraphRunner:
     def _payload(state: AgentRunState) -> dict:
         return {
             "request_text": state.request_text,
+            "context_pack": state.context_pack.model_dump(mode="json") if state.context_pack else None,
+            "clarification_state": state.clarification_state,
             "intent": state.intent,
             "policy_decision": state.policy_decision,
             "cost_decision": state.cost_decision,
@@ -241,6 +327,7 @@ class AgentGraphRunner:
         output_evidence: tuple[EvidenceReference, ...],
         cost_units: float | None = None,
         state_patch: dict | None = None,
+        new_status: str = "active",
     ) -> tuple[AgentRunState, Transition]:
         sequence = state.transition_count + 1
         if terminal_kind is None and sequence >= state.budget.max_transitions:
@@ -256,34 +343,53 @@ class AgentGraphRunner:
         if cost_units is not None:
             cost_decision = {**(cost_decision or {}), "observed_cost_units": cost_units}
         if terminal_kind is None:
-            next_state = AgentRunState.model_validate({
-                **state.model_dump(mode="python"),
-                **(state_patch or {}),
-                "current_node": next_node, "transition_count": sequence,
-                        "evidence": (*state.evidence, *combined_evidence),
-                "cost_decision": cost_decision,
-            })
-            to_status = "active"
+            next_state = AgentRunState.model_validate(
+                {
+                    **state.model_dump(mode="python"),
+                    **(state_patch or {}),
+                    "current_node": next_node,
+                    "transition_count": sequence,
+                    "evidence": (*state.evidence, *combined_evidence),
+                    "cost_decision": cost_decision,
+                }
+            )
+            if new_status != "active":
+                next_state = AgentRunState.model_validate(
+                    {**next_state.model_dump(mode="python"), "status": new_status}
+                )
+            to_status = new_status
         else:
             outcome = TerminalOutcome(
-                kind=terminal_kind, summary_reference=f"{state.run_id}:terminal",
-                evidence=combined_evidence, completed_at=self.now(),
+                kind=terminal_kind,
+                summary_reference=f"{state.run_id}:terminal",
+                evidence=combined_evidence,
+                completed_at=self.now(),
             )
             errors = (*state.errors, error) if error else state.errors
-            next_state = AgentRunState.model_validate({
-                **state.model_dump(mode="python"),
-                **(state_patch or {}),
-                "status": "terminal", "transition_count": sequence,
-                        "terminal_outcome": outcome, "evidence": (*state.evidence, *combined_evidence),
-                        "errors": errors,
-                "cost_decision": cost_decision,
-            })
+            next_state = AgentRunState.model_validate(
+                {
+                    **state.model_dump(mode="python"),
+                    **(state_patch or {}),
+                    "status": "terminal",
+                    "transition_count": sequence,
+                    "terminal_outcome": outcome,
+                    "evidence": (*state.evidence, *combined_evidence),
+                    "errors": errors,
+                    "cost_decision": cost_decision,
+                }
+            )
             to_status = "terminal"
         transition = Transition(
-            run_id=state.run_id, tenant_id=state.tenant_id, graph_version=state.graph_version,
-            sequence=sequence, from_node=state.current_node, to_node=next_node,
-            from_status=state.status, to_status=to_status,
-            idempotency_key=f"{state.run_id}:{sequence}:{state.current_node}", evidence=combined_evidence,
+            run_id=state.run_id,
+            tenant_id=state.tenant_id,
+            graph_version=state.graph_version,
+            sequence=sequence,
+            from_node=state.current_node,
+            to_node=next_node,
+            from_status=state.status,
+            to_status=to_status,
+            idempotency_key=f"{state.run_id}:{sequence}:{state.current_node}",
+            evidence=combined_evidence,
         )
         self.store.commit_transition(next_state, transition, fencing_seq=lease.fencing_seq)
         return next_state, transition
@@ -311,9 +417,13 @@ class AgentGraphRunner:
 
     def _evidence(self, state: AgentRunState, sequence: int, kind: str, payload: str) -> tuple[EvidenceReference, ...]:
         fingerprint = hashlib.sha256(payload.encode()).hexdigest()
-        return (EvidenceReference(
-            evidence_id=f"{state.run_id}:transition:{sequence}", kind="transition", fingerprint=fingerprint,
-        ),)
+        return (
+            EvidenceReference(
+                evidence_id=f"{state.run_id}:transition:{sequence}",
+                kind="transition",
+                fingerprint=fingerprint,
+            ),
+        )
 
     @staticmethod
     def _typed_error(code: str, reference: str):

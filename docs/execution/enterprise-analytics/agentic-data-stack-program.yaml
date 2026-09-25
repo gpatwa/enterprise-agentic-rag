@@ -62,12 +62,13 @@ milestones:
     human_gate_approval_record: "User approved M2 threshold-and-harness review in conversation."
   M3:
     name: Governed agent graph
-    status: in_progress
+    status: review
     waves:
       - [ADS-030, ADS-031, ADS-032, ADS-033]
       - [ADS-034, ADS-035, ADS-036]
       - [ADS-037, ADS-038, ADS-039]
     human_gate: graph_and_policy_review
+    human_gate_status: pending
   M4:
     name: Live read-only execution and evidence
     status: planned
@@ -135,14 +136,14 @@ tasks:
   ADS-029: {milestone: M2, status: complete, depends_on: [ADS-024, ADS-025, ADS-026, ADS-027, ADS-028]}
   ADS-030: {milestone: M3, status: complete, depends_on: [ADS-009, ADS-023]}
   ADS-031: {milestone: M3, status: complete, depends_on: [ADS-030]}
-  ADS-032: {milestone: M3, status: planned, depends_on: [ADS-018, ADS-030]}
-  ADS-033: {milestone: M3, status: planned, depends_on: [ADS-018, ADS-030]}
-  ADS-034: {milestone: M3, status: planned, depends_on: [ADS-032, ADS-033]}
-  ADS-035: {milestone: M3, status: planned, depends_on: [ADS-034]}
-  ADS-036: {milestone: M3, status: planned, depends_on: [ADS-034]}
-  ADS-037: {milestone: M3, status: planned, depends_on: [ADS-036]}
-  ADS-038: {milestone: M3, status: planned, depends_on: [ADS-005, ADS-037]}
-  ADS-039: {milestone: M3, status: planned, depends_on: [ADS-030, ADS-031, ADS-032, ADS-033, ADS-034, ADS-035, ADS-036, ADS-037, ADS-038]}
+  ADS-032: {milestone: M3, status: complete, depends_on: [ADS-018, ADS-030]}
+  ADS-033: {milestone: M3, status: complete, depends_on: [ADS-018, ADS-030]}
+  ADS-034: {milestone: M3, status: complete, depends_on: [ADS-032, ADS-033]}
+  ADS-035: {milestone: M3, status: complete, depends_on: [ADS-034]}
+  ADS-036: {milestone: M3, status: complete, depends_on: [ADS-034]}
+  ADS-037: {milestone: M3, status: complete, depends_on: [ADS-036]}
+  ADS-038: {milestone: M3, status: complete, depends_on: [ADS-005, ADS-037]}
+  ADS-039: {milestone: M3, status: review, depends_on: [ADS-030, ADS-031, ADS-032, ADS-033, ADS-034, ADS-035, ADS-036, ADS-037, ADS-038]}
   ADS-040: {milestone: M4, status: planned, depends_on: [ADS-037]}
   ADS-041: {milestone: M4, status: planned, depends_on: [ADS-040]}
   ADS-042: {milestone: M4, status: planned, depends_on: [ADS-041]}
