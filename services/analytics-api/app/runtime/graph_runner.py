@@ -50,7 +50,7 @@ class GraphDefinition:
             raise ValueError("node output declarations contain an unregistered node")
         unsupported_fields = {
             name for names in self.output_fields.values() for name in names
-            if name not in {"intent", "policy_decision", "cost_decision", "approval_state", "compiled_plan_reference", "execution_reference"}
+            if name not in {"request_text", "intent", "policy_decision", "cost_decision", "approval_state", "compiled_plan_reference", "execution_reference"}
         }
         if unsupported_fields:
             raise ValueError(f"node output field is not writable: {sorted(unsupported_fields)[0]}")
@@ -148,6 +148,7 @@ class AgentGraphRunner:
                 break
             node_input = NodeInput(
                 run_id=state.run_id, tenant_id=state.tenant_id, purpose=state.purpose,
+                request_id=state.request_id, request_text=state.request_text,
                 node_id=state.current_node, state_version=state.transition_count,
                 context_snapshot_id=state.context_snapshot_id, payload=self._payload(state),
                 remaining_budget=state.budget,
@@ -206,6 +207,7 @@ class AgentGraphRunner:
     @staticmethod
     def _payload(state: AgentRunState) -> dict:
         return {
+            "request_text": state.request_text,
             "intent": state.intent,
             "policy_decision": state.policy_decision,
             "cost_decision": state.cost_decision,

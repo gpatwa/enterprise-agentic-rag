@@ -80,6 +80,8 @@ class GraphHarness:
                 run_id=state.run_id,
                 tenant_id=state.tenant_id,
                 purpose=state.purpose,
+                request_id=state.request_id,
+                request_text=state.request_text,
                 node_id=node_id,
                 state_version=state.transition_count,
                 context_snapshot_id=state.context_snapshot_id,

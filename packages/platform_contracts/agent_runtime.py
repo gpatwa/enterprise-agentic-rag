@@ -77,6 +77,7 @@ class AgentRunState(_Contract):
     request_id: str = Field(min_length=1, max_length=255)
     tenant_id: str = Field(min_length=1, max_length=255)
     purpose: str = Field(min_length=1, max_length=255)
+    request_text: str | None = Field(default=None, min_length=3, max_length=2_000)
     graph_version: str = Field(min_length=1, max_length=255)
     current_node: str = Field(min_length=1, max_length=255)
     status: RunStatus = "active"
@@ -112,6 +113,8 @@ class NodeInput(_Contract):
     run_id: str = Field(min_length=1, max_length=255)
     tenant_id: str = Field(min_length=1, max_length=255)
     purpose: str = Field(min_length=1, max_length=255)
+    request_id: str | None = Field(default=None, min_length=1, max_length=255)
+    request_text: str | None = Field(default=None, min_length=3, max_length=2_000)
     node_id: str = Field(min_length=1, max_length=255)
     state_version: int = Field(ge=0)
     context_snapshot_id: str = Field(min_length=1, max_length=255)
