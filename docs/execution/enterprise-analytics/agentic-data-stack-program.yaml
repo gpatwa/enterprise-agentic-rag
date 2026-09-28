@@ -62,7 +62,7 @@ milestones:
     human_gate_approval_record: "User approved M2 threshold-and-harness review in conversation."
   M3:
     name: Governed agent graph
-    status: review
+    status: complete
     waves:
       - [ADS-030, ADS-031, ADS-032, ADS-033]
       - [ADS-034, ADS-035, ADS-036]
@@ -70,7 +70,7 @@ milestones:
     human_gate: graph_and_policy_review
     human_gate_status: approved
     human_gate_approved_at: 2026-09-28
-    human_gate_approval_record: "User approved the M3 graph-and-policy review in conversation. ADS-039 adversarial evaluation remains outstanding."
+    human_gate_approval_record: "User approved the M3 graph-and-policy review in conversation."
   M4:
     name: Live read-only execution and evidence
     status: planned
@@ -145,7 +145,7 @@ tasks:
   ADS-036: {milestone: M3, status: complete, depends_on: [ADS-034]}
   ADS-037: {milestone: M3, status: complete, depends_on: [ADS-036]}
   ADS-038: {milestone: M3, status: complete, depends_on: [ADS-005, ADS-037]}
-  ADS-039: {milestone: M3, status: review, depends_on: [ADS-030, ADS-031, ADS-032, ADS-033, ADS-034, ADS-035, ADS-036, ADS-037, ADS-038]}
+  ADS-039: {milestone: M3, status: complete, depends_on: [ADS-030, ADS-031, ADS-032, ADS-033, ADS-034, ADS-035, ADS-036, ADS-037, ADS-038]}
   ADS-040: {milestone: M4, status: planned, depends_on: [ADS-037]}
   ADS-041: {milestone: M4, status: planned, depends_on: [ADS-040]}
   ADS-042: {milestone: M4, status: planned, depends_on: [ADS-041]}

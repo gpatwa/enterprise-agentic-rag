@@ -15,7 +15,7 @@ class GraphEvaluationCase:
     build_state: Callable[[], AgentRunState]
     expected_outcome: TerminalKind | None
     required_gate_order: tuple[str, ...] = ()
-    run: Callable[[AgentGraphRunner], GraphRunResult] | None = None
+    run: Callable[[AgentGraphRunner, AgentRunState], GraphRunResult] | None = None
 
 
 @dataclass(frozen=True)
@@ -117,7 +117,7 @@ def evaluate_graph_cases(
     for case in cases:
         state = case.build_state()
         result = (
-            case.run(runner)
+            case.run(runner, state)
             if case.run
             else runner.start(state, owner_id=owner_id, lease_token=f"{token_prefix}:{case.case_id}")
         )

@@ -348,15 +348,12 @@ class AgentGraphRunner:
                     **state.model_dump(mode="python"),
                     **(state_patch or {}),
                     "current_node": next_node,
+                    "status": new_status,
                     "transition_count": sequence,
                     "evidence": (*state.evidence, *combined_evidence),
                     "cost_decision": cost_decision,
                 }
             )
-            if new_status != "active":
-                next_state = AgentRunState.model_validate(
-                    {**next_state.model_dump(mode="python"), "status": new_status}
-                )
             to_status = new_status
         else:
             outcome = TerminalOutcome(
