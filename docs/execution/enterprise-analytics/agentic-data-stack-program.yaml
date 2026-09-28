@@ -68,7 +68,9 @@ milestones:
       - [ADS-034, ADS-035, ADS-036]
       - [ADS-037, ADS-038, ADS-039]
     human_gate: graph_and_policy_review
-    human_gate_status: pending
+    human_gate_status: approved
+    human_gate_approved_at: 2026-09-28
+    human_gate_approval_record: "User approved the M3 graph-and-policy review in conversation. ADS-039 adversarial evaluation remains outstanding."
   M4:
     name: Live read-only execution and evidence
     status: planned
