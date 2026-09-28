@@ -8,7 +8,12 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from packages.platform_contracts.agent_runtime import RunStatus, TerminalKind, is_legal_transition
+from packages.platform_contracts.agent_runtime import (
+    TRANSITIONS_BY_VERSION,
+    RunStatus,
+    TerminalKind,
+    is_legal_transition,
+)
 
 HARNESS_SCHEMA_VERSION = "v1"
 
@@ -23,6 +28,11 @@ class ExpectedTraceStep(BaseModel):
 
     @model_validator(mode="after")
     def validate_transition(self) -> "ExpectedTraceStep":
+        if not any(
+            is_legal_transition(self.from_node, self.to_node, self.to_status, version)
+            for version in TRANSITIONS_BY_VERSION
+        ):
+            raise ValueError(f"illegal expected transition from {self.from_node} to {self.to_node or self.to_status}")
         return self
 
 

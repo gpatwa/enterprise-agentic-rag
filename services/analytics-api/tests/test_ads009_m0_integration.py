@@ -50,8 +50,13 @@ def _db(tmp_path, monkeypatch):
 
 def _initial_state(now: datetime) -> AgentRunState:
     return AgentRunState(
-        run_id="run-ads009", request_id="req-1", tenant_id="tenant-a", purpose="reporting",
-        graph_version="fake-v1", current_node="create", context_snapshot_id="snapshot-1",
+        run_id="run-ads009",
+        request_id="req-1",
+        tenant_id="tenant-a",
+        purpose="reporting",
+        graph_version="graph-v1",
+        current_node="create",
+        context_snapshot_id="snapshot-1",
         budget=RunBudget(deadline=now + timedelta(minutes=5), max_transitions=32),
     )
 
@@ -62,20 +67,31 @@ def _next_state(state: AgentRunState, node: str, *, terminal: bool = False, now:
     if terminal:
         status = "terminal"
         outcome = TerminalOutcome(
-            kind="succeeded", summary_reference="summary-1", evidence=(evidence(state.transition_count + 1),),
+            kind="succeeded",
+            summary_reference="summary-1",
+            evidence=(evidence(state.transition_count + 1),),
             completed_at=now,
         )
     return state.model_copy(
-        update={"current_node": node, "status": status, "transition_count": state.transition_count + 1,
-                "terminal_outcome": outcome}
+        update={
+            "current_node": node,
+            "status": status,
+            "transition_count": state.transition_count + 1,
+            "terminal_outcome": outcome,
+        }
     )
 
 
 def _transition(state: AgentRunState, target: str | None, *, terminal: bool = False) -> Transition:
     return Transition(
-        run_id=state.run_id, tenant_id=state.tenant_id, graph_version=state.graph_version,
-        sequence=state.transition_count + 1, from_node=state.current_node, to_node=target,
-        from_status=state.status, to_status="terminal" if terminal else "active",
+        run_id=state.run_id,
+        tenant_id=state.tenant_id,
+        graph_version=state.graph_version,
+        sequence=state.transition_count + 1,
+        from_node=state.current_node,
+        to_node=target,
+        from_status=state.status,
+        to_status="terminal" if terminal else "active",
         idempotency_key=f"{state.run_id}:{state.transition_count + 1}",
         evidence=(evidence(state.transition_count + 1),),
     )
@@ -88,8 +104,12 @@ def test_worker_loss_reload_fencing_and_terminal_outcome_survive_reopen(tmp_path
     state = _initial_state(now)
     store.create_run(state)
     worker_a = store.acquire_lease(
-        run_id=state.run_id, tenant_id=state.tenant_id, purpose=state.purpose,
-        owner_id="worker-a", lease_token="lease-a", now=now,
+        run_id=state.run_id,
+        tenant_id=state.tenant_id,
+        purpose=state.purpose,
+        owner_id="worker-a",
+        lease_token="lease-a",
+        now=now,
     )
 
     first = _next_state(state, "bootstrap", now=now)
@@ -98,12 +118,17 @@ def test_worker_loss_reload_fencing_and_terminal_outcome_survive_reopen(tmp_path
     assert checkpoint.current_node == "bootstrap" and checkpoint.transition_count == 1
 
     worker_b = store.acquire_lease(
-        run_id=state.run_id, tenant_id=state.tenant_id, purpose=state.purpose,
-        owner_id="worker-b", lease_token="lease-b", now=now + timedelta(seconds=31),
+        run_id=state.run_id,
+        tenant_id=state.tenant_id,
+        purpose=state.purpose,
+        owner_id="worker-b",
+        lease_token="lease-b",
+        now=now + timedelta(seconds=31),
     )
     with pytest.raises(StaleWorkerError, match="stale worker"):
         store.commit_transition(
-            _next_state(checkpoint, "retrieve", now=now), _transition(checkpoint, "retrieve"),
+            _next_state(checkpoint, "retrieve", now=now),
+            _transition(checkpoint, "retrieve"),
             fencing_seq=worker_a.fencing_seq,
         )
 
@@ -118,7 +143,9 @@ def test_worker_loss_reload_fencing_and_terminal_outcome_survive_reopen(tmp_path
     reopened = create_engine(f"sqlite:///{tmp_path / 'ads009.db'}")
     replay_store = ControlStore(reopened)
     replay = replay_store.replay_transitions(run_id=state.run_id, tenant_id=state.tenant_id, purpose=state.purpose)
-    persisted = replay_store.load_latest_checkpoint(run_id=state.run_id, tenant_id=state.tenant_id, purpose=state.purpose)
+    persisted = replay_store.load_latest_checkpoint(
+        run_id=state.run_id, tenant_id=state.tenant_id, purpose=state.purpose
+    )
     assert len(replay) == 8
     assert replay[-1]["to_status"] == "terminal"
     assert persisted.status == "terminal" and persisted.terminal_outcome is not None
@@ -132,8 +159,12 @@ def test_child_identity_routing_and_tool_scope_fail_closed(tmp_path, monkeypatch
     store.create_run(state)
     with pytest.raises(ControlStoreError, match="identity"):
         store.acquire_lease(
-            run_id=state.run_id, tenant_id="tenant-b", purpose=state.purpose,
-            owner_id="worker", lease_token="wrong-tenant", now=now,
+            run_id=state.run_id,
+            tenant_id="tenant-b",
+            purpose=state.purpose,
+            owner_id="worker",
+            lease_token="wrong-tenant",
+            now=now,
         )
 
     context = RoutingContext(tenant_id="tenant-a", request_id="req-2", purpose="reporting")
@@ -144,34 +175,72 @@ def test_child_identity_routing_and_tool_scope_fail_closed(tmp_path, monkeypatch
         require_governed_action(resolve_route(RoutingConfig(tenant_modes={"tenant-a": "governed"}), governed))
     issued = datetime.now(timezone.utc)
     artifact = TrustedAuthorizationArtifact.issue(
-        artifact_id="artifact-1", tenant_id="tenant-a", request_id="req-2", purpose="reporting",
-        rollout_id="rollout-1", approval_reference="approval-1", audit_event_id="audit-1",
-        signing_key="test-key", issued_at=issued, expires_at=issued + timedelta(minutes=5),
+        artifact_id="artifact-1",
+        tenant_id="tenant-a",
+        request_id="req-2",
+        purpose="reporting",
+        rollout_id="rollout-1",
+        approval_reference="approval-1",
+        audit_event_id="audit-1",
+        signing_key="test-key",
+        issued_at=issued,
+        expires_at=issued + timedelta(minutes=5),
     )
     decision = resolve_route(
         RoutingConfig(tenant_modes={"tenant-a": "governed"}),
-        governed.model_copy(update={"authorization_artifact": artifact}), authorization_key="test-key",
+        governed.model_copy(update={"authorization_artifact": artifact}),
+        authorization_key="test-key",
     )
     require_governed_action(decision)
 
-    registry = ToolRegistry((ToolSpec(
-        tool_id="read_context", version="v1", capability="context.read", risk_class=RiskClass.READ,
-        timeout_ms=1000, idempotency_mode="required", idempotency_key_required=True,
-        input_contract_version="v1", output_contract_version="v1", required_scope="tenant_and_purpose",
-        allowed_purposes=("reporting",),
-    ),))
+    registry = ToolRegistry(
+        (
+            ToolSpec(
+                tool_id="read_context",
+                version="v1",
+                capability="context.read",
+                risk_class=RiskClass.READ,
+                timeout_ms=1000,
+                idempotency_mode="required",
+                idempotency_key_required=True,
+                input_contract_version="v1",
+                output_contract_version="v1",
+                required_scope="tenant_and_purpose",
+                allowed_purposes=("reporting",),
+            ),
+        )
+    )
     metadata = registry.lookup(
-        "read_context", "v1", input_contract_version="v1", output_contract_version="v1",
-        tenant_id="tenant-a", purpose="reporting",
+        "read_context",
+        "v1",
+        input_contract_version="v1",
+        output_contract_version="v1",
+        tenant_id="tenant-a",
+        purpose="reporting",
     )
     assert not hasattr(metadata, "execute")
     with pytest.raises(ToolRegistryError):
         registry.lookup(
-            "read_context", "v1", input_contract_version="v1", output_contract_version="v1",
-            tenant_id="tenant-a", purpose="billing",
+            "read_context",
+            "v1",
+            input_contract_version="v1",
+            output_contract_version="v1",
+            tenant_id="tenant-a",
+            purpose="billing",
         )
     with pytest.raises(ToolRegistryError):
-        ToolRegistry((ToolSpec(
-            tool_id="raw", version="v1", capability="raw_sql", risk_class=RiskClass.READ, timeout_ms=1000,
-            idempotency_mode="none", input_contract_version="v1", output_contract_version="v1", required_scope="tenant",
-        ),))
+        ToolRegistry(
+            (
+                ToolSpec(
+                    tool_id="raw",
+                    version="v1",
+                    capability="raw_sql",
+                    risk_class=RiskClass.READ,
+                    timeout_ms=1000,
+                    idempotency_mode="none",
+                    input_contract_version="v1",
+                    output_contract_version="v1",
+                    required_scope="tenant",
+                ),
+            )
+        )
