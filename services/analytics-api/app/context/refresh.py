@@ -32,6 +32,7 @@ from packages.platform_contracts.context_merge import (
 )
 from packages.platform_contracts.context_snapshot import ContextSnapshot
 from packages.platform_contracts.metadata import MetadataAsset, MetadataFreshness, MetadataSnapshot
+from packages.platform_contracts.ontology import OntologySnapshot
 
 
 class SourceFetchError(RuntimeError):
@@ -50,6 +51,35 @@ class RefreshSource(Protocol):
     name: str
 
     def fetch(self) -> MetadataSnapshot: ...
+
+
+class OntologyRefreshSource(Protocol):
+    name: str
+
+    def fetch(self) -> OntologySnapshot: ...
+
+
+class OntologyFileRefreshSource:
+    """Read an `OntologySnapshot` JSON document (for example a Git checkout) on every run.
+
+    The source is a pass-through: node and edge lifecycles come from the document and
+    are never promoted here. Certification is a human gate that happens upstream of
+    this file; a candidate node stays a candidate.
+    """
+
+    def __init__(self, path: Path | str, *, tenant_id: str, name: str = "ontology"):
+        self.path = Path(path)
+        self.tenant_id = tenant_id
+        self.name = name
+
+    def fetch(self) -> OntologySnapshot:
+        try:
+            snapshot = OntologySnapshot.model_validate_json(self.path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:  # pydantic's ValidationError is a ValueError
+            raise SourceFetchError(f"{self.name} unreadable: {type(exc).__name__}") from exc
+        if snapshot.tenant_id != self.tenant_id:
+            raise SourceFetchError(f"{self.name} tenant does not match the refresh tenant")
+        return snapshot
 
 
 class ProviderRefreshSource:
@@ -131,6 +161,7 @@ class RefreshReport:
     tombstoned_asset_ids: tuple[str, ...] = ()
     blocking_reasons: tuple[str, ...] = ()
     resolved_conflicts: int = 0
+    ontology: SourceOutcome | None = None
 
 
 class RefreshStateStore:
@@ -174,6 +205,7 @@ class ContextRefreshWorker:
         policy: StalenessPolicy = StalenessPolicy(),
         precedence: tuple[str, ...] = DEFAULT_SOURCE_PRECEDENCE,
         semantic_contract_ids: tuple[str, ...] = (),
+        ontology_source: OntologyRefreshSource | None = None,
         on_publish: Callable[[ContextSnapshot], None] | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     ):
@@ -187,6 +219,7 @@ class ContextRefreshWorker:
         self.policy = policy
         self.precedence = precedence
         self.semantic_contract_ids = semantic_contract_ids
+        self.ontology_source = ontology_source
         self.on_publish = on_publish
         self.clock = clock
 
@@ -238,6 +271,8 @@ class ContextRefreshWorker:
             }
             outcomes[source.name] = SourceOutcome("fetched", added=added, updated=updated, removed=removed)
 
+        ontology, ontology_outcome, ontology_stale = self._refresh_ontology(state, now)
+
         snapshots: list[MetadataSnapshot] = []
         for source in self.sources:
             cached = state["sources"].get(source.name)
@@ -276,6 +311,7 @@ class ContextRefreshWorker:
                 "sources": source_hashes,
                 "tombstones": tombstone_ids,
                 "contracts": sorted(self.semantic_contract_ids),
+                "ontology": _ontology_hash(ontology) if ontology else None,
                 "assets": [_normalized(asset) for asset in merged.snapshot.assets],
             }
         )
@@ -283,8 +319,12 @@ class ContextRefreshWorker:
         snapshot = ContextSnapshot.build(
             snapshot_id=snapshot_id,
             tenant_id=self.tenant_id,
-            source_fingerprints=tuple(hashlib.sha256(item.encode()).hexdigest() for item in source_hashes),
+            source_fingerprints=tuple(
+                hashlib.sha256(item.encode()).hexdigest()
+                for item in (*source_hashes, *((f"ontology:{_ontology_hash(ontology)}",) if ontology else ()))
+            ),
             metadata_assets=tuple(merged.snapshot.assets),
+            ontology=ontology,
             semantic_contract_ids=self.semantic_contract_ids,
             created_at=now,
         )
@@ -294,11 +334,15 @@ class ContextRefreshWorker:
             sources=outcomes,
             tombstoned_asset_ids=tuple(sorted(tombstones)),
             resolved_conflicts=len(merged.conflicts),
+            ontology=ontology_outcome,
         )
-        failed = any(outcome.status == "failed" for outcome in outcomes.values())
-        if not quality.actionable:
+        failed = any(outcome.status == "failed" for outcome in outcomes.values()) or (
+            ontology_outcome is not None and ontology_outcome.status == "failed"
+        )
+        reasons = (*quality.blocking_reasons, *(("stale ontology",) if ontology_stale else ()))
+        if reasons:
             self._save(state, tombstones)
-            return RefreshReport("blocked", blocking_reasons=quality.blocking_reasons, **report)
+            return RefreshReport("blocked", blocking_reasons=reasons, **report)
 
         current = state["current"]
         if current and current["content_hash"] == content_hash and not failed:
@@ -331,6 +375,55 @@ class ContextRefreshWorker:
         self._save(state, tombstones)
         return RefreshReport("published", snapshot_id=snapshot_id, **report)
 
+    def _refresh_ontology(
+        self, state: dict[str, Any], now: datetime
+    ) -> tuple[OntologySnapshot | None, SourceOutcome | None, bool]:
+        """Fetch the ontology, falling back to the last good copy; returns (graph, outcome, stale).
+
+        Ontology is a complete graph per fetch, so absence means removal; no tombstones.
+        """
+        if self.ontology_source is None:
+            return None, None, False
+        cached = state.get("ontology")
+        previous = OntologySnapshot.model_validate(cached["snapshot"]) if cached else None
+        error: str | None = None
+        try:
+            fetched = self.ontology_source.fetch()
+        except SourceFetchError as exc:
+            fetched, error = None, str(exc)
+        except Exception as exc:  # noqa: BLE001 - one broken source must not abort the cycle.
+            fetched, error = None, type(exc).__name__
+        if fetched is not None and fetched.tenant_id != self.tenant_id:
+            fetched, error = None, "ontology tenant does not match the refresh tenant"
+        if (
+            fetched is not None
+            and previous
+            and (previous.nodes or previous.edges)
+            and not (fetched.nodes or fetched.edges)
+        ):
+            fetched, error = None, "empty fetch after populated state"
+        if fetched is None:
+            if previous is None:
+                return None, SourceOutcome("failed", error=error), False
+            stale = now - datetime.fromisoformat(cached["last_success_at"]) > self.policy.max_source_age
+            return previous, SourceOutcome("reused_stale" if stale else "failed", error=error), stale
+        before = _ontology_items(previous) if previous else {}
+        after = _ontology_items(fetched)
+        state["ontology"] = {
+            "snapshot": fetched.model_dump(mode="json"),
+            "last_success_at": now.isoformat(),
+        }
+        return (
+            fetched,
+            SourceOutcome(
+                "fetched",
+                added=tuple(sorted(set(after) - set(before))),
+                updated=tuple(sorted(k for k in set(after) & set(before) if after[k] != before[k])),
+                removed=tuple(sorted(set(before) - set(after))),
+            ),
+            False,
+        )
+
     def current_snapshot(self, *, now: datetime | None = None) -> ContextSnapshot:
         """Return the published snapshot, failing closed when it is stale or missing."""
         pointer = self.state_store.load(self.tenant_id)["current"]
@@ -347,6 +440,26 @@ class ContextRefreshWorker:
     def _save(self, state: dict[str, Any], tombstones: dict[str, Any]) -> None:
         state["tombstones"] = sorted(tombstones.values(), key=lambda item: item["asset_id"])
         self.state_store.save(self.tenant_id, state)
+
+
+def _strip_observed(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: _strip_observed(v) for k, v in value.items() if k != "observed_at"}
+    if isinstance(value, list):
+        return [_strip_observed(item) for item in value]
+    return value
+
+
+def _ontology_items(snapshot: OntologySnapshot) -> dict[str, str]:
+    items = {node.node_id: _hash(_strip_observed(node.model_dump(mode="json"))) for node in snapshot.nodes}
+    items.update(
+        {f"edge:{edge.edge_id}": _hash(_strip_observed(edge.model_dump(mode="json"))) for edge in snapshot.edges}
+    )
+    return items
+
+
+def _ontology_hash(snapshot: OntologySnapshot) -> str:
+    return _hash(_ontology_items(snapshot))
 
 
 def _normalized(asset: MetadataAsset) -> dict[str, Any]:

@@ -303,3 +303,157 @@ def test_worker_requires_unique_named_sources(env):
         make(sources=[])
     with pytest.raises(ValueError):
         make(sources=[warehouse.dbt_source(), warehouse.dbt_source()])
+
+
+# ---- ontology source ----
+
+
+def _ontology(tmp_path, *, lifecycle="certified", label="Revenue", extra_node=False, tenant="tenant-a", observed=START):
+    from packages.platform_contracts.ontology import OntologyEdge, OntologyNode, OntologyProvenance, OntologySnapshot
+
+    provenance = (
+        OntologyProvenance(
+            source_system="git",
+            source_id="ontology.json",
+            source_version="abc123",
+            observed_at=observed,
+            fingerprint="f" * 64,
+        ),
+    )
+    nodes = [
+        OntologyNode(
+            node_id="revenue",
+            tenant_id=tenant,
+            node_type="metric",
+            label=label,
+            lifecycle=lifecycle,
+            valid_from=START,
+            provenance=provenance,
+            attributes={"aliases": ["sales"]},
+        ),
+        OntologyNode(
+            node_id="orders",
+            tenant_id=tenant,
+            node_type="dataset",
+            label="Orders",
+            lifecycle="certified",
+            valid_from=START,
+            provenance=provenance,
+        ),
+    ]
+    if extra_node:
+        nodes.append(
+            OntologyNode(
+                node_id="refunds",
+                tenant_id=tenant,
+                node_type="metric",
+                label="Refunds",
+                lifecycle="candidate",
+                valid_from=START,
+                provenance=provenance,
+            )
+        )
+    edges = (
+        OntologyEdge(
+            edge_id="e1",
+            tenant_id=tenant,
+            edge_type="depends_on",
+            from_node_id="revenue",
+            to_node_id="orders",
+            valid_from=START,
+            provenance=provenance,
+        ),
+    )
+    snapshot = OntologySnapshot(
+        snapshot_id="ont-1", tenant_id=tenant, captured_at=observed, nodes=tuple(nodes), edges=edges
+    )
+    path = tmp_path / "ontology.json"
+    path.write_text(snapshot.model_dump_json())
+    return path
+
+
+def test_ontology_is_embedded_verbatim_and_never_promoted(env, tmp_path):
+    from app.context import OntologyFileRefreshSource
+
+    warehouse, clock, registry, published, make = env
+    path = _ontology(tmp_path, lifecycle="candidate")
+    worker = make(ontology_source=OntologyFileRefreshSource(path, tenant_id="tenant-a"))
+    report = worker.run_once()
+    assert report.status == "published" and report.ontology.added == ("edge:e1", "orders", "revenue")
+    ontology = worker.current_snapshot().ontology
+    assert {n.node_id: n.lifecycle for n in ontology.nodes} == {"revenue": "candidate", "orders": "certified"}
+    assert ontology.tenant_id == "tenant-a"
+
+
+def test_ontology_change_republishes_and_provenance_clock_drift_does_not(env, tmp_path):
+    from app.context import OntologyFileRefreshSource
+
+    warehouse, clock, registry, published, make = env
+    path = _ontology(tmp_path)
+    worker = make(ontology_source=OntologyFileRefreshSource(path, tenant_id="tenant-a"))
+    first = worker.run_once()
+    _ontology(tmp_path, observed=START + timedelta(hours=1))  # re-export, same content
+    clock.advance(hours=1)
+    assert worker.run_once().status == "unchanged"
+    _ontology(tmp_path, label="Net revenue", extra_node=True)
+    clock.advance(hours=1)
+    changed = worker.run_once()
+    assert changed.status == "published" and changed.snapshot_id != first.snapshot_id
+    assert changed.ontology.updated == ("revenue",) and changed.ontology.added == ("refunds",)
+    _ontology(tmp_path, label="Net revenue")  # refunds dropped from the graph
+    clock.advance(hours=1)
+    assert worker.run_once().ontology.removed == ("refunds",)
+    assert "refunds" not in {n.node_id for n in worker.current_snapshot().ontology.nodes}
+
+
+def test_ontology_failure_reuses_last_good_then_blocks_when_stale(env, tmp_path):
+    from app.context import OntologyFileRefreshSource
+
+    warehouse, clock, registry, published, make = env
+    path = _ontology(tmp_path)
+    worker = make(
+        ontology_source=OntologyFileRefreshSource(path, tenant_id="tenant-a"),
+        policy=StalenessPolicy(max_source_age=timedelta(hours=2), max_snapshot_age=timedelta(hours=24)),
+    )
+    first = worker.run_once()
+    path.write_text("{broken")
+    clock.advance(hours=1)
+    report = worker.run_once()
+    assert report.ontology.status == "failed" and report.status == "unchanged"
+    assert worker.current_snapshot().ontology is not None
+    clock.advance(hours=2)
+    stale = worker.run_once()
+    assert stale.status == "blocked" and "stale ontology" in stale.blocking_reasons
+    assert stale.ontology.status == "reused_stale"
+    assert worker.current_snapshot().snapshot_id == first.snapshot_id
+
+
+def test_ontology_wrong_tenant_and_empty_fetch_are_failures(env, tmp_path):
+    from app.context import OntologyFileRefreshSource
+    from packages.platform_contracts.ontology import OntologySnapshot
+
+    warehouse, clock, registry, published, make = env
+    wrong = _ontology(tmp_path, tenant="tenant-b")
+    worker = make(ontology_source=OntologyFileRefreshSource(wrong, tenant_id="tenant-a"))
+    report = worker.run_once()
+    assert report.status == "published" and report.ontology.status == "failed"
+    assert "tenant" in report.ontology.error and worker.current_snapshot().ontology is None
+
+    path = _ontology(tmp_path)
+    worker = make(ontology_source=OntologyFileRefreshSource(path, tenant_id="tenant-a"))
+    worker.run_once()
+    path.write_text(OntologySnapshot(snapshot_id="ont-2", tenant_id="tenant-a").model_dump_json())
+    clock.advance(minutes=5)
+    emptied = worker.run_once()
+    assert emptied.ontology.status == "failed" and emptied.ontology.error == "empty fetch after populated state"
+    assert worker.current_snapshot().ontology.nodes
+
+
+def test_worker_rejects_ontology_from_a_source_that_ignores_the_tenant(env, tmp_path):
+    from app.context import OntologyFileRefreshSource
+
+    warehouse, clock, registry, published, make = env
+    liar = OntologyFileRefreshSource(_ontology(tmp_path, tenant="tenant-b"), tenant_id="tenant-b")
+    report = make(ontology_source=liar).run_once()
+    assert report.ontology.error == "ontology tenant does not match the refresh tenant"
+    assert report.status == "published"

@@ -30,12 +30,21 @@ and publishes an immutable `ContextSnapshot`.
   `OpenSearchContextIndex.index_snapshot`), then the pointer. A hook failure
   leaves the pointer on the previous snapshot; the retry reuses the stored
   snapshot (same content hash, same ID).
+- **Ontology (optional `ontology_source`):** `OntologyFileRefreshSource` reads an
+  `OntologySnapshot` JSON (for example a Git checkout) each run and the worker
+  embeds it in the published `ContextSnapshot`. Lifecycles pass through verbatim;
+  nothing is promoted to `certified`. The graph is complete per fetch, so a node
+  missing from it is removed (no tombstones); changes report node IDs and
+  `edge:<id>`. Wrong-tenant or empty-after-populated fetches count as failures
+  (the worker checks tenant itself, not just the source), a failure reuses the
+  last good graph, and one older than `max_source_age` blocks publication
+  (`stale ontology`). Provenance `observed_at` drift does not trigger a republish.
 - Catalog assets without a revision get a content-digest `source_version` so
   provenance coverage stays verifiable.
 
 ## Evidence
 
-- `services/analytics-api/tests/test_ads044_context_refresh.py` (11 tests) using
+- `services/analytics-api/tests/test_ads044_context_refresh.py` (17 tests) using
   the real dbt and OpenMetadata adapters over fake data and an
   `httpx.MockTransport`.
 
@@ -43,6 +52,8 @@ and publishes an immutable `ContextSnapshot`.
 
 - No live OpenMetadata, dbt Cloud, or OpenSearch call was made; HTTP is faked.
   Live integration evidence remains a separate, explicitly-authorized gate.
+- Ontology is only carried into the snapshot; wiring the resolution node and
+  context index to read it from the published snapshot is not part of this change.
 - The worker is a callable unit; scheduling/deployment is not included. State is
   a local atomic JSON file per tenant. Precedence-resolved source conflicts are
   reported (`resolved_conflicts`) but do not block; staleness and missing
