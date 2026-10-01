@@ -28,10 +28,13 @@ class CompiledQuery:
     sql: str
     parameters: dict[str, Any]
     applied_filter_ids: tuple[str, ...] = ()
+    dialect: str = "postgres"
 
 
 class PostgreSQLCompiler:
     """Compile one validated semantic intent into parameterized PostgreSQL SQL."""
+
+    dialect = "postgres"
 
     def compile(
         self,
@@ -89,6 +92,7 @@ class PostgreSQLCompiler:
             sql="\n".join(sql_parts),
             parameters=parameters,
             applied_filter_ids=tuple(filter_.id for filter_ in required_filters),
+            dialect=self.dialect,
         )
 
 

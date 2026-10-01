@@ -26,6 +26,16 @@ class PostgreSQLCompilerAdapter(PostgreSQLCompiler):
     dialect = "postgres"
 
 
+class DuckDBCompilerAdapter(PostgreSQLCompiler):
+    """DuckDB shares the PostgreSQL subset this compiler emits (DATE_TRUNC, ANSI aggregates).
+
+    The separate dialect tag lets an execution gateway refuse a plan compiled for
+    another engine; bind parameters are converted by the gateway, not here.
+    """
+
+    dialect = "duckdb"
+
+
 class CompilerRegistry:
     """Register dialect adapters without coupling the planner to SQL details."""
 
