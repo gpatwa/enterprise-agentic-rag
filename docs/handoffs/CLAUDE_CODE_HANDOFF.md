@@ -60,14 +60,13 @@ Canonical task status is in
   ADS-039's 15-scenario local graph-v2 corpus passed. ADS-039 fixed a real bug:
   resumed progress after an approval now changes persisted run status back to
   `active`.
-- **M4:** in progress. Wave 4A is implemented and in `review` (not yet
-  independently reviewed): ADS-040 (DuckDB/PostgreSQL read-only gateways;
-  PostgreSQL verified only against a fake engine) and ADS-044 (incremental
-  refresh/tombstone/stale-snapshot worker; HTTP faked). Next unblocked wave 4B
-  starts with ADS-041 (result shape/grain/fingerprint validation); ADS-042 and
-  ADS-043 follow sequentially. ADS-045+ wait on them. Respect M1 certification
-  and external integration gates; don't activate production paths by
-  implication.
+- **M4:** in progress. Implemented and in `review` (not yet independently
+  reviewed): ADS-040 (DuckDB/PostgreSQL read-only gateways; PostgreSQL verified
+  only against a fake engine), ADS-044 (refresh worker with ontology source,
+  snapshot selection at run start, ontology indexing; HTTP/OpenSearch faked), and
+  ADS-041 (result validation). Next in wave 4B: ADS-042 (immutable evidence
+  envelope), then ADS-043; ADS-045+ wait on them. Respect M1 certification and
+  external integration gates; don't activate production paths by implication.
 - **M5–M7:** planned.
 - **Live OpenSearch validation:** still separate external follow-up. ADS-039
   uses injected local fake search and execution providers; it did not contact

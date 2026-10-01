@@ -30,6 +30,7 @@ from app.runtime.ontology_node import (
     ontology_resolution_node,
     resolve_certified_intent,
 )
+from app.runtime.result_stage import result_validation_node
 from app.runtime.run_start import (
     SnapshotSelectionError,
     SnapshotSource,
@@ -74,6 +75,7 @@ __all__ = [
     "review_decision_node",
     "structured_intent_node",
     "SnapshotOntologyProvider",
+    "result_validation_node",
     "SnapshotSelectionError",
     "SnapshotSource",
     "new_governed_run_state",

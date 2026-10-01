@@ -15,6 +15,15 @@ from app.execution.gateway import (
     QueryRejected,
 )
 from app.execution.postgres_gateway import PostgresGateway
+from app.execution.result_validation import (
+    ResultIssue,
+    ResultValidationReport,
+    control_intent,
+    plan_fingerprint,
+    result_fingerprint,
+    run_control_totals,
+    validate_result,
+)
 from app.execution.validation import validate_read_only_sql
 
 __all__ = [
@@ -33,5 +42,12 @@ __all__ = [
     "ExecutionTimeout",
     "PostgresGateway",
     "QueryRejected",
+    "ResultIssue",
+    "ResultValidationReport",
+    "control_intent",
+    "plan_fingerprint",
+    "result_fingerprint",
+    "run_control_totals",
+    "validate_result",
     "validate_read_only_sql",
 ]
