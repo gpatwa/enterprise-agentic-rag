@@ -522,3 +522,85 @@ def test_resolution_node_refuses_candidate_missing_and_foreign_ontologies(env, t
     snapshot_id = certified.run_once().snapshot_id
     assert _resolve(registry, snapshot_id, tenant="tenant-b").status == "failed"  # tenant-scoped lookup
     assert _resolve(registry, "refresh:tenant-a:unknown").status == "failed"
+
+
+# ---- run bootstrap selects and pins the published snapshot ----
+
+
+def _start(worker, *, purposes=("analysis",), tenant="tenant-a", purpose="analysis", **kwargs):
+    from app.runtime import BootstrapRequest, new_governed_run_state
+    from packages.platform_contracts.agent_runtime import RunBudget
+    from packages.platform_contracts.security import AnalyticsIdentity
+
+    request = BootstrapRequest(
+        request_id="req-1",
+        request_text="  show revenue  ",
+        identity=AnalyticsIdentity(tenant_id=tenant, user_id="u1", purposes=list(purposes)),
+    )
+    return new_governed_run_state(
+        worker,
+        request,
+        run_id="run-1",
+        purpose=purpose,
+        budget=RunBudget(deadline=START + timedelta(hours=12)),
+        **kwargs,
+    )
+
+
+def test_run_state_pins_the_current_verified_snapshot(env, tmp_path):
+    from app.context import OntologyFileRefreshSource
+
+    warehouse, clock, registry, published, make = env
+    worker = make(ontology_source=OntologyFileRefreshSource(_ontology(tmp_path), tenant_id="tenant-a"))
+    first = worker.run_once().snapshot_id
+    state = _start(worker)
+    assert state.context_snapshot_id == first and state.graph_version == "graph-v2"
+    assert state.request_text == "show revenue" and state.current_node == "create"
+    assert _resolve(registry, state.context_snapshot_id).status == "completed"
+
+    warehouse.om_tables["payments"]["description"] = "p2"
+    clock.advance(minutes=10)
+    second = worker.run_once().snapshot_id
+    assert second != first
+    assert _start(worker).context_snapshot_id == second  # new runs float forward
+    assert state.context_snapshot_id == first  # an existing run stays pinned (resume/replay)
+
+
+def test_run_start_fails_closed_before_any_run_exists(env, tmp_path):
+    from app.context import OntologyFileRefreshSource
+    from app.runtime import SnapshotSelectionError
+
+    warehouse, clock, registry, published, make = env
+    ontology_source = OntologyFileRefreshSource(_ontology(tmp_path), tenant_id="tenant-a")
+    worker = make(ontology_source=ontology_source)
+    with pytest.raises(SnapshotSelectionError) as caught:
+        _start(worker)
+    assert caught.value.code == "snapshot_unavailable"
+
+    worker.run_once()
+    clock.advance(hours=25)  # nothing has re-verified the snapshot within policy
+    with pytest.raises(SnapshotSelectionError) as caught:
+        _start(worker)
+    assert caught.value.code == "snapshot_stale"
+
+    with pytest.raises(SnapshotSelectionError) as caught:
+        _start(worker, purposes=("reporting",))
+    assert caught.value.code == "purpose_not_authorized"
+
+    clock.advance(minutes=1)
+    worker.run_once()
+    with pytest.raises(SnapshotSelectionError) as caught:
+        _start(worker, tenant="tenant-b")  # a tenant-a worker never serves another tenant
+    assert caught.value.code == "snapshot_tenant_mismatch"
+
+
+def test_snapshot_without_ontology_is_refused_unless_explicitly_allowed(env):
+    from app.runtime import SnapshotSelectionError
+
+    warehouse, clock, registry, published, make = env
+    worker = make()
+    worker.run_once()
+    with pytest.raises(SnapshotSelectionError) as caught:
+        _start(worker)
+    assert caught.value.code == "snapshot_has_no_ontology"
+    assert _start(worker, require_ontology=False).context_snapshot_id == worker.current_snapshot().snapshot_id

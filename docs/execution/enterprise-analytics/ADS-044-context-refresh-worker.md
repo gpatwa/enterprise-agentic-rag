@@ -44,7 +44,7 @@ and publishes an immutable `ContextSnapshot`.
 
 ## Evidence
 
-- `services/analytics-api/tests/test_ads044_context_refresh.py` (19 tests) using
+- `services/analytics-api/tests/test_ads044_context_refresh.py` (22 tests) using
   the real dbt and OpenMetadata adapters over fake data and an
   `httpx.MockTransport`.
 
@@ -56,9 +56,16 @@ and publishes an immutable `ContextSnapshot`.
   (`app/runtime/ontology_node.py`), an exact-ID, tenant-scoped read of the
   published snapshot that fails closed when the snapshot has no ontology. The
   graph is returned under the context snapshot's ID because the node pins
-  ontology identity to the run's snapshot. Choosing which snapshot a run uses
-  (e.g. via `current_snapshot()` at bootstrap) and indexing the ontology in
-  OpenSearch are not wired here.
+  ontology identity to the run's snapshot.
+- **Run bootstrap:** `new_governed_run_state` (`app/runtime/run_start.py`) takes any
+  `SnapshotSource` (the worker's `current_snapshot()`), selects the tenant's latest
+  verified snapshot, and pins its ID in the initial `AgentRunState`. It refuses before
+  any run exists (`SnapshotSelectionError`: `snapshot_unavailable`, `snapshot_stale`,
+  `snapshot_tenant_mismatch`, `snapshot_has_no_ontology`, `purpose_not_authorized`).
+  New runs float to newer snapshots; an existing run keeps its pinned ID across
+  resume and replay. The bootstrap node remains the authoritative identity gate.
+- Not wired: a production API caller of `new_governed_run_state` (ADS-045), and
+  indexing the ontology in OpenSearch.
 - The worker is a callable unit; scheduling/deployment is not included. State is
   a local atomic JSON file per tenant. Precedence-resolved source conflicts are
   reported (`resolved_conflicts`) but do not block; staleness and missing
