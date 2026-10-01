@@ -64,8 +64,18 @@ and publishes an immutable `ContextSnapshot`.
   `snapshot_tenant_mismatch`, `snapshot_has_no_ontology`, `purpose_not_authorized`).
   New runs float to newer snapshots; an existing run keeps its pinned ID across
   resume and replay. The bootstrap node remains the authoritative identity gate.
-- Not wired: a production API caller of `new_governed_run_state` (ADS-045), and
-  indexing the ontology in OpenSearch.
+- **Ontology indexing:** `OpenSearchContextIndex.index_snapshot` now also indexes each
+  ontology node (`doc_type=ontology_node`, `node_type`, `label`, `lifecycle`,
+  `certified` only when the node's own lifecycle is `certified`, aliases/synonyms in
+  `text`) under IDs that cannot collide with asset documents. `search_ontology`
+  discovers nodes within one tenant+snapshot, certified-only by default, with
+  provider-owned filters re-checked on every hit; `search` excludes ontology
+  documents. `ensure_index` additively PUTs the new keyword fields onto an existing
+  index. Passing `index.index_snapshot` as the worker's `on_publish` indexes ontology
+  with each publication. Search is discovery only; resolution stays an exact lookup.
+  Edges are not indexed. Verified against an in-memory fake that evaluates the query
+  filters, not a live OpenSearch (still a separate gate).
+- Not wired: a production API caller of `new_governed_run_state` (ADS-045).
 - The worker is a callable unit; scheduling/deployment is not included. State is
   a local atomic JSON file per tenant. Precedence-resolved source conflicts are
   reported (`resolved_conflicts`) but do not block; staleness and missing
