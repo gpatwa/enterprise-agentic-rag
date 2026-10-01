@@ -44,7 +44,7 @@ and publishes an immutable `ContextSnapshot`.
 
 ## Evidence
 
-- `services/analytics-api/tests/test_ads044_context_refresh.py` (17 tests) using
+- `services/analytics-api/tests/test_ads044_context_refresh.py` (19 tests) using
   the real dbt and OpenMetadata adapters over fake data and an
   `httpx.MockTransport`.
 
@@ -52,8 +52,13 @@ and publishes an immutable `ContextSnapshot`.
 
 - No live OpenMetadata, dbt Cloud, or OpenSearch call was made; HTTP is faked.
   Live integration evidence remains a separate, explicitly-authorized gate.
-- Ontology is only carried into the snapshot; wiring the resolution node and
-  context index to read it from the published snapshot is not part of this change.
+- The resolution node reads the ontology through `SnapshotOntologyProvider`
+  (`app/runtime/ontology_node.py`), an exact-ID, tenant-scoped read of the
+  published snapshot that fails closed when the snapshot has no ontology. The
+  graph is returned under the context snapshot's ID because the node pins
+  ontology identity to the run's snapshot. Choosing which snapshot a run uses
+  (e.g. via `current_snapshot()` at bootstrap) and indexing the ontology in
+  OpenSearch are not wired here.
 - The worker is a callable unit; scheduling/deployment is not included. State is
   a local atomic JSON file per tenant. Precedence-resolved source conflicts are
   reported (`resolved_conflicts`) but do not block; staleness and missing

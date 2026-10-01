@@ -95,6 +95,29 @@ def resolve_certified_intent(
     return resolved
 
 
+class SnapshotOntologyProvider:
+    """Serve the ontology embedded in a published `ContextSnapshot`.
+
+    `snapshots` is anything with `get(snapshot_id, tenant_id) -> ContextSnapshot`, such as
+    `ContextSnapshotRegistry`; the exact-ID, tenant-scoped lookup is the registry's. The
+    resolution node pins ontology identity to the run's context snapshot, so the graph
+    is returned under that snapshot ID (its content fingerprint is already part of the
+    snapshot's own). A snapshot with no ontology fails closed rather than resolving
+    against nothing.
+    """
+
+    def __init__(self, snapshots) -> None:
+        self._snapshots = snapshots
+
+    def get(self, snapshot_id: str, tenant_id: str) -> OntologySnapshot:
+        snapshot = self._snapshots.get(snapshot_id, tenant_id)
+        if snapshot.snapshot_id != snapshot_id or snapshot.tenant_id != tenant_id:
+            raise LookupError("context snapshot scope mismatch")
+        if snapshot.ontology is None:
+            raise LookupError("context snapshot carries no ontology")
+        return snapshot.ontology.model_copy(update={"snapshot_id": snapshot.snapshot_id})
+
+
 def ontology_resolution_node(contracts, ontologies):
     """Create a handler whose lookups are exact, tenant-scoped snapshot reads."""
 

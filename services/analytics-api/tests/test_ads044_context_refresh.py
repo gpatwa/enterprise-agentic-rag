@@ -457,3 +457,68 @@ def test_worker_rejects_ontology_from_a_source_that_ignores_the_tenant(env, tmp_
     report = make(ontology_source=liar).run_once()
     assert report.ontology.error == "ontology tenant does not match the refresh tenant"
     assert report.status == "published"
+
+
+# ---- the resolution node reads the published ontology ----
+
+
+def _resolve(registry, snapshot_id, *, tenant="tenant-a", metric="sales"):
+    from types import SimpleNamespace
+
+    from test_ads040_execution_gateways import _contract, _intent
+
+    from app.runtime import SnapshotOntologyProvider, ontology_resolution_node
+    from packages.platform_contracts.agent_runtime import NodeInput, RunBudget
+
+    contracts = SimpleNamespace(get_certified=lambda *_: SimpleNamespace(contract=_contract()))
+    intent = _intent(
+        metrics=[{"metric_id": metric}], dataset_id="orders", group_by=[], filters=[], time_range=None, sort=[]
+    )
+    node_input = NodeInput(
+        run_id="run-1",
+        tenant_id=tenant,
+        purpose="analysis",
+        node_id="resolve",
+        state_version=1,
+        context_snapshot_id=snapshot_id,
+        payload={"intent": intent.model_dump(mode="json")},
+        remaining_budget=RunBudget(deadline=START + timedelta(hours=1)),
+    )
+    return ontology_resolution_node(contracts, SnapshotOntologyProvider(registry))(node_input)
+
+
+def test_resolution_node_resolves_aliases_from_the_published_snapshot(env, tmp_path):
+    from app.context import OntologyFileRefreshSource
+
+    warehouse, clock, registry, published, make = env
+    worker = make(ontology_source=OntologyFileRefreshSource(_ontology(tmp_path), tenant_id="tenant-a"))
+    snapshot_id = worker.run_once().snapshot_id
+    output = _resolve(registry, snapshot_id)
+    assert output.status == "completed" and output.next_node == "plan"
+    assert output.payload["intent"]["metrics"][0]["metric_id"] == "revenue"  # alias "sales" -> certified ID
+    assert output.evidence[0].evidence_id == f"ontology:{snapshot_id}:orders"
+
+
+def test_resolution_node_refuses_candidate_missing_and_foreign_ontologies(env, tmp_path):
+    from app.context import OntologyFileRefreshSource
+
+    warehouse, clock, registry, published, make = env
+    candidate = make(
+        ontology_source=OntologyFileRefreshSource(_ontology(tmp_path, lifecycle="candidate"), tenant_id="tenant-a")
+    )
+    refused = _resolve(registry, candidate.run_once().snapshot_id)
+    assert (
+        refused.status == "failed" and refused.error.message_reference == "ontology:unknown_or_uncertified_semantic_id"
+    )
+
+    bare = make(tenant_id="tenant-n", ontology_source=None)
+    bare_id = bare.run_once().snapshot_id  # published without an ontology
+    failed = _resolve(registry, bare_id, tenant="tenant-n")
+    assert failed.status == "failed" and failed.error.message_reference == "ontology:LookupError"
+
+    certified = make(
+        tenant_id="tenant-a", ontology_source=OntologyFileRefreshSource(_ontology(tmp_path), tenant_id="tenant-a")
+    )
+    snapshot_id = certified.run_once().snapshot_id
+    assert _resolve(registry, snapshot_id, tenant="tenant-b").status == "failed"  # tenant-scoped lookup
+    assert _resolve(registry, "refresh:tenant-a:unknown").status == "failed"

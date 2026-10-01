@@ -25,7 +25,11 @@ from app.runtime.graph_eval import (
 from app.runtime.graph_factory import governed_graph_v2
 from app.runtime.graph_runner import AgentGraphRunner, GraphDefinition, GraphRunError, GraphRunResult
 from app.runtime.intent_node import structured_intent_node
-from app.runtime.ontology_node import ontology_resolution_node, resolve_certified_intent
+from app.runtime.ontology_node import (
+    SnapshotOntologyProvider,
+    ontology_resolution_node,
+    resolve_certified_intent,
+)
 
 __all__ = [
     "BudgetExceeded",
@@ -63,6 +67,7 @@ __all__ = [
     "policy_node",
     "review_decision_node",
     "structured_intent_node",
+    "SnapshotOntologyProvider",
     "ontology_resolution_node",
     "resolve_certified_intent",
 ]
