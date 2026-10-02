@@ -489,3 +489,15 @@ def test_graph_execution_node_runs_through_gateway_bridge(gateway):
     assert GatewayCostEstimator(gateways).estimate(plan) > 0
     with pytest.raises(LookupError):
         GatewayCostEstimator({}).estimate(plan)
+
+
+def test_time_granularity_plans_pass_validation_and_run(gateway):
+    """Regression: DATE_TRUNC parses as TIMESTAMP_TRUNC and must be allowlisted on both dialects."""
+    intent = _intent(
+        group_by=[{"dimension_id": "created_at", "time_granularity": "month"}], sort=[], filters=[]
+    )
+    for adapter, dialect in ((PostgreSQLCompilerAdapter(), "postgres"), (DuckDBCompilerAdapter(), "duckdb")):
+        plan = adapter.compile(intent, _contract())
+        validate_read_only_sql(plan.sql, dialect=dialect, allowed_tables=["sales_orders"])
+    result = gateway.execute(DuckDBCompilerAdapter().compile(intent, _contract()), limits=ExecutionLimits())
+    assert result.row_count > 0 and result.columns == ("dimension_0", "metric_0")

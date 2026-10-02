@@ -63,6 +63,7 @@ DEFAULT_ALLOWED_FUNCTIONS = frozenset(
         "nullif",
         "round",
         "sum",
+        "timestamp_trunc",
         "trim",
         "upper",
     }

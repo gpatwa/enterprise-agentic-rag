@@ -148,7 +148,7 @@ tasks:
   ADS-039: {milestone: M3, status: complete, depends_on: [ADS-030, ADS-031, ADS-032, ADS-033, ADS-034, ADS-035, ADS-036, ADS-037, ADS-038]}
   ADS-040: {milestone: M4, status: review, depends_on: [ADS-037]}
   ADS-041: {milestone: M4, status: review, depends_on: [ADS-040]}
-  ADS-042: {milestone: M4, status: planned, depends_on: [ADS-041]}
+  ADS-042: {milestone: M4, status: review, depends_on: [ADS-041]}
   ADS-043: {milestone: M4, status: planned, depends_on: [ADS-041, ADS-042]}
   ADS-044: {milestone: M4, status: review, depends_on: [ADS-016]}
   ADS-045: {milestone: M4, status: planned, depends_on: [ADS-038, ADS-043]}

@@ -7,6 +7,15 @@ from app.runtime.clarification import clarification_node, resume_clarification, 
 from app.runtime.context_node import context_retrieval_node
 from app.runtime.control import CancellationRegistry, GatewayRegistration, GatewayRegistry, UsageMeter
 from app.runtime.control_store import ControlStore, ControlStoreError, Lease, LeaseUnavailable, StaleWorkerError
+from app.runtime.evidence import EvidenceBuildError, build_evidence_envelope
+from app.runtime.evidence_store import (
+    EvidenceChainError,
+    EvidenceConflictError,
+    EvidenceNotFoundError,
+    EvidenceStore,
+    EvidenceStoreError,
+    record_terminal_evidence,
+)
 from app.runtime.governed_stages import (
     CompiledPlanStore,
     analytics_plan_node,
@@ -74,7 +83,15 @@ __all__ = [
     "policy_node",
     "review_decision_node",
     "structured_intent_node",
+    "EvidenceBuildError",
+    "EvidenceChainError",
+    "EvidenceConflictError",
+    "EvidenceNotFoundError",
+    "EvidenceStore",
+    "EvidenceStoreError",
     "SnapshotOntologyProvider",
+    "build_evidence_envelope",
+    "record_terminal_evidence",
     "result_validation_node",
     "SnapshotSelectionError",
     "SnapshotSource",

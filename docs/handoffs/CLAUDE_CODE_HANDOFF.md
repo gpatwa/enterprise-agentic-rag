@@ -64,8 +64,8 @@ Canonical task status is in
   reviewed): ADS-040 (DuckDB/PostgreSQL read-only gateways; PostgreSQL verified
   only against a fake engine), ADS-044 (refresh worker with ontology source,
   snapshot selection at run start, ontology indexing; HTTP/OpenSearch faked), and
-  ADS-041 (result validation). Next in wave 4B: ADS-042 (immutable evidence
-  envelope), then ADS-043; ADS-045+ wait on them. Respect M1 certification and
+  ADS-041 (result validation), and ADS-042 (evidence envelope, append-only hash
+  chain). Next in wave 4B: ADS-043 (grounded explanation); ADS-045+ wait on it. Respect M1 certification and
   external integration gates; don't activate production paths by implication.
 - **M5–M7:** planned.
 - **Live OpenSearch validation:** still separate external follow-up. ADS-039
