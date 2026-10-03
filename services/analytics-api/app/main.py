@@ -6,6 +6,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.api_v2 import V2Runtime, build_v2_router
 from app.config import settings
+from app.runtime.shadow import ShadowRuntime, query_with_shadow
 from app.service import AnalyticsService
 from packages.platform_contracts.analytics import (
     AnalyticsHealthResponse,
@@ -40,7 +41,7 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "X-API-Key", "X-Request-ID", "Authorization", "Idempotency-Key"],
+    allow_headers=["Content-Type", "X-API-Key", "X-Request-ID", "Authorization", "Idempotency-Key", "X-Analytics-Purpose"],
 )
 
 
@@ -53,6 +54,7 @@ async def verify_api_key(x_api_key: str | None = Header(default=None)) -> None:
 
 
 v2_runtime = V2Runtime()
+shadow_runtime = ShadowRuntime()
 app.include_router(build_v2_router(v2_runtime, verify_api_key))
 
 
@@ -96,5 +98,22 @@ async def schema(dataset: str = "olist") -> AnalyticsSchemaResponse:
     response_model=AnalyticsQueryResponse,
     dependencies=[Depends(verify_api_key)],
 )
-async def query(request: AnalyticsQueryRequest) -> AnalyticsQueryResponse:
-    return await analytics_service.query(request)
+async def query(
+    request: AnalyticsQueryRequest,
+    authorization: str | None = Header(default=None),
+    x_analytics_purpose: str | None = Header(default=None),
+) -> AnalyticsQueryResponse:
+    routed = shadow_runtime.decide(authorization, x_analytics_purpose)
+    if routed is None:
+        return await analytics_service.query(request)
+    decision, identity = routed
+    return await query_with_shadow(
+        lambda: analytics_service.query(request),
+        decision=decision,
+        identity=identity,
+        purpose=x_analytics_purpose,
+        request_text=request.query,
+        analyzer=shadow_runtime.analyzer,
+        sink=shadow_runtime.sink,
+        timeout_seconds=shadow_runtime.timeout_seconds,
+    )

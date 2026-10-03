@@ -110,6 +110,10 @@ class Rig:
 
     def runner(self, identity, request: BootstrapRequest) -> AgentGraphRunner:
         self.starts += 1
+        return AgentGraphRunner(self.control, governed_graph_v2(self.nodes(identity, request)), now=lambda: NOW)
+
+    def nodes(self, identity, request: BootstrapRequest, review_store=None) -> dict:
+        review_store = review_store or self.control
         gateways = {"duckdb": self.gateway}
         intent = _intent("api", ambiguous=self.ambiguous)
         intent["query_id"] = request.request_id
@@ -134,13 +138,13 @@ class Rig:
             "clarify": clarification_node(),
             "plan": analytics_plan_node(self.contracts),
             "validate": certified_intent_node(self.contracts),
-            "policy": policy_node(self.contracts, identity, self.policy_values, review_store=self.control),
+            "policy": policy_node(self.contracts, identity, self.policy_values, review_store=review_store),
             "compile": compile_node(self.compiler, self.plans, self.policy_values),
             "estimate": estimate_node(
                 self.plans,
                 GatewayCostEstimator(gateways),
                 approval_threshold=self.threshold,
-                review_store=self.control,
+                review_store=review_store,
                 requested_by=identity.user_id,
             ),
             "approve": review_decision_node(self.control),
@@ -148,7 +152,7 @@ class Rig:
             "result_validate": result_validation_node(self.plans, self.results, self.contracts, controls),
             "explain": explain_node(self.results, self.contracts, self.plans, explainer, self.explanations),
         }
-        return AgentGraphRunner(self.control, governed_graph_v2(handlers), now=lambda: NOW)
+        return handlers
 
     def new_state(self, request, run_id, purpose):
         return AgentRunState(

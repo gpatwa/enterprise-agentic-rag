@@ -94,7 +94,12 @@ Canonical task status is in
     the existing `AnalyticsV2Outcome` union (answer gained claims/result/visualization).
     **Mounted but inert**: 503 until `app.main.v2_runtime` gets a service and verifier;
     nothing in production wires them yet. Packet: `ADS-045-analyze-api.md`.
-  - **Next:** ADS-046 and ADS-047 (wave 4C remainder); wave 4D:
+  - **ADS-046** v1 shadow adapter (`app/runtime/shadow.py`, wired into the v1 `/query`
+    route, inert by default): v1 response returned unchanged; governed analysis stops at an
+    estimated plan (blocked `approve/execute/result_validate/explain`, no review creation);
+    privacy-safe comparison record to a sink. Results are not compared. Packet:
+    `ADS-046-v1-shadow-adapter.md`.
+  - **Next:** ADS-047 (evidence-first web workflow, wave 4C remainder); wave 4D:
     048, 049, then the M4 `local_demo_review` human gate.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls
     `new_governed_run_state`, `record_terminal_evidence`, or the control-total
@@ -152,7 +157,7 @@ At commit `d97c428`, run from `services/analytics-api`:
   services/analytics-api/tests`: all checks passed. `git diff --check` clean.
 - After ADS-043 (uncommitted-tree run before its commit): `make test-analytics` **321
   passed** (+12 in `test_ads043_grounded_explanation.py`); after ADS-045 **330 passed** (+9 in
-  `test_ads045_analyze_api.py`); focused `ruff check`/`format
+  `test_ads045_analyze_api.py`); after ADS-046 **339 passed** (+9 in `test_ads046_shadow.py`); focused `ruff check`/`format
   --check` and `git diff --check` clean.
 - New suites: `test_ads040_execution_gateways.py`, `test_ads041_result_validation.py`,
   `test_ads042_evidence_envelope.py`, `test_ads044_context_refresh.py`,
@@ -170,7 +175,7 @@ for later work.
 
 ## Open Gates and Decisions for the User
 
-- Independent review of ADS-040/041/042/043/044/045 (manifest `review` → `complete`).
+- Independent review of ADS-040 to ADS-046 (manifest `review` → `complete`).
 - M1 human semantic certification (still pending; nothing here certifies any
   ontology or contract).
 - Live validation of PostgreSQL, OpenSearch, and catalog providers.
