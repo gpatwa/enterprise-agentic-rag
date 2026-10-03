@@ -4,6 +4,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
+from app.api_v2 import V2Runtime, build_v2_router
 from app.config import settings
 from app.service import AnalyticsService
 from packages.platform_contracts.analytics import (
@@ -39,7 +40,7 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "X-API-Key", "X-Request-ID"],
+    allow_headers=["Content-Type", "X-API-Key", "X-Request-ID", "Authorization", "Idempotency-Key"],
 )
 
 
@@ -49,6 +50,10 @@ async def verify_api_key(x_api_key: str | None = Header(default=None)) -> None:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid analytics API key",
         )
+
+
+v2_runtime = V2Runtime()
+app.include_router(build_v2_router(v2_runtime, verify_api_key))
 
 
 @app.get("/health", response_model=AnalyticsHealthResponse)

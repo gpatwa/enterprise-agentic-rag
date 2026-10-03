@@ -87,7 +87,14 @@ Canonical task status is in
     cell/semantic IDs, numbers must come from cited cells, one repair attempt, else
     evidence-only; result fingerprint is checked unchanged. Scripted explainers only; no
     real model client. Packet: `ADS-043-grounded-explanation.md`.
-  - **Next:** wave 4C: ADS-045 (`POST /api/v2/analytics/analyze` + resume), 046, 047; wave 4D:
+  - **ADS-045** governed v2 API (`app/api_v2.py`, `app/runtime/analyze_service.py`,
+    `packages/platform_contracts/analytics_v2_api.py`): `POST /api/v2/analytics/analyze`
+    (Idempotency-Key), `GET .../runs/{id}`, `POST .../runs/{id}/clarify`, `POST
+    .../runs/{id}/review`; OIDC bearer identity, tenant+purpose scoping, outcomes map to
+    the existing `AnalyticsV2Outcome` union (answer gained claims/result/visualization).
+    **Mounted but inert**: 503 until `app.main.v2_runtime` gets a service and verifier;
+    nothing in production wires them yet. Packet: `ADS-045-analyze-api.md`.
+  - **Next:** ADS-046 and ADS-047 (wave 4C remainder); wave 4D:
     048, 049, then the M4 `local_demo_review` human gate.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls
     `new_governed_run_state`, `record_terminal_evidence`, or the control-total
@@ -144,7 +151,8 @@ At commit `d97c428`, run from `services/analytics-api`:
 - `ruff check packages/platform_contracts services/analytics-api/app
   services/analytics-api/tests`: all checks passed. `git diff --check` clean.
 - After ADS-043 (uncommitted-tree run before its commit): `make test-analytics` **321
-  passed** (+12 in `test_ads043_grounded_explanation.py`); focused `ruff check`/`format
+  passed** (+12 in `test_ads043_grounded_explanation.py`); after ADS-045 **330 passed** (+9 in
+  `test_ads045_analyze_api.py`); focused `ruff check`/`format
   --check` and `git diff --check` clean.
 - New suites: `test_ads040_execution_gateways.py`, `test_ads041_result_validation.py`,
   `test_ads042_evidence_envelope.py`, `test_ads044_context_refresh.py`,
@@ -162,7 +170,7 @@ for later work.
 
 ## Open Gates and Decisions for the User
 
-- Independent review of ADS-040/041/042/043/044 (manifest `review` → `complete`).
+- Independent review of ADS-040/041/042/043/044/045 (manifest `review` → `complete`).
 - M1 human semantic certification (still pending; nothing here certifies any
   ontology or contract).
 - Live validation of PostgreSQL, OpenSearch, and catalog providers.

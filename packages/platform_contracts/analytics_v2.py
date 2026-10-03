@@ -69,9 +69,36 @@ class AnalyticsAnswerEvidence(BaseModel):
     policy_decision: AnalyticsPolicyDecision | None = None
 
 
+class AnalyticsClaim(BaseModel):
+    """One sentence of explanation and the fixed result-cell/semantic IDs it cites."""
+
+    text: str = Field(min_length=1, max_length=400)
+    cites: list[str] = Field(min_length=1, max_length=20)
+
+
+class AnalyticsResultTable(BaseModel):
+    columns: list[str] = Field(max_length=50)
+    rows: list[list[str | int | float | bool | None]] = Field(max_length=1_000)
+    row_count: int = Field(ge=0)
+
+
+class AnalyticsVisualization(BaseModel):
+    """Data-free chart spec: column indexes into the result table, bound to semantic IDs."""
+
+    kind: Literal["stat", "line", "bar", "table"]
+    x_column: int | None = Field(default=None, ge=0)
+    y_columns: list[int] = Field(default_factory=list)
+    semantic_ids: list[str] = Field(default_factory=list)
+    row_limit: int = Field(ge=1)
+
+
 class AnalyticsAnswerOutcome(AnalyticsOutcomeBase):
     outcome: Literal["answer"] = "answer"
     answer: str = Field(min_length=1)
+    explanation_status: Literal["grounded", "evidence_only"] | None = None
+    claims: list[AnalyticsClaim] = Field(default_factory=list, max_length=8)
+    result: AnalyticsResultTable | None = None
+    visualization: AnalyticsVisualization | None = None
     evidence: AnalyticsAnswerEvidence = Field(default_factory=AnalyticsAnswerEvidence)
     review: AnalyticsReviewReference | None = None
 
