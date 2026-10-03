@@ -1,22 +1,27 @@
 # Claude Code Handoff
 
-Updated: 2026-09-30
+Updated: 2026-10-03
 
-This is the durable project handoff from the Codex task. Re-check repository
-state before acting; the information below records the verified state at the
-time of writing, not an instruction to force the tree to match it.
+This is the durable project handoff between Claude Code sessions (originally
+written by the Codex task, last updated after ADS-040/041/042/044). Re-check
+repository state before acting; the information below records the verified
+state at the time of writing, not an instruction to force the tree to match it.
 
 ## Verified Repository State
 
 - Repository: `gpatwa/enterprise-agentic-rag`
-- Working directory: `/Users/gopalpatwa/opt/scalable-rag-pipeline`
-- Branch: `codex/ea-001-canonical-fixtures`
-- Upstream: `origin/codex/ea-001-canonical-fixtures`
-- Latest commit: `d683e10 execute ADS-039 graph adversarial corpus`
-- At handoff creation, the tree was clean and the branch matched its upstream.
-- The user prefers completed milestones to be committed and pushed. This
-  handoff itself is a repo change; verify whether it has been committed/pushed
-  before assuming it is on GitHub.
+- Branch: `claude/agentic-data-stack-continue-3be90b`, tracking
+  `origin/claude/agentic-data-stack-continue-3be90b` (pushed; clean at handoff).
+  It is based on `codex/ea-001-canonical-fixtures` (`9278e84`), **not** on `main`:
+  `main` lacks all ADS work. A PR for this branch has not been opened.
+- Latest commit: `d97c428 feat(analytics): add ADS-042 evidence envelope and
+  append-only chain; allow timestamp_trunc in gateway validation`.
+- Work happens in a git worktree; the worktree path can be recycled between
+  sessions. Commits on the branch are the source of truth, not any one checkout.
+- The user prefers completed milestones/packets to be committed and pushed; check
+  the staged scope and upstream first. Do not run `ruff check --fix` over whole
+  directories (it re-sorts unrelated files, e.g. an alembic migration); fix only
+  the files you changed.
 
 ## Product and Strategy Context
 
@@ -60,13 +65,35 @@ Canonical task status is in
   ADS-039's 15-scenario local graph-v2 corpus passed. ADS-039 fixed a real bug:
   resumed progress after an approval now changes persisted run status back to
   `active`.
-- **M4:** in progress. Implemented and in `review` (not yet independently
-  reviewed): ADS-040 (DuckDB/PostgreSQL read-only gateways; PostgreSQL verified
-  only against a fake engine), ADS-044 (refresh worker with ontology source,
-  snapshot selection at run start, ontology indexing; HTTP/OpenSearch faked), and
-  ADS-041 (result validation), and ADS-042 (evidence envelope, append-only hash
-  chain). Next in wave 4B: ADS-043 (grounded explanation); ADS-045+ wait on it. Respect M1 certification and
-  external integration gates; don't activate production paths by implication.
+- **M4:** in progress. Wave 4A, 4B (through ADS-042) are implemented and all in
+  manifest status `review`. **Nobody has independently reviewed them; do not mark
+  them `complete` without the user's/reviewer's approval.**
+  - **ADS-040** read-only DuckDB/PostgreSQL gateways (`app/execution/`).
+    DuckDB is real and embedded; **PostgreSQL has only been tested against a
+    recording fake engine, never a server**.
+  - **ADS-044** `ContextRefreshWorker` (`app/context/refresh.py`): incremental
+    refresh, tombstones, failure/last-good, staleness, ontology source,
+    `SnapshotOntologyProvider`, snapshot selection/pinning at run start
+    (`app/runtime/run_start.py`), ontology nodes in the OpenSearch index. HTTP and
+    OpenSearch are faked (httpx MockTransport, in-memory index fake).
+  - **ADS-041** result validation (`app/execution/result_validation.py`,
+    `app/runtime/result_stage.py`): truncation, shape, grain, sort/limit, fanout,
+    missing groups, invalid totals, fingerprints, control-query reconciliation.
+  - **ADS-042** `EvidenceEnvelope` (`packages/platform_contracts/evidence.py`),
+    builder, and append-only per-tenant hash-chained `EvidenceStore`
+    (`app/runtime/evidence*.py`, migration `0004_evidence_envelopes`).
+  - **Next:** ADS-043 (grounded explanation + visualization-spec node; acceptance:
+    claims cite fixed result/semantic IDs, repair cannot alter the result). Then
+    wave 4C: ADS-045 (`POST /api/v2/analytics/analyze` + resume), 046, 047; wave 4D:
+    048, 049, then the M4 `local_demo_review` human gate.
+  - **Known unwired seams (intentional, owned by later packets):** nothing calls
+    `new_governed_run_state`, `record_terminal_evidence`, or the control-total
+    builder in a production path yet (ADS-045 owns API/worker wiring; the control
+    compile must reuse the primary compile's policy values, which `PolicyValueStore`
+    pops one-time). The `result_validate` and `explain` nodes in the ADS-039 test
+    graph are still stubs there. Cost units differ per dialect and are uncalibrated
+    against run budgets. `fake_execution_node` keeps its name and
+    `fake_execution_failed` code while accepting real gateways.
 - **M5–M7:** planned.
 - **Live OpenSearch validation:** still separate external follow-up. ADS-039
   uses injected local fake search and execution providers; it did not contact
@@ -96,20 +123,46 @@ Canonical task status is in
   packets own production durability.
 - PostgreSQL is the first SQL adapter. DuckDB is intended for local/embedded
   lake-file analytics. OpenSearch is the enterprise context/search target.
+- Execution: `app/execution/` (gateways, validation, bridge, result validation);
+  compilers in `app/compiler/` (`DuckDBCompilerAdapter`; `CompiledQuery.dialect`).
+  Refresh/context: `app/context/refresh.py`, `app/context/index.py`
+  (`search_ontology`, additive mapping update). Run bootstrap pinning:
+  `app/runtime/run_start.py`. Evidence: `app/runtime/evidence.py`,
+  `app/runtime/evidence_store.py`.
 - Analytics web product: `apps/analytics-web/`.
 
 ## Last Verification Evidence
 
-At commit `d683e10`:
+At commit `d97c428`, run from `services/analytics-api`:
 
-- `cd services/analytics-api && PYTHONPATH=.:../.. pytest tests/test_ads039_graph_adversarial.py -q` passed the 15 required scenarios.
-- `make test-analytics` passed **210 tests**.
-- Focused Ruff checks/formatting and YAML/diff checks passed for that milestone.
-- No Azure deployment, live OpenSearch integration, or warehouse integration
-  was performed as part of ADS-039.
+- `PYTHONPATH=.:../.. pytest -q` (equivalently `make test-analytics`): **309
+  passed** (210 at the start of this workstream; +99 across ADS-040/041/042/044
+  and the ontology/selection/indexing follow-ups).
+- `ruff check packages/platform_contracts services/analytics-api/app
+  services/analytics-api/tests`: all checks passed. `git diff --check` clean.
+- New suites: `test_ads040_execution_gateways.py`, `test_ads041_result_validation.py`,
+  `test_ads042_evidence_envelope.py`, `test_ads044_context_refresh.py`,
+  `test_ads044_ontology_index.py`. Some import helpers from other test modules
+  (pytest rootdir import mode); keep that in mind when moving files.
+- A real end-to-end graph-v2 run (DuckDB through the gateway, result validation,
+  evidence sealing) is in `test_ads042_evidence_envelope.py`; it caught one real
+  ADS-040 bug (the gateway rejected `DATE_TRUNC`/`TIMESTAMP_TRUNC`), now fixed.
+- **Not performed (separate gates needing explicit user authorization):** live
+  PostgreSQL, live OpenSearch, live OpenMetadata/dbt, any warehouse, any Azure
+  deployment or cloud mutation.
 
 Re-run relevant checks after new edits; do not reuse these results as evidence
-for later milestones.
+for later work.
+
+## Open Gates and Decisions for the User
+
+- Independent review of ADS-040/041/042/044 (manifest `review` → `complete`).
+- M1 human semantic certification (still pending; nothing here certifies any
+  ontology or contract).
+- Live validation of PostgreSQL, OpenSearch, and catalog providers.
+- Whether to open a PR from this branch and against which base (`main` lacks the
+  ADS history).
+- Later human gates: M4 `local_demo_review`, then M5-M7 gates per the manifest.
 
 ## Canonical Roadmaps and Product Docs
 
@@ -131,13 +184,33 @@ for later milestones.
 
 ## Suggested Claude Code Resume Prompt
 
-> Read `CLAUDE.md` and `docs/handoffs/CLAUDE_CODE_HANDOFF.md`, then verify
-> `git status -sb`, current branch/upstream, and recent commits. Continue the
-> Agentic Data Stack from its canonical execution plan and manifest. M3 and
-> ADS-039 are complete; M1 semantic certification and live OpenSearch evidence
-> remain separate gates. Identify the next unblocked packet(s), inspect their
-> acceptance criteria and current code, and execute only that bounded scope.
-> Keep validation local with fakes unless I explicitly authorize external
-> integration/deployment. Preserve existing work, update packet/manifest and
-> diagrams when appropriate, and report actual test evidence and remaining
-> gates. Commit and push completed milestones.
+> Read `CLAUDE.md` and `docs/handoffs/CLAUDE_CODE_HANDOFF.md` first. Then verify
+> `git status -sb`, the current branch and upstream (expect
+> `claude/agentic-data-stack-continue-3be90b`, tip `d97c428` or later), and recent
+> commits; treat the handoff as a snapshot and the repository as the source of
+> truth. If the branch is missing the ADS history, check out
+> `origin/claude/agentic-data-stack-continue-3be90b`.
+>
+> Continue the Agentic Data Stack from its canonical plan and manifest
+> (`docs/AGENTIC_DATA_STACK_EXECUTION_PLAN.md`,
+> `docs/execution/enterprise-analytics/agentic-data-stack-program.yaml`). M3 and
+> ADS-039 are complete. ADS-040, 041, 042, and 044 are implemented and in `review`
+> (no independent review yet; do not mark them complete). M1 human semantic
+> certification and all live validation (PostgreSQL, OpenSearch, OpenMetadata/dbt)
+> are separate pending gates: do not infer approval or claim they passed.
+>
+> Next unblocked packet: **ADS-043** (grounded explanation and visualization-spec
+> node; claims must cite fixed result/semantic IDs and a repair step must not alter
+> the result). Read its acceptance criteria in the plan, inspect the current code
+> (`app/execution/result_validation.py`, `app/runtime/result_stage.py`,
+> `app/runtime/evidence.py`), and implement only that bounded scope. Wave 4C
+> (ADS-045+) waits on it.
+>
+> Keep validation local with fake providers unless I explicitly authorize live
+> integrations or deployment. Do not deploy to Azure or mutate cloud resources.
+> Preserve unrelated work, add tests, write the packet doc
+> (`docs/execution/enterprise-analytics/ADS-043-*.md`), update the manifest status
+> to `review` and this handoff, and run `make test-analytics`, `ruff check` on
+> changed files only, and `git diff --check`. Report what changed, commands run,
+> actual results, and remaining gates. Commit and push each completed packet after
+> checking the staged scope and upstream.
