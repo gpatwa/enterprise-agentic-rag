@@ -82,9 +82,12 @@ Canonical task status is in
   - **ADS-042** `EvidenceEnvelope` (`packages/platform_contracts/evidence.py`),
     builder, and append-only per-tenant hash-chained `EvidenceStore`
     (`app/runtime/evidence*.py`, migration `0004_evidence_envelopes`).
-  - **Next:** ADS-043 (grounded explanation + visualization-spec node; acceptance:
-    claims cite fixed result/semantic IDs, repair cannot alter the result). Then
-    wave 4C: ADS-045 (`POST /api/v2/analytics/analyze` + resume), 046, 047; wave 4D:
+  - **ADS-043** grounded explanation + visualization spec
+    (`app/execution/explanation.py`, `app/runtime/explain_stage.py`): claims cite fixed
+    cell/semantic IDs, numbers must come from cited cells, one repair attempt, else
+    evidence-only; result fingerprint is checked unchanged. Scripted explainers only; no
+    real model client. Packet: `ADS-043-grounded-explanation.md`.
+  - **Next:** wave 4C: ADS-045 (`POST /api/v2/analytics/analyze` + resume), 046, 047; wave 4D:
     048, 049, then the M4 `local_demo_review` human gate.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls
     `new_governed_run_state`, `record_terminal_evidence`, or the control-total
@@ -140,6 +143,9 @@ At commit `d97c428`, run from `services/analytics-api`:
   and the ontology/selection/indexing follow-ups).
 - `ruff check packages/platform_contracts services/analytics-api/app
   services/analytics-api/tests`: all checks passed. `git diff --check` clean.
+- After ADS-043 (uncommitted-tree run before its commit): `make test-analytics` **321
+  passed** (+12 in `test_ads043_grounded_explanation.py`); focused `ruff check`/`format
+  --check` and `git diff --check` clean.
 - New suites: `test_ads040_execution_gateways.py`, `test_ads041_result_validation.py`,
   `test_ads042_evidence_envelope.py`, `test_ads044_context_refresh.py`,
   `test_ads044_ontology_index.py`. Some import helpers from other test modules
@@ -156,7 +162,7 @@ for later work.
 
 ## Open Gates and Decisions for the User
 
-- Independent review of ADS-040/041/042/044 (manifest `review` → `complete`).
+- Independent review of ADS-040/041/042/043/044 (manifest `review` → `complete`).
 - M1 human semantic certification (still pending; nothing here certifies any
   ontology or contract).
 - Live validation of PostgreSQL, OpenSearch, and catalog providers.

@@ -2,6 +2,17 @@
 
 from app.execution.bridge import ExecutionResultStore, GatewayCostEstimator, GatewayExecutor
 from app.execution.duckdb_gateway import DuckDBGateway
+from app.execution.explanation import (
+    DraftClaim,
+    Explanation,
+    ExplanationIntegrityError,
+    FactSheet,
+    VisualizationSpec,
+    build_fact_sheet,
+    explain_result,
+    verify_claims,
+    visualization_spec,
+)
 from app.execution.gateway import (
     CancellationToken,
     CostLimitExceeded,
@@ -27,6 +38,15 @@ from app.execution.result_validation import (
 from app.execution.validation import validate_read_only_sql
 
 __all__ = [
+    "DraftClaim",
+    "Explanation",
+    "ExplanationIntegrityError",
+    "FactSheet",
+    "VisualizationSpec",
+    "build_fact_sheet",
+    "explain_result",
+    "verify_claims",
+    "visualization_spec",
     "CancellationToken",
     "CostLimitExceeded",
     "DialectMismatch",

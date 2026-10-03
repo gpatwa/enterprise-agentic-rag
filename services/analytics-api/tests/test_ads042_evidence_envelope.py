@@ -139,7 +139,7 @@ def test_review_rejected_is_refused_and_review_approved_needs_result_evidence(st
 # ---- a real succeeded run: DuckDB execution, result validation, sealed ----
 
 
-def _real_answer_runner(control, tmp_path):
+def _real_answer_runner(control, tmp_path, explain=None):
     connection = duckdb.connect()
     connection.execute("""CREATE TABLE sales_orders AS SELECT 'o' || i AS id, CAST(i AS DECIMAL(12,2)) AS amount,
         CASE WHEN i % 5 = 0 THEN 'refunded' ELSE 'paid' END AS status,
@@ -187,7 +187,7 @@ def _real_answer_runner(control, tmp_path):
         "approve": review_decision_node(control),
         "execute": fake_execution_node(GatewayExecutor(plans, gateways, results, ExecutionLimits())),
         "result_validate": result_validation_node(plans, results, contracts, controls),
-        "explain": lambda ni: output(ni, "terminal"),
+        "explain": explain(plans, results, contracts) if explain else (lambda ni: output(ni, "terminal")),
     }
     runner = AgentGraphRunner(control, governed_graph_v2(handlers), now=lambda: NOW)
     return runner, plans, results, controls, contracts

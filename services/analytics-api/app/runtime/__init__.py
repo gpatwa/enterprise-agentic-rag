@@ -16,6 +16,7 @@ from app.runtime.evidence_store import (
     EvidenceStoreError,
     record_terminal_evidence,
 )
+from app.runtime.explain_stage import ExplanationStore, explain_node
 from app.runtime.governed_stages import (
     CompiledPlanStore,
     analytics_plan_node,
@@ -48,6 +49,8 @@ from app.runtime.run_start import (
 )
 
 __all__ = [
+    "ExplanationStore",
+    "explain_node",
     "BudgetExceeded",
     "BudgetGuard",
     "BootstrapRequest",
