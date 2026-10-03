@@ -228,6 +228,7 @@ class GovernedAnalyzeService:
                     outcome = AnalyticsReviewOutcome(
                         **base,
                         review_id=review.review_id,
+                        plan_fingerprint=review.plan_fingerprint,
                         risk_reasons=[(state.approval_state or {}).get("reason") or "human_approval"],
                         expires_at=review.expires_at,
                         allowed_actions=["approve", "reject"],

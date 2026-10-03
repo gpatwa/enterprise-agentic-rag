@@ -99,8 +99,12 @@ Canonical task status is in
     estimated plan (blocked `approve/execute/result_validate/explain`, no review creation);
     privacy-safe comparison record to a sink. Results are not compared. Packet:
     `ADS-046-v1-shadow-adapter.md`.
-  - **Next:** ADS-047 (evidence-first web workflow, wave 4C remainder); wave 4D:
-    048, 049, then the M4 `local_demo_review` human gate.
+  - **ADS-047** Governed view in `apps/analytics-web/src/governed/` (answer with
+    browser-verified claims, clarify, review, refuse, failed, running, trace, read-only
+    replay); `plan_fingerprint` added to the v2 review outcome. `npm test` (18) in
+    `apps/analytics-web`. Packet: `ADS-047-evidence-first-web-workflow.md`.
+  - **Next:** wave 4D:
+    ADS-048, ADS-049, then the M4 `local_demo_review` human gate.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls
     `new_governed_run_state`, `record_terminal_evidence`, or the control-total
     builder in a production path yet (ADS-045 owns API/worker wiring; the control
@@ -157,7 +161,7 @@ At commit `d97c428`, run from `services/analytics-api`:
   services/analytics-api/tests`: all checks passed. `git diff --check` clean.
 - After ADS-043 (uncommitted-tree run before its commit): `make test-analytics` **321
   passed** (+12 in `test_ads043_grounded_explanation.py`); after ADS-045 **330 passed** (+9 in
-  `test_ads045_analyze_api.py`); after ADS-046 **339 passed** (+9 in `test_ads046_shadow.py`); focused `ruff check`/`format
+  `test_ads045_analyze_api.py`); after ADS-046 **339 passed** (+9 in `test_ads046_shadow.py`); ADS-047 changed no Python test count (web: 18 tests); focused `ruff check`/`format
   --check` and `git diff --check` clean.
 - New suites: `test_ads040_execution_gateways.py`, `test_ads041_result_validation.py`,
   `test_ads042_evidence_envelope.py`, `test_ads044_context_refresh.py`,
@@ -175,7 +179,7 @@ for later work.
 
 ## Open Gates and Decisions for the User
 
-- Independent review of ADS-040 to ADS-046 (manifest `review` → `complete`).
+- Independent review of ADS-040 to ADS-047 (manifest `review` → `complete`).
 - M1 human semantic certification (still pending; nothing here certifies any
   ontology or contract).
 - Live validation of PostgreSQL, OpenSearch, and catalog providers.

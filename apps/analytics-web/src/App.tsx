@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { VisualizationSpec } from 'vega-embed';
 
 import { getHealth, runQuery } from './api';
+import { GovernedWorkspace } from './governed/GovernedWorkspace';
 import type { AnalyticsQueryResponse, HealthResponse } from './types';
 
 const EXAMPLES = [
@@ -33,6 +34,7 @@ export function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [view, setView] = useState<'workspace' | 'governed'>('workspace');
 
   useEffect(() => {
     getHealth().then(setHealth).catch(() => setHealth(null));
@@ -64,7 +66,8 @@ export function App() {
           <div><strong>Compass</strong><span>Analytics</span></div>
         </div>
         <nav aria-label="Analytics navigation">
-          <button className="nav-item active" title="Workspace"><LayoutDashboard size={17} />Workspace</button>
+          <button className={view === 'workspace' ? 'nav-item active' : 'nav-item'} title="Workspace" onClick={() => setView('workspace')}><LayoutDashboard size={17} />Workspace</button>
+          <button className={view === 'governed' ? 'nav-item active' : 'nav-item'} title="Governed analysis" onClick={() => setView('governed')}><CheckCircle2 size={17} />Governed</button>
           <button className="nav-item" title="Query history"><History size={17} />History</button>
           <button className="nav-item" title="Data sources"><Database size={17} />Data sources</button>
         </nav>
@@ -83,6 +86,7 @@ export function App() {
           <button className="dataset-button"><Database size={15} />Olist commerce<ChevronDown size={14} /></button>
         </header>
 
+        {view === 'governed' ? <GovernedWorkspace /> : (<>
         <section className="query-band" aria-label="Ask a data question">
           <div className="query-input">
             <Search size={19} />
@@ -129,6 +133,7 @@ export function App() {
             </div>
           </section>
         )}
+        </>)}
       </main>
     </div>
   );

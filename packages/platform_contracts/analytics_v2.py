@@ -137,6 +137,7 @@ class AnalyticsReviewOutcome(AnalyticsOutcomeBase):
     outcome: Literal["review"] = "review"
     review_id: str = Field(min_length=1, max_length=255)
     risk_reasons: list[str] = Field(min_length=1, max_length=10)
+    plan_fingerprint: str | None = Field(default=None, min_length=64, max_length=128)
     expires_at: datetime
     allowed_actions: list[Literal["approve", "edit", "reject"]] = Field(min_length=1)
 

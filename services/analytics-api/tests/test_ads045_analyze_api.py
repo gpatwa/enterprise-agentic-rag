@@ -270,6 +270,7 @@ def test_review_pause_requires_a_different_reviewer_and_then_answers(tmp_path, m
     assert outcome["outcome"] == "review" and outcome["allowed_actions"] == ["approve", "reject"]
     run_id = paused.json()["run_id"]
     review = rig.control.get_review(outcome["review_id"], tenant_id=TENANT, purpose=PURPOSE)
+    assert outcome["plan_fingerprint"] == review.plan_fingerprint  # the reviewer UI needs it to decide
     decision = {"purpose": PURPOSE, "decision": "approved", "plan_fingerprint": review.plan_fingerprint}
     url = f"/api/v2/analytics/runs/{run_id}/review"
     own = client.post(url, json=decision, headers=_auth())
