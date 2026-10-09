@@ -76,13 +76,13 @@
       "meets": true
     },
     "p95_answer_latency_seconds": {
-      "value": 0.21230083284899592,
+      "value": 0.04598895809613168,
       "op": "<=",
       "threshold": 8.0,
       "meets": true
     },
     "p95_compile_policy_overhead_ms": {
-      "value": 2.1619158796966076,
+      "value": 0.5782500375062227,
       "op": "<=",
       "threshold": 250.0,
       "meets": true

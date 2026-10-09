@@ -11,6 +11,7 @@ from reference_stack import golden
 from reference_stack.golden import (
     Observations,
     SuiteLockError,
+    canonical_rows,
     compute_metrics,
     evaluate,
     load_suite,
@@ -113,3 +114,13 @@ def test_expected_rows_match_an_independent_python_oracle():
         monthly[created.strftime("%Y-%m-01")] = monthly.get(created.strftime("%Y-%m-01"), 0) + i
     assert expected["G05"] == [[k, str(v)] for k, v in sorted(monthly.items(), key=lambda kv: -kv[1])]
     json.dumps(expected)
+
+
+def test_month_buckets_compare_equal_whether_the_engine_returns_a_date_or_a_timestamp():
+    date_style = [["2024-03-01", "1969"], ["2024-02-01", "1468"]]
+    timestamp_style = [["2024-03-01T00:00:00", "1969"], ["2024-02-01T00:00:00.000", "1468"]]
+    assert canonical_rows(timestamp_style) == canonical_rows(date_style) == date_style
+    # Only midnight timestamps are folded: a real time of day or a different value still differs.
+    assert canonical_rows([["2024-03-01T05:00:00", "1"]]) == [["2024-03-01T05:00:00", "1"]]
+    assert canonical_rows([["2024-03-02T00:00:00", "1"]]) != date_style[:1]
+    assert canonical_rows(None) is None and canonical_rows([["paid", "4000"]]) == [["paid", "4000"]]

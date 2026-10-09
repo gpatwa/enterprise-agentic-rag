@@ -12,6 +12,7 @@ import hashlib
 import json
 import math
 import operator
+import re
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -66,6 +67,21 @@ def load_suite() -> tuple[dict, dict]:
     return json.loads(raw), thresholds
 
 
+_MIDNIGHT = re.compile(r"^(\d{4}-\d{2}-\d{2})T00:00:00(?:\.0+)?$")
+
+
+def canonical_rows(rows: list[list[Any]] | None) -> list[list[Any]] | None:
+    """Treat a midnight timestamp and its date as the same value.
+
+    DuckDB versions differ in whether `DATE_TRUNC('month', ...)` surfaces as a date
+    (`2024-03-01`) or a timestamp (`2024-03-01T00:00:00`). The month bucket is the same value,
+    so equivalence is judged on the date; every other cell is compared exactly.
+    """
+    if rows is None:
+        return None
+    return [[(m.group(1) if isinstance(c, str) and (m := _MIDNIGHT.match(c)) else c) for c in row] for row in rows]
+
+
 def _headers(stack: ReferenceStack, user: str, key: str | None = None, **kwargs) -> dict[str, str]:
     headers = {"Authorization": f"Bearer {stack.token(user, **kwargs)}"}
     return {**headers, "Idempotency-Key": key} if key else headers
@@ -92,7 +108,7 @@ def _answer_case(stack, client, case, engine, obs: Observations) -> None:
     obs.latencies.append(time.perf_counter() - started)
     obs.overheads_ms.append(sum(seconds for _, seconds in stack.timings) * 1000)
     outcome = first.get("outcome") or {}
-    rows = (outcome.get("result") or {}).get("rows")
+    rows = canonical_rows((outcome.get("result") or {}).get("rows"))
     expected = case["expect_rows"]
     passed = (
         outcome.get("outcome") == "answer"
@@ -115,7 +131,7 @@ def _answer_case(stack, client, case, engine, obs: Observations) -> None:
             again = _post(client, stack, case["question"], f"golden-{case['id']}-{n}").json()
             obs.latencies.append(time.perf_counter() - started)
             obs.overheads_ms.append(sum(seconds for _, seconds in stack.timings) * 1000)
-            if (again.get("outcome") or {}).get("result", {}).get("rows") != expected:
+            if canonical_rows((again.get("outcome") or {}).get("result", {}).get("rows")) != expected:
                 passed, detail = False, f"repeat {n} returned different rows"
     obs.budget_overruns += 0 if _within_budget(stack, first["run_id"]) else 1
     obs.cases.append(CaseResult(case["id"], engine, case["kind"], passed, detail))

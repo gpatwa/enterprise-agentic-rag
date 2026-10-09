@@ -1,6 +1,6 @@
 # ADS-049: Milestone-4 Golden Report
 
-Generated 2026-10-09 06:30 UTC by `make analytics-golden`. Suite `m4-golden-v1`, corpus `e1768f2f8348`, engines: duckdb, postgres.
+Generated 2026-10-09 06:41 UTC by `make analytics-golden`. Suite `m4-golden-v1`, corpus `e1768f2f8348`, engines: duckdb, postgres.
 
 **Result: MEETS the approved thresholds.** The thresholds were approved by user on 2026-10-08 (scope: local M4 reference-stack thresholds only). This is not the M4 `local_demo_review` approval and does not imply it; no packet has had independent review.
 
@@ -24,8 +24,8 @@ Generated 2026-10-09 06:30 UTC by `make analytics-golden`. Suite `m4-golden-v1`,
 | `replay_fingerprint_equivalence` | 1 | >= 1.0 | yes | Replay fingerprint equivalence 100% |
 | `dialect_result_equivalence` | 1 | >= 1.0 | yes | PostgreSQL/DuckDB portable-subset result equivalence 100% |
 | `budget_overruns` | 0 | <= 0 | yes | Runs exceeding loop/transition budget 0 |
-| `p95_answer_latency_seconds` | 0.2123 | <= 8.0 | yes | P95 warm answer latency, local reference data <= 8 seconds |
-| `p95_compile_policy_overhead_ms` | 2.162 | <= 250.0 | yes | P95 deterministic compile/policy overhead <= 250 ms |
+| `p95_answer_latency_seconds` | 0.04599 | <= 8.0 | yes | P95 warm answer latency, local reference data <= 8 seconds |
+| `p95_compile_policy_overhead_ms` | 0.5783 | <= 250.0 | yes | P95 deterministic compile/policy overhead <= 250 ms |
 
 ## Cases
 

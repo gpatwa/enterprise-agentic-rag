@@ -65,6 +65,15 @@ promotions, critical/high security defects (reasons in the thresholds file).
   not applied, and a recording wrapper that was not attached); the first run correctly reported
   failures rather than hiding them, which is why the negative tests above exist.
 
+## CI finding (PR #15)
+
+On the CI runner DuckDB returned the month bucket as `2024-03-01T00:00:00`, while the local
+DuckDB (1.4.4; the requirement is `>=1.1,<2`) returns `2024-03-01`. The value is the same, so
+result equivalence now treats a midnight timestamp and its date as equal (`canonical_rows`; any other
+difference, including a non-midnight time, still fails). Expected results, the corpus digest, and
+the approved thresholds are unchanged. The API itself still returns whatever the engine
+produces, so the month-bucket representation is DuckDB-version dependent.
+
 ## Boundary
 
 - This is a regression and pipeline-integrity suite, not an accuracy benchmark. The model is
