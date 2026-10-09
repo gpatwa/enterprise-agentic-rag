@@ -353,3 +353,17 @@ def test_default_app_router_is_inert_until_a_runtime_is_configured():
         "/api/v2/analytics/analyze", json=BODY, headers={"Authorization": "Bearer x", "Idempotency-Key": "key-0000001"}
     )
     assert response.status_code == 503 and response.json()["detail"] == "governed_runtime_not_configured"
+
+
+def test_unusable_context_snapshots_are_request_errors_not_server_errors(tmp_path, monkeypatch):
+    from app.runtime.run_start import SnapshotSelectionError
+
+    client, _, runtime, _ = _client(tmp_path, monkeypatch)
+    for code, status in (("snapshot_tenant_mismatch", 403), ("snapshot_stale", 503), ("snapshot_unavailable", 503)):
+
+        def failing(request, run_id, purpose, code=code):
+            raise SnapshotSelectionError(code)
+
+        runtime.service.state_factory = failing
+        response = _post(client, key=f"key-{code[:12]}-1")
+        assert response.status_code == status and response.json()["detail"] == code

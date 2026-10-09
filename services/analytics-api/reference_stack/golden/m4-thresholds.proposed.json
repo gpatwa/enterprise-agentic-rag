@@ -1,0 +1,31 @@
+{
+  "suite_version": "m4-golden-v1",
+  "corpus_sha256": "e1768f2f8348fee5f9ef4140ef1c2046b38c0036fe9991ad4db74c0923e3d9e1",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent from section 10 of the execution plan. Not approved. Only the user may approve or change thresholds; a threshold change needs a reviewed rationale."
+  },
+  "scope_note": "Applies to the local reference stack (scripted model, DuckDB and an emulated PostgreSQL). Numbers are taken unchanged from plan section 10; this file only maps which of them can be measured at M4 and how.",
+  "gates": {
+    "p0_result_equivalence": {"op": ">=", "value": 1.0, "plan_gate": "P0 question result equivalence 100%", "measure": "P0 answer cases whose returned rows equal the independently computed expected rows, over both dialects"},
+    "answer_result_equivalence": {"op": ">=", "value": 0.95, "plan_gate": "Full answer-case result equivalence >= 95%", "measure": "all answer cases, both dialects"},
+    "refusal_recall": {"op": ">=", "value": 1.0, "plan_gate": "Unsupported or unsafe request refusal recall 100%", "measure": "unsupported, raw-SQL, injection, policy-denied, and cross-tenant cases that returned no data and executed nothing"},
+    "clarify_or_review_recall": {"op": ">=", "value": 0.95, "plan_gate": "Ambiguous request clarify-or-review recall >= 95%", "measure": "ambiguous-reference and over-threshold-cost cases that paused for clarification or review"},
+    "policy_and_tenant_violations": {"op": "<=", "value": 0, "plan_gate": "Policy and tenant-isolation violations 0", "measure": "policy-denied or cross-tenant cases that returned data"},
+    "raw_model_sql_executed": {"op": "<=", "value": 0, "plan_gate": "Executed queries authored as raw model SQL 0", "measure": "executed SQL statements not produced by the deterministic compiler"},
+    "evidence_completeness": {"op": ">=", "value": 1.0, "plan_gate": "Required evidence completeness 100%", "measure": "answered runs that seal into a verified evidence envelope with policy, cost, and validated result evidence"},
+    "replay_fingerprint_equivalence": {"op": ">=", "value": 1.0, "plan_gate": "Replay fingerprint equivalence 100%", "measure": "answered runs whose same-key replay returns the identical result fingerprint"},
+    "dialect_result_equivalence": {"op": ">=", "value": 1.0, "plan_gate": "PostgreSQL/DuckDB portable-subset result equivalence 100%", "measure": "answer cases with identical rows on both dialects (PostgreSQL is emulated)"},
+    "budget_overruns": {"op": "<=", "value": 0, "plan_gate": "Runs exceeding loop/transition budget 0", "measure": "runs that are non-terminal or exceed max_transitions"},
+    "p95_answer_latency_seconds": {"op": "<=", "value": 8.0, "plan_gate": "P95 warm answer latency, local reference data <= 8 seconds", "measure": "wall time of an analyze call that returns an answer"},
+    "p95_compile_policy_overhead_ms": {"op": "<=", "value": 250.0, "plan_gate": "P95 deterministic compile/policy overhead <= 250 ms", "measure": "summed policy and compile node time per run"}
+  },
+  "not_measured_at_m4": {
+    "certified_top3_recall": "needs a retrieval corpus and a live index; covered by ADS-072",
+    "context_tokens_per_intent": "needs a baseline and a real model; covered by ADS-072/ADS-076",
+    "unreviewed_correction_promotions": "corrections do not exist until M5",
+    "critical_high_security_defects": "needs an independent security review, not a test run"
+  }
+}

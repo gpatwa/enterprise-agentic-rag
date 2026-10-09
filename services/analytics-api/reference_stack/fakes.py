@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -42,13 +43,17 @@ def seed_lake(directory: Path) -> Path:
 
 
 class ScriptedIntentClient:
-    """Maps a few known questions to certified intents; anything else is malformed output."""
+    """Maps known questions to certified intents; anything else is malformed output.
 
-    def __init__(self, request_id: str, tenant_id: str = TENANT) -> None:
-        self.request_id, self.tenant_id = request_id, tenant_id
+    Exact (normalized) questions win; a few keywords are the fallback. A question can also make
+    the "model" misbehave (emit raw SQL) so the pipeline's refusal of it can be measured.
+    """
+
+    def __init__(self, request_id: str, tenant_id: str = TENANT, *, ambiguous: bool = False) -> None:
+        self.request_id, self.tenant_id, self.ambiguous = request_id, tenant_id, ambiguous
 
     def complete_json(self, *, prompt: str, schema: dict, max_tokens: int) -> dict[str, Any]:
-        question = prompt.rsplit("Request:", 1)[-1].lower()
+        question = " ".join(re.sub(r"[^a-z ]", " ", prompt.rsplit("Request:", 1)[-1].lower()).split())
         base = {
             "query_id": self.request_id,
             "tenant_id": self.tenant_id,
@@ -56,30 +61,41 @@ class ScriptedIntentClient:
             "semantic_contract": {"contract_id": "sales-core", "contract_version": "v1"},
             "metrics": [{"metric_id": "revenue"}],
         }
-        if "status" in question:
-            intent = {
-                **base,
-                "group_by": [{"dimension_id": "status"}],
-                "limit": 25,
-                "sort": [{"target_kind": "metric", "target_id": "revenue", "direction": "desc"}],
-            }
+        desc = [{"target_kind": "metric", "target_id": "revenue", "direction": "desc"}]
+        jan_mar = {"dimension_id": "created_at", "start": "2024-01-01T00:00:00Z", "end": "2024-03-31T23:59:59Z"}
+        monthly = {
+            "group_by": [{"dimension_id": "created_at", "time_granularity": "month"}],
+            "time_range": jan_mar,
+            "sort": desc,
+            "limit": 25,
+        }
+        paid = [{"field_id": "orders.status", "operator": "equals", "values": ["paid"]}]
+        by_status = {"group_by": [{"dimension_id": "status"}], "sort": desc, "limit": 25}
+        catalog = {
+            "monthly revenue for all statuses": monthly,
+            "revenue for refunded orders": {
+                **by_status,
+                "filters": [{"field_id": "orders.status", "operator": "equals", "values": ["refunded"]}],
+            },
+            "top revenue status": {**by_status, "limit": 1},
+        }
+        if question == "model emits sql":
+            return {"raw_sql": "DROP TABLE sales_orders"}
+        if question in catalog:
+            intent = {**base, **catalog[question]}
+        elif "status" in question:
+            intent = {**base, **by_status}
         elif "month" in question:
-            intent = {
-                **base,
-                "group_by": [{"dimension_id": "created_at", "time_granularity": "month"}],
-                "time_range": {
-                    "dimension_id": "created_at",
-                    "start": "2024-01-01T00:00:00Z",
-                    "end": "2024-03-31T23:59:59Z",
-                },
-                "filters": [{"field_id": "orders.status", "operator": "equals", "values": ["paid"]}],
-                "sort": [{"target_kind": "metric", "target_id": "revenue", "direction": "desc"}],
-                "limit": 25,
-            }
+            intent = {**base, **monthly, "filters": paid}
         elif "total" in question:
             intent = {**base, "limit": 1}
         else:
             return {"unsupported_request": True}
+        if self.ambiguous:  # the "model" names a time dimension by a label the ontology maps to many IDs
+            for grouping in intent.get("group_by", []):
+                grouping["dimension_id"] = "time"
+            if intent.get("time_range"):
+                intent["time_range"]["dimension_id"] = "time"
         return AnalyticalIntent.model_validate(intent).model_dump(mode="json")
 
 
@@ -150,7 +166,9 @@ class ContractsProvider:
         return self.document
 
 
-def build_context(document: SemanticRegistryDocument) -> tuple[ContextSnapshot, OntologySnapshot]:
+def build_context(
+    document: SemanticRegistryDocument, *, ambiguous: bool = False
+) -> tuple[ContextSnapshot, OntologySnapshot]:
     """Context and ontology snapshots derived from the certified contract (nothing is promoted)."""
     contract = document.contract
     provenance = OntologyProvenance(
@@ -171,7 +189,7 @@ def build_context(document: SemanticRegistryDocument) -> tuple[ContextSnapshot, 
             node_id=asset.id,
             tenant_id=contract.tenant_id,
             node_type=kind,
-            label=asset.id,
+            label="time" if ambiguous and kind == "dimension" else asset.id,
             lifecycle="certified",
             valid_from=FIXED_TIME - timedelta(days=1),
             provenance=(provenance.model_copy(update={"source_id": asset.id}),),

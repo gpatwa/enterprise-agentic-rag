@@ -17,6 +17,8 @@ def main(argv: list[str] | None = None) -> int:
     smoke = sub.add_parser("smoke", help="run the DuckDB and PostgreSQL-emulation journeys")
     smoke.add_argument("--engine", choices=["duckdb", "postgres", "both"], default="both")
     smoke.add_argument("--json", action="store_true", help="print the full report as JSON")
+    golden = sub.add_parser("golden", help="run the M4 golden suite and print or write the report")
+    golden.add_argument("--write-report", metavar="DIR", help="write ADS-049-m4-golden-report.md/.json into DIR")
     up = sub.add_parser("up", help="serve the v2 API locally with this stack (loopback only)")
     up.add_argument("--engine", choices=["duckdb", "postgres"], default="duckdb")
     up.add_argument("--port", type=int, default=8095)
@@ -39,6 +41,27 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"cross-dialect rows identical: {report['cross_dialect_rows_identical']}")
             print("RESULT:", "PASS" if report["ok"] else "FAIL")
         return 0 if report["ok"] else 1
+
+    if args.command == "golden":
+        from pathlib import Path
+
+        from reference_stack.golden import render_markdown, run_golden
+
+        report = run_golden()
+        markdown = render_markdown(report)
+        if args.write_report:
+            target = Path(args.write_report)
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "ADS-049-m4-golden-report.md").write_text(markdown)
+            (target / "ADS-049-m4-golden-report.json").write_text(json.dumps(report, indent=2, default=str) + "\n")
+        else:
+            print(markdown)
+        failed = [c for c in report["cases"] if not c["passed"]]
+        print(
+            f"cases: {len(report['cases']) - len(failed)}/{len(report['cases'])} passed; "
+            f"meets proposed thresholds: {report['meets_proposed_thresholds']}"
+        )
+        return 0 if report["meets_proposed_thresholds"] else 1
 
     import uvicorn
 

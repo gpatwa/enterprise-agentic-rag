@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 import tempfile
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -56,6 +57,7 @@ from app.security import OIDCVerifier
 from app.semantic_registry import SemanticRegistry
 from packages.platform_contracts.agent_runtime import NodeOutput, RunBudget
 from packages.platform_contracts.security import AnalyticsIdentity
+from packages.platform_contracts.semantic import SemanticPolicy, SemanticRegistryDocument
 from reference_stack.fakes import (
     PURPOSE,
     TENANT,
@@ -76,6 +78,20 @@ REFERENCE_MAX_COST_UNITS = 10_000.0
 ISSUER, AUDIENCE, KEY_ID = "https://reference.local", "analytics", "reference"
 
 
+class RecordingGateway:
+    """Delegates to a gateway and records the SQL of every executed plan."""
+
+    def __init__(self, inner, log: list) -> None:
+        self.inner, self.log, self.dialect = inner, log, inner.dialect
+
+    def estimate(self, plan):
+        return self.inner.estimate(plan)
+
+    def execute(self, plan, **kwargs):
+        self.log.append(plan.sql)
+        return self.inner.execute(plan, **kwargs)
+
+
 @dataclass
 class ReferenceStack:
     engine: Engine
@@ -90,16 +106,20 @@ class ReferenceStack:
     explanations: ExplanationStore = field(default_factory=ExplanationStore)
     policy_values: PolicyValueStore = field(default_factory=PolicyValueStore)
     review_threshold: float = 1e9
+    ambiguous: bool = False
+    executed_sql: list = field(default_factory=list)
+    compiled_sql: set = field(default_factory=set)
+    timings: list = field(default_factory=list)  # (node_id, seconds) for policy/compile
     secret: str = field(default_factory=lambda: secrets.token_urlsafe(32))
 
     # ---- identity (locally signed; never accepted by any other service) ----
 
-    def token(self, user: str, *, purposes=(PURPOSE,), ttl_minutes: int = 60) -> str:
+    def token(self, user: str, *, purposes=(PURPOSE,), ttl_minutes: int = 60, tenant: str = TENANT) -> str:
         claims = {
             "iss": ISSUER,
             "aud": AUDIENCE,
             "sub": user,
-            "tid": TENANT,
+            "tid": tenant,
             "groups": ["analyst"],
             "purposes": list(purposes),
             "exp": datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes),
@@ -113,17 +133,19 @@ class ReferenceStack:
 
     def nodes(self, identity: AnalyticsIdentity, request: BootstrapRequest, review_store=None) -> dict:
         store = review_store or self.control
-        context, ontology = build_context(self.contracts.document)
-        gateways = {self.gateway.dialect: self.gateway}
+        context, ontology = build_context(self.contracts.document, ambiguous=self.ambiguous)
+        gateways = {self.gateway.dialect: RecordingGateway(self.gateway, self.executed_sql)}
 
         def go(ni, nxt):
             return NodeOutput(run_id=ni.run_id, node_id=ni.node_id, status="completed", next_node=nxt)
 
-        return {
+        handlers = {
             "create": lambda ni: go(ni, "bootstrap"),
             "bootstrap": identity_bootstrap_node(request),
             "retrieve": context_retrieval_node(SnapshotProvider(context), SearchProvider()),
-            "extract_intent": structured_intent_node(ScriptedIntentClient(request.request_id)),
+            "extract_intent": structured_intent_node(
+                ScriptedIntentClient(request.request_id, ambiguous=self.ambiguous)
+            ),
             "resolve": ontology_resolution_node(self.contracts, OntologyProvider(ontology)),
             "clarify": clarification_node(),
             "plan": analytics_plan_node(self.contracts),
@@ -142,6 +164,19 @@ class ReferenceStack:
             "result_validate": result_validation_node(self.plans, self.results, self.contracts, self.control_totals),
             "explain": explain_node(self.results, self.contracts, self.plans, scripted_explainer, self.explanations),
         }
+        for name in ("policy", "compile"):
+            handlers[name] = self._timed(name, handlers[name])
+        return handlers
+
+    def _timed(self, name, handler):
+        def run(node_input):
+            started = time.perf_counter()
+            try:
+                return handler(node_input)
+            finally:
+                self.timings.append((name, time.perf_counter() - started))
+
+        return run
 
     def control_totals(self, node_input, intent, contract):
         return run_control_totals(
@@ -156,7 +191,7 @@ class ReferenceStack:
         return AgentGraphRunner(self.control, governed_graph_v2(self.nodes(identity, request)))
 
     def new_state(self, request: BootstrapRequest, run_id: str, purpose: str):
-        context, _ = build_context(self.contracts.document)
+        context, _ = build_context(self.contracts.document, ambiguous=self.ambiguous)
         # Gateway cost units are per dialect and uncalibrated (see ADS-040); the default budget of
         # 100 units rejects even an unfiltered scan of this 100-row table on DuckDB, so the
         # reference stack states its own budget explicitly.
@@ -191,7 +226,14 @@ class ReferenceStack:
         return application
 
 
-def build_stack(engine: Engine, workdir: Path | None = None, *, review_threshold: float = 1e9) -> ReferenceStack:
+def build_stack(
+    engine: Engine,
+    workdir: Path | None = None,
+    *,
+    review_threshold: float = 1e9,
+    denied: bool = False,
+    ambiguous: bool = False,
+) -> ReferenceStack:
     """Create the seeded data, migrated control store, gateway, and compiler for one dialect."""
     workdir = Path(workdir or tempfile.mkdtemp(prefix="analytics-reference-"))
     parquet = seed_lake(workdir)
@@ -208,15 +250,38 @@ def build_stack(engine: Engine, workdir: Path | None = None, *, review_threshold
         gateway = PostgresGateway(EmulatedPostgresEngine(parquet), allowed_tables=["sales_orders"])
         adapter = PostgreSQLCompilerAdapter()
     document = SemanticRegistry(SERVICE_ROOT / "semantic_registry").get_certified("sales-core", "v1")
+    if denied:  # a policy that allows revenue only for a different purpose
+        policy = SemanticPolicy(
+            id="deny-analytics",
+            target_ids=["revenue"],
+            classification="internal",
+            allowed_purposes=["billing"],
+            owner_ids=["team.data"],
+        )
+        document = SemanticRegistryDocument(
+            lifecycle="certified", contract=document.contract.model_copy(update={"policies": [policy]})
+        )
+    compiler = CertifiedIntentCompiler(SERVICE_ROOT / "semantic_registry", adapter=adapter)
+    original = compiler.compile
+    compiled_sql: set = set()
+
+    def recording_compile(*args, **kwargs):
+        plan = original(*args, **kwargs)
+        compiled_sql.add(plan.sql)
+        return plan
+
+    compiler.compile = recording_compile
     return ReferenceStack(
         engine=engine,
         workdir=workdir,
         control=ControlStore(sql_engine),
         evidence=EvidenceStore(sql_engine),
         gateway=gateway,
-        compiler=CertifiedIntentCompiler(SERVICE_ROOT / "semantic_registry", adapter=adapter),
+        compiler=compiler,
         contracts=ContractsProvider(document),
         review_threshold=review_threshold,
+        ambiguous=ambiguous,
+        compiled_sql=compiled_sql,
     )
 
 

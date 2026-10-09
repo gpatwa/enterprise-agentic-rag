@@ -24,6 +24,7 @@ from app.runtime.bootstrap import BootstrapRequest
 from app.runtime.clarification import ClarificationError, resume_clarification
 from app.runtime.control_store import ControlStore, ControlStoreError, LeaseUnavailable, StaleWorkerError
 from app.runtime.graph_runner import AgentGraphRunner, GraphRunError
+from app.runtime.run_start import SnapshotSelectionError
 from packages.platform_contracts.agent_runtime import AgentRunState
 from packages.platform_contracts.analytics_planning import AnalyticsClarificationState
 from packages.platform_contracts.analytics_v2 import (
@@ -104,7 +105,11 @@ class GovernedAnalyzeService:
         )
         existing = self._load(run_id, identity.tenant_id, purpose, missing_ok=True)
         if existing is None:
-            state = self.state_factory(request, run_id, purpose)
+            try:
+                state = self.state_factory(request, run_id, purpose)
+            except SnapshotSelectionError as exc:
+                forbidden = exc.code in {"snapshot_tenant_mismatch", "purpose_not_authorized"}
+                raise ServiceError(403 if forbidden else 503, exc.code) from exc
             try:
                 self.runner_factory(identity, request).start(state, owner_id=_owner(), lease_token=_owner())
             except IntegrityError:  # a concurrent duplicate won the create race

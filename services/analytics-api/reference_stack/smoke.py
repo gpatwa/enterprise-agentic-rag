@@ -117,7 +117,8 @@ def run_journey(engine: Engine) -> JourneyReport:
     return report
 
 
-def _seal(stack: ReferenceStack, run_id: str, check) -> None:
+def seal_run(stack: ReferenceStack, run_id: str) -> bool:
+    """Re-validate and seal a succeeded run; True when a verified, value-free envelope exists."""
     state = stack.control.load_latest_checkpoint(run_id=run_id, tenant_id="tenant-a", purpose=PURPOSE)
     intent = AnalyticalIntent.model_validate(state.intent)
     contract = stack.contracts.get_certified(
@@ -128,15 +129,20 @@ def _seal(stack: ReferenceStack, run_id: str, check) -> None:
     validation = validate_result(
         result, plan, intent, contract, control_totals=stack.control_totals(None, intent, contract)
     )
-    appended = record_terminal_evidence(stack.control, stack.evidence, state, validation=validation)
+    record_terminal_evidence(stack.control, stack.evidence, state, validation=validation)
     sealed = stack.evidence.get(run_id, tenant_id=state.tenant_id, purpose=PURPOSE)
-    check(
-        "terminal run is sealed in a verified evidence chain",
-        appended.chain_seq == 1
-        and sealed.terminal_kind == "succeeded"
-        and stack.evidence.verify_chain(state.tenant_id) == 1
-        and "sales_orders" not in sealed.model_dump_json(),
+    return (
+        sealed.terminal_kind == "succeeded"
+        and sealed.result is not None
+        and sealed.policy is not None
+        and sealed.cost is not None
+        and stack.evidence.verify_chain(state.tenant_id) >= 1
+        and "sales_orders" not in sealed.model_dump_json()
     )
+
+
+def _seal(stack: ReferenceStack, run_id: str, check) -> None:
+    check("terminal run is sealed in a verified evidence chain", seal_run(stack, run_id))
 
 
 def _review_journey(engine: Engine, expected_rows: str | None, check) -> None:

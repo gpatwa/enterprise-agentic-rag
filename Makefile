@@ -1,6 +1,6 @@
 # Makefile
 
-.PHONY: help install install-analytics analytics-reference-smoke analytics-reference-up dev dev-support-web dev-analytics-api dev-analytics-web dev-products up down stop init support-demo demo-ready-local deploy infra build bootstrap init-cloud smoke-test verify destroy test test-analytics ingest \
+.PHONY: help install install-analytics analytics-reference-smoke analytics-reference-up analytics-golden dev dev-support-web dev-analytics-api dev-analytics-web dev-products up down stop init support-demo demo-ready-local deploy infra build bootstrap init-cloud smoke-test verify destroy test test-analytics ingest \
        infra-staging bootstrap-staging deploy-staging deploy-aws \
        deploy-azure infra-azure build-azure bootstrap-azure deploy-api-azure deploy-analytics-azure deploy-landing-azure destroy-azure \
        pause-azure resume-azure import-azure \
@@ -22,6 +22,7 @@ help:
 	@echo "    make dev-analytics-web - Run the analytics web product on port 5174"
 	@echo "    make analytics-reference-smoke - Run both governed smoke journeys (fakes only)"
 	@echo "    make analytics-reference-up - Serve the governed v2 API locally with fakes (port 8095)"
+	@echo "    make analytics-golden - Run the M4 golden suite and write its report (fakes only)"
 	@echo "    make dev-products  - Run both products as Docker deployables"
 	@echo "    make observability-up - Start Grafana, Prometheus, exporters, and admin UIs"
 	@echo "    make observability-down - Stop the local operations plane"
@@ -193,6 +194,10 @@ analytics-reference-smoke:
 
 analytics-reference-up:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack up
+
+# M4 golden suite (fakes only); regenerates the report against the PROPOSED, unapproved thresholds.
+analytics-golden:
+	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack golden --write-report ../../docs/execution/enterprise-analytics/reports
 
 test-analytics:
 	cd services/analytics-api && PYTHONPATH=.:../.. pytest
