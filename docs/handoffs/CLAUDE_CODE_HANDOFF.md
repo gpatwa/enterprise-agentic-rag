@@ -103,8 +103,13 @@ Canonical task status is in
     browser-verified claims, clarify, review, refuse, failed, running, trace, read-only
     replay); `plan_fingerprint` added to the v2 review outcome. `npm test` (18) in
     `apps/analytics-web`. Packet: `ADS-047-evidence-first-web-workflow.md`.
-  - **Next:** wave 4D:
-    ADS-048, ADS-049, then the M4 `local_demo_review` human gate.
+  - **ADS-048** local reference stack, **fakes only** (`services/analytics-api/reference_stack/`):
+    DuckDB journey plus a PostgreSQL journey through the real gateway against an emulated
+    engine (no server); `make analytics-reference-smoke` / `analytics-reference-up`. Observed the
+    uncalibrated cost-unit seam (default run budget rejects DuckDB scans); the stack sets an
+    explicit budget. Packet: `ADS-048-local-reference-stack.md`.
+  - **Next:** ADS-049 (M4 golden report; needs a pinned correctness/trust gate definition, so
+    confirm scope with the user), then the M4 `local_demo_review` human gate.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls
     `new_governed_run_state`, `record_terminal_evidence`, or the control-total
     builder in a production path yet (ADS-045 owns API/worker wiring; the control
@@ -161,7 +166,7 @@ At commit `d97c428`, run from `services/analytics-api`:
   services/analytics-api/tests`: all checks passed. `git diff --check` clean.
 - After ADS-043 (uncommitted-tree run before its commit): `make test-analytics` **321
   passed** (+12 in `test_ads043_grounded_explanation.py`); after ADS-045 **330 passed** (+9 in
-  `test_ads045_analyze_api.py`); after ADS-046 **339 passed** (+9 in `test_ads046_shadow.py`); ADS-047 changed no Python test count (web: 18 tests); focused `ruff check`/`format
+  `test_ads045_analyze_api.py`); after ADS-046 **339 passed** (+9 in `test_ads046_shadow.py`); ADS-047 changed no Python test count (web: 18 tests); after ADS-048 **346 passed** (+7 in `test_ads048_reference_stack.py`); focused `ruff check`/`format
   --check` and `git diff --check` clean.
 - New suites: `test_ads040_execution_gateways.py`, `test_ads041_result_validation.py`,
   `test_ads042_evidence_envelope.py`, `test_ads044_context_refresh.py`,
@@ -179,7 +184,7 @@ for later work.
 
 ## Open Gates and Decisions for the User
 
-- Independent review of ADS-040 to ADS-047 (manifest `review` → `complete`).
+- Independent review of ADS-040 to ADS-048 (manifest `review` → `complete`).
 - M1 human semantic certification (still pending; nothing here certifies any
   ontology or contract).
 - Live validation of PostgreSQL, OpenSearch, and catalog providers.

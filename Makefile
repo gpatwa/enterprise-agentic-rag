@@ -1,6 +1,6 @@
 # Makefile
 
-.PHONY: help install install-analytics dev dev-support-web dev-analytics-api dev-analytics-web dev-products up down stop init support-demo demo-ready-local deploy infra build bootstrap init-cloud smoke-test verify destroy test test-analytics ingest \
+.PHONY: help install install-analytics analytics-reference-smoke analytics-reference-up dev dev-support-web dev-analytics-api dev-analytics-web dev-products up down stop init support-demo demo-ready-local deploy infra build bootstrap init-cloud smoke-test verify destroy test test-analytics ingest \
        infra-staging bootstrap-staging deploy-staging deploy-aws \
        deploy-azure infra-azure build-azure bootstrap-azure deploy-api-azure deploy-analytics-azure deploy-landing-azure destroy-azure \
        pause-azure resume-azure import-azure \
@@ -20,6 +20,8 @@ help:
 	@echo "    make dev-support-web - Run the support web product on port 5173"
 	@echo "    make dev-analytics-api - Run the analytics API on port 8090"
 	@echo "    make dev-analytics-web - Run the analytics web product on port 5174"
+	@echo "    make analytics-reference-smoke - Run both governed smoke journeys (fakes only)"
+	@echo "    make analytics-reference-up - Serve the governed v2 API locally with fakes (port 8095)"
 	@echo "    make dev-products  - Run both products as Docker deployables"
 	@echo "    make observability-up - Start Grafana, Prometheus, exporters, and admin UIs"
 	@echo "    make observability-down - Stop the local operations plane"
@@ -184,6 +186,13 @@ ingest:
 test:
 	pytest services/api/tests
 	cd services/analytics-api && PYTHONPATH=.:../.. pytest
+
+# Local reference stack (fakes only, no network): both smoke journeys, or serve the v2 API locally.
+analytics-reference-smoke:
+	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack smoke
+
+analytics-reference-up:
+	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack up
 
 test-analytics:
 	cd services/analytics-api && PYTHONPATH=.:../.. pytest
