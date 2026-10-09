@@ -59,9 +59,9 @@ def main(argv: list[str] | None = None) -> int:
         failed = [c for c in report["cases"] if not c["passed"]]
         print(
             f"cases: {len(report['cases']) - len(failed)}/{len(report['cases'])} passed; "
-            f"meets proposed thresholds: {report['meets_proposed_thresholds']}"
+            f"meets thresholds: {report['meets_thresholds']}"
         )
-        return 0 if report["meets_proposed_thresholds"] else 1
+        return 0 if report["meets_thresholds"] else 1
 
     import uvicorn
 

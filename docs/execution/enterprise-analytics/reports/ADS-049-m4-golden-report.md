@@ -1,8 +1,8 @@
 # ADS-049: Milestone-4 Golden Report
 
-Generated 2026-10-09 06:28 UTC by `make analytics-golden`. Suite `m4-golden-v1`, corpus `e1768f2f8348`, engines: duckdb, postgres.
+Generated 2026-10-09 06:30 UTC by `make analytics-golden`. Suite `m4-golden-v1`, corpus `e1768f2f8348`, engines: duckdb, postgres.
 
-**Result: MEETS the proposed thresholds. The thresholds are PROPOSED and NOT APPROVED** (approval status: `proposed`). This is not a gate pass and does not record or imply the M4 `local_demo_review` approval.
+**Result: MEETS the approved thresholds.** The thresholds were approved by user on 2026-10-08 (scope: local M4 reference-stack thresholds only). This is not the M4 `local_demo_review` approval and does not imply it; no packet has had independent review.
 
 ## Scope and limits
 
@@ -10,9 +10,9 @@ Generated 2026-10-09 06:28 UTC by `make analytics-golden`. Suite `m4-golden-v1`,
 - Expected rows were computed independently in plain Python from the seed formula, not from the system under test.
 - Latency/overhead percentiles come from small samples (60 answered calls); treat them as a smoke signal.
 
-## Metrics against proposed thresholds
+## Metrics against approved thresholds
 
-| Metric | Measured | Proposed gate | Meets | Plan gate |
+| Metric | Measured | Gate | Meets | Plan gate |
 |---|---:|---:|:---:|---|
 | `p0_result_equivalence` | 1 | >= 1.0 | yes | P0 question result equivalence 100% |
 | `answer_result_equivalence` | 1 | >= 0.95 | yes | Full answer-case result equivalence >= 95% |
@@ -24,8 +24,8 @@ Generated 2026-10-09 06:28 UTC by `make analytics-golden`. Suite `m4-golden-v1`,
 | `replay_fingerprint_equivalence` | 1 | >= 1.0 | yes | Replay fingerprint equivalence 100% |
 | `dialect_result_equivalence` | 1 | >= 1.0 | yes | PostgreSQL/DuckDB portable-subset result equivalence 100% |
 | `budget_overruns` | 0 | <= 0 | yes | Runs exceeding loop/transition budget 0 |
-| `p95_answer_latency_seconds` | 0.06857 | <= 8.0 | yes | P95 warm answer latency, local reference data <= 8 seconds |
-| `p95_compile_policy_overhead_ms` | 1.153 | <= 250.0 | yes | P95 deterministic compile/policy overhead <= 250 ms |
+| `p95_answer_latency_seconds` | 0.2123 | <= 8.0 | yes | P95 warm answer latency, local reference data <= 8 seconds |
+| `p95_compile_policy_overhead_ms` | 2.162 | <= 250.0 | yes | P95 deterministic compile/policy overhead <= 250 ms |
 
 ## Cases
 
@@ -69,6 +69,5 @@ Generated 2026-10-09 06:28 UTC by `make analytics-golden`. Suite `m4-golden-v1`,
 
 ## Decisions that remain with the user
 
-- Approve, amend, or reject the proposed thresholds (`reference_stack/golden/m4-thresholds.proposed.json`).
 - The M4 `local_demo_review` human gate, and independent review of ADS-040 to ADS-049.
 - M1 semantic certification and any live PostgreSQL/OpenSearch/OpenMetadata validation.

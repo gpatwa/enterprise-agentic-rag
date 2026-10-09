@@ -195,7 +195,7 @@ analytics-reference-smoke:
 analytics-reference-up:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack up
 
-# M4 golden suite (fakes only); regenerates the report against the PROPOSED, unapproved thresholds.
+# M4 golden suite (fakes only); regenerates the report against the user-approved M4 thresholds.
 analytics-golden:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack golden --write-report ../../docs/execution/enterprise-analytics/reports
 

@@ -1,4 +1,4 @@
-"""ADS-049: the M4 golden suite meets the proposed thresholds, and can detect when it should not."""
+"""ADS-049: the M4 golden suite meets the recorded thresholds, and can detect when it should not."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ def test_full_suite_meets_the_proposed_thresholds_on_both_dialects():
     failed = [(c["engine"], c["case_id"], c["detail"]) for c in report["cases"] if not c["passed"]]
     assert not failed, failed
     unmet = {name: gate for name, gate in report["gates"].items() if not gate["meets"]}
-    assert report["meets_proposed_thresholds"] and not unmet, unmet
+    assert report["meets_thresholds"] and not unmet, unmet
     assert report["samples"]["answered_runs"] == 12 and report["samples"]["latency"] == 60
 
 
@@ -64,16 +64,37 @@ def test_the_corpus_is_locked_to_the_digest_the_thresholds_were_drafted_against(
         load_suite()
 
 
-def test_thresholds_are_proposed_not_approved_and_the_report_says_so():
+def test_threshold_approval_is_recorded_with_its_limited_scope_and_the_report_says_so():
     suite, thresholds = load_suite()
-    assert thresholds["approval"]["status"] == "proposed"
-    assert thresholds["approval"]["approved_by"] is None and thresholds["approval"]["approved_at"] is None
+    approval = thresholds["approval"]
+    assert (
+        approval["status"] == "approved"
+        and approval["approved_by"] == "user"
+        and approval["approved_at"] == "2026-10-08"
+    )
+    assert "not the M4 local_demo_review approval" in approval["scope"]
     markdown = render_markdown(run_golden(("duckdb",)))
-    assert "PROPOSED and NOT APPROVED" in markdown and "not a gate pass" in markdown
+    assert "approved by user on 2026-10-08" in markdown and "does not imply it" in markdown
+    assert "no packet has had independent review" in markdown
     assert "dialect_result_equivalence" in markdown and "Not measured at M4" in markdown
+    # An unapproved file would be reported as such.
+    pending = {
+        "approval": {"status": "proposed"},
+        "meets_thresholds": True,
+        "gates": {},
+        "gate_definitions": {},
+        "not_measured_at_m4": {},
+        "cases": [],
+        "samples": {"latency": 0},
+        "suite_version": "s",
+        "corpus_sha256": "0" * 64,
+        "engines": [],
+    }
+    assert "PROPOSED and NOT APPROVED" in render_markdown(pending)
     manifest = (REPO / "docs/execution/enterprise-analytics/agentic-data-stack-program.yaml").read_text()
     m4 = manifest.split("  M4:")[1].split("  M5:")[0]
     assert "human_gate_status: approved" not in m4  # the local_demo_review gate is never inferred
+    assert "m4_threshold_approval" in m4
 
 
 def test_expected_rows_match_an_independent_python_oracle():

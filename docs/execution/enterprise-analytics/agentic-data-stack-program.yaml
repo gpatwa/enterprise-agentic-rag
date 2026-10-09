@@ -80,6 +80,11 @@ milestones:
       - [ADS-045, ADS-046, ADS-047]
       - [ADS-048, ADS-049]
     human_gate: local_demo_review
+    m4_threshold_approval:
+      status: approved
+      approved_by: user
+      approved_at: 2026-10-08
+      record: "User wrote \"I approve the proposed thresholds\" in conversation. Applies only to services/analytics-api/reference_stack/golden/m4-thresholds.json (local M4 reference stack). It is not the local_demo_review approval and not independent packet review."
   M5:
     name: Safe learning and correction loops
     status: planned

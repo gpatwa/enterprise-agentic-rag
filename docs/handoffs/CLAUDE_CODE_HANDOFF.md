@@ -108,13 +108,14 @@ Canonical task status is in
     engine (no server); `make analytics-reference-smoke` / `analytics-reference-up`. Observed the
     uncalibrated cost-unit seam (default run budget rejects DuckDB scans); the stack sets an
     explicit budget. Packet: `ADS-048-local-reference-stack.md`.
-  - **ADS-049** M4 golden suite and report (`reference_stack/golden.py`, pinned corpus, **proposed,
-    unapproved** thresholds in `reference_stack/golden/m4-thresholds.proposed.json`; `make
+  - **ADS-049** M4 golden suite and report (`reference_stack/golden.py`, pinned corpus, thresholds
+    in `reference_stack/golden/m4-thresholds.json` (**approved by the user 2026-10-08**, scope: these
+    local thresholds only; recorded in the manifest as `M4.m4_threshold_approval`); `make
     analytics-golden` writes `docs/execution/enterprise-analytics/reports/`). 28/28 executions
-    pass and every proposed gate is met, but the thresholds await the user's approval and the
+    pass and every approved gate is met, but that is not the M4 `local_demo_review` approval and the
     suite is a pipeline-integrity check (scripted model, emulated PostgreSQL). Also fixed an
     ADS-045 bug (unusable snapshot caused HTTP 500). Packet: `ADS-049-m4-golden-report.md`.
-  - **Next:** the user's decisions: approve/amend the proposed thresholds, the M4
+  - **Next:** the user's decisions: the M4
     `local_demo_review` human gate, independent review of ADS-040..049. Do not start M5 before
     the M4 gate.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls

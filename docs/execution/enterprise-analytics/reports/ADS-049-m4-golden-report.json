@@ -6,12 +6,14 @@
     "postgres"
   ],
   "approval": {
-    "status": "proposed",
-    "approved_by": null,
-    "approved_at": null,
-    "note": "Drafted by the implementing agent from section 10 of the execution plan. Not approved. Only the user may approve or change thresholds; a threshold change needs a reviewed rationale."
+    "status": "approved",
+    "approved_by": "user",
+    "approved_at": "2026-10-08",
+    "record": "User wrote \"I approve the proposed thresholds\" in conversation on 2026-10-08, after the thresholds were drafted by the implementing agent from plan section 10 and presented with the ADS-049 report.",
+    "scope": "These local M4 reference-stack thresholds only. This is not the M4 local_demo_review approval, not an approval of any other threshold, and not independent review of any packet.",
+    "change_rule": "Changing a threshold or the corpus digest needs a new explicit approval with a reviewed rationale and must not be bundled with a change that regresses it."
   },
-  "meets_proposed_thresholds": true,
+  "meets_thresholds": true,
   "gates": {
     "p0_result_equivalence": {
       "value": 1.0,
@@ -74,13 +76,13 @@
       "meets": true
     },
     "p95_answer_latency_seconds": {
-      "value": 0.0685722918715328,
+      "value": 0.21230083284899592,
       "op": "<=",
       "threshold": 8.0,
       "meets": true
     },
     "p95_compile_policy_overhead_ms": {
-      "value": 1.1528749018907547,
+      "value": 2.1619158796966076,
       "op": "<=",
       "threshold": 250.0,
       "meets": true

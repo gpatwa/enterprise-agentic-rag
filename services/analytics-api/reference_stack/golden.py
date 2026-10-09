@@ -1,9 +1,9 @@
 """Milestone-4 golden suite and report (ADS-049).
 
 A pinned corpus is run through the reference stack on both dialects, expected rows were computed
-independently in plain Python, and the measured metrics are compared with *proposed* thresholds.
-The thresholds are unapproved: this module reports against them but never records approval, and
-a report only ever says "meets proposed thresholds", never that a gate passed.
+independently in plain Python, and the measured metrics are compared with the thresholds in
+`m4-thresholds.json`. This module reports against them but never records or changes approval; a
+report states the thresholds' recorded approval status and never claims the M4 human gate passed.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from reference_stack.stack import Engine, ReferenceStack, build_stack
 
 HERE = Path(__file__).parent / "golden"
 CORPUS = HERE / "golden-suite-v1.json"
-THRESHOLDS = HERE / "m4-thresholds.proposed.json"
+THRESHOLDS = HERE / "m4-thresholds.json"
 URL = "/api/v2/analytics"
 LATENCY_REPEATS = 5
 _OPS = {">=": operator.ge, "<=": operator.le}
@@ -275,7 +275,7 @@ def run_golden(engines: tuple[Engine, ...] = ("duckdb", "postgres")) -> dict[str
         "corpus_sha256": thresholds["corpus_sha256"],
         "engines": list(engines),
         "approval": thresholds["approval"],
-        "meets_proposed_thresholds": all(g["meets"] for g in gates.values()),
+        "meets_thresholds": all(g["meets"] for g in gates.values()),
         "gates": gates,
         "gate_definitions": thresholds["gates"],
         "not_measured_at_m4": thresholds["not_measured_at_m4"],
@@ -286,10 +286,15 @@ def run_golden(engines: tuple[Engine, ...] = ("duckdb", "postgres")) -> dict[str
 
 def render_markdown(report: dict[str, Any], *, generated_at: datetime | None = None) -> str:
     stamp = (generated_at or datetime.now(timezone.utc)).strftime("%Y-%m-%d %H:%M UTC")
-    verdict = (
-        "MEETS the proposed thresholds"
-        if report["meets_proposed_thresholds"]
-        else "DOES NOT MEET the proposed thresholds"
+    approval = report["approval"]
+    approved = approval["status"] == "approved"
+    label = "approved" if approved else "proposed"
+    verdict = f"MEETS the {label} thresholds" if report["meets_thresholds"] else f"DOES NOT MEET the {label} thresholds"
+    status = (
+        f"The thresholds were approved by {approval['approved_by']} on {approval['approved_at']} "
+        f"(scope: local M4 reference-stack thresholds only). "
+        if approved
+        else "The thresholds are PROPOSED and NOT APPROVED. "
     )
     lines = [
         "# ADS-049: Milestone-4 Golden Report",
@@ -297,8 +302,8 @@ def render_markdown(report: dict[str, Any], *, generated_at: datetime | None = N
         f"Generated {stamp} by `make analytics-golden`. Suite `{report['suite_version']}`, corpus `{report['corpus_sha256'][:12]}`, "
         f"engines: {', '.join(report['engines'])}.",
         "",
-        f"**Result: {verdict}. The thresholds are PROPOSED and NOT APPROVED** (approval status: "
-        f"`{report['approval']['status']}`). This is not a gate pass and does not record or imply the M4 `local_demo_review` approval.",
+        f"**Result: {verdict}.** {status}"
+        "This is not the M4 `local_demo_review` approval and does not imply it; no packet has had independent review.",
         "",
         "## Scope and limits",
         "",
@@ -307,9 +312,9 @@ def render_markdown(report: dict[str, Any], *, generated_at: datetime | None = N
         "- Expected rows were computed independently in plain Python from the seed formula, not from the system under test.",
         f"- Latency/overhead percentiles come from small samples ({report['samples']['latency']} answered calls); treat them as a smoke signal.",
         "",
-        "## Metrics against proposed thresholds",
+        f"## Metrics against {label} thresholds",
         "",
-        "| Metric | Measured | Proposed gate | Meets | Plan gate |",
+        "| Metric | Measured | Gate | Meets | Plan gate |",
         "|---|---:|---:|:---:|---|",
     ]
     for name, gate in report["gates"].items():
@@ -330,7 +335,6 @@ def render_markdown(report: dict[str, Any], *, generated_at: datetime | None = N
         "",
         "## Decisions that remain with the user",
         "",
-        "- Approve, amend, or reject the proposed thresholds (`reference_stack/golden/m4-thresholds.proposed.json`).",
         "- The M4 `local_demo_review` human gate, and independent review of ADS-040 to ADS-049.",
         "- M1 semantic certification and any live PostgreSQL/OpenSearch/OpenMetadata validation.",
         "",
