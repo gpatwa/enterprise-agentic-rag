@@ -47,14 +47,14 @@ for the user's approval; one PR per packet.
   and only proposal tables gain rows; semantic and dbt proposals from one triage record coexist; and the corpus
   evaluation, including detection of a wrong expectation, a changed corpus, and a spawn attempt.
   Full suite: 498 passed.
-- `make analytics-dbt-eval`: 9/9 hand-written cases pass and all nine proposed gates are met.
+- `make analytics-dbt-eval`: 9/9 hand-written cases pass and all nine approved gates are met.
 
-## Proposed thresholds (NOT APPROVED)
+## Approved thresholds
 
-`reference_stack/dbt_proposals/dbt-thresholds.proposed.json`, approval status `proposed`: proposal agreement,
+`reference_stack/dbt_proposals/dbt-thresholds.json` (renamed from `.proposed.json`). The implementing agent drafted them and the user then wrote "ADS-052 and ADS-053 approved" (2026-10-09), recorded in that file and in the manifest (`M5.m5_*_threshold_approval`); the approval covers only these ADS-053 dbt-corpus thresholds, not the M5 `separation_of_duties_review` gate or independent review of any packet. The gates: proposal agreement,
 provenance completeness, validation-command coverage, edit validity, determinism, and dedupe agreement 100%;
 file-constraint violations, commands executed, and source-file writes 0. Expectations were written by hand from
-the rule definitions and the corpus digest is pinned. **Only you can approve or change these.**
+the rule definitions and the corpus digest is pinned. Changing a threshold or the corpus digest needs a new explicit approval with a reviewed rationale.
 
 ## Boundary
 

@@ -131,7 +131,7 @@ Canonical task status is in
   - **ADS-052** change proposals (`packages/platform_contracts/proposals.py`, `app/proposals/`, migration `0007`):
     closed operation list (flag a definition in a *draft* contract, request a context edge, flag a label
     collision), inert `proposed` data, append-only, the contract itself blocks anything but drafts. Corpus
-    thresholds in `reference_stack/proposals/proposal-thresholds.proposed.json` are **PROPOSED, NOT APPROVED**.
+    thresholds in `reference_stack/proposals/proposal-thresholds.json` were **approved by the user 2026-10-09** (scope: those thresholds only; `M5.m5_proposal_threshold_approval`).
     Packet: `ADS-052-semantic-context-proposals.md`. Suite: **451 passed**. The user confirmed the wave-5B plan
     ("go with your recommendations"): 053 next (fixture dbt project, approved-files allowlist, validation command
     never run), then 054 (immutable prompt/example candidate registry, references and fingerprints only).
@@ -139,11 +139,12 @@ Canonical task status is in
     `reference_stack/dbt_fixture/`): missing column descriptions (templated from the certified contract) and
     `unique`/`not_null` tests only, in approved `schema.yml` files; the contract rejects any other file or edit;
     validation commands are text and dbt is never run (tests patch process spawning to raise). Corpus
-    thresholds in `reference_stack/dbt_proposals/dbt-thresholds.proposed.json` are **PROPOSED, NOT APPROVED**.
+    thresholds in `reference_stack/dbt_proposals/dbt-thresholds.json` were **approved by the user 2026-10-09** (scope: those thresholds only; `M5.m5_dbt_threshold_approval`).
     Packet: `ADS-053-dbt-proposals.md`. Suite: **498 passed**.
-  - **Next:** ADS-054 (immutable prompt/example candidate registry), then the user's call on the 052 and 053
-    thresholds (change proposals; wave 5B,
-    parallel). ADS-040..051 are still `review`, M1 certification is pending, nothing was validated live.
+  - **Next:** ADS-054 (immutable prompt/example candidate registry; the last wave-5B packet). Then wave 5C
+    (ADS-055 independent review workflow, 056, 057) and 5D, all before the M5 human gate (`separation_of_duties_review`,
+    still open). ADS-040..053 are still `review` (no independent review), M1 certification is pending, nothing was
+    validated live.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls
     `new_governed_run_state`, `record_terminal_evidence`, or the control-total
     builder in a production path yet (ADS-045 owns API/worker wiring; the control

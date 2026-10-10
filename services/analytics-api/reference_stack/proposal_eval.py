@@ -1,4 +1,4 @@
-"""Proposal corpus evaluation and report (ADS-052). Thresholds are PROPOSED until the user approves them."""
+"""Proposal corpus evaluation and report (ADS-052). Reports the approval status recorded with the thresholds."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from reference_stack.stack import ReferenceStack
 
 HERE = Path(__file__).parent / "proposals"
 CORPUS = HERE / "proposal-corpus-v1.json"
-THRESHOLDS = HERE / "proposal-thresholds.proposed.json"
+THRESHOLDS = HERE / "proposal-thresholds.json"
 SERVICE_ROOT = Path(__file__).resolve().parent.parent
 URL = "/api/v2/analytics"
 _OPS = {">=": operator.ge, "<=": operator.le}

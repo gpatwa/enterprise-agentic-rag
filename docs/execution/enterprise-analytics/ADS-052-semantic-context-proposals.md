@@ -56,15 +56,15 @@ user's approval; (6) 052, then 053, then 054, each its own PR merged one at a ti
 - Real defect found and fixed while building this: a run that never resolved a contract (for example a rejected
   planning step) made `generate` raise instead of returning "no proposal"; the applicability check now precedes the
   contract lookup, with a regression test.
-- `make analytics-proposals-eval`: 11/11 hand-written cases pass and all seven proposed gates are met
+- `make analytics-proposals-eval`: 11/11 hand-written cases pass and all seven approved gates are met
   (`reports/ADS-052-proposals-report.md`).
 
-## Proposed thresholds (NOT APPROVED)
+## Approved thresholds
 
-`reference_stack/proposals/proposal-thresholds.proposed.json`, approval status `proposed`: proposal agreement,
+`reference_stack/proposals/proposal-thresholds.json` (renamed from `.proposed.json`). The implementing agent drafted them and the user then wrote "ADS-052 and ADS-053 approved" (2026-10-09), recorded in that file and in the manifest (`M5.m5_*_threshold_approval`); the approval covers only these ADS-052 proposal-corpus thresholds, not the M5 `separation_of_duties_review` gate or independent review of any packet. The gates: proposal agreement,
 provenance completeness, draft validity, determinism, and dedupe agreement 100%; never-certified violations 0;
 protected-file writes 0. Expectations were written by hand from the rule definitions and the corpus digest is
-pinned. **Only you can approve or change these;** the report says "proposed" until the file records an approval.
+pinned. Changing a threshold or the corpus digest needs a new explicit approval with a reviewed rationale.
 
 ## Boundary
 

@@ -1,15 +1,15 @@
 # ADS-053: dbt Change Proposal Report
 
-Generated 2026-10-10 05:29 UTC by `make analytics-dbt-eval`. Corpus `dbt-corpus-v1` (`19f59008d742`), rules `dbt-proposal-rules-v1`.
+Generated 2026-10-10 06:30 UTC by `make analytics-dbt-eval`. Corpus `dbt-corpus-v1` (`19f59008d742`), rules `dbt-proposal-rules-v1`.
 
-**Result: MEETS the proposed thresholds.** The thresholds are PROPOSED and NOT APPROVED. This is not a gate pass for any human gate and approves no proposal.
+**Result: MEETS the approved thresholds.** The thresholds were approved by user on 2026-10-09 (scope: these dbt-corpus thresholds only). This is not a gate pass for any human gate and approves no proposal.
 
 ## Scope and limits
 
 - Proposals are inert data (status `proposed`) against a small fixture dbt project; nothing is applied and dbt is never run.
 - The validation commands are text for a reviewer. Expectations were written by hand from the rule definitions on the fakes-only reference stack; they say nothing about whether the edits are good fixes.
 
-## Metrics against proposed thresholds
+## Metrics against approved thresholds
 
 | Metric | Measured | Gate | Meets |
 |---|---:|---:|:---:|

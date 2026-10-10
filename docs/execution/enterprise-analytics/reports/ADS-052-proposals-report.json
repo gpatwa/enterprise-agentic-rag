@@ -3,10 +3,12 @@
   "rules_version": "proposal-rules-v1",
   "corpus_sha256": "3d609f357cc8cefc302c316feed576c12fbb4fcb6902dda4df295627ee10079e",
   "approval": {
-    "status": "proposed",
-    "approved_by": null,
-    "approved_at": null,
-    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+    "status": "approved",
+    "approved_by": "user",
+    "approved_at": "2026-10-09",
+    "record": "User wrote \"ADS-052 and ADS-053 approved\" in conversation on 2026-10-09, in reply to the question whether to approve, amend, or reject the ADS-052 proposal corpus thresholds, which the implementing agent had drafted.",
+    "scope": "These ADS-052 proposal-corpus thresholds on the reference stack only. Not the M5 separation_of_duties_review approval, not independent review of any packet, and not an approval of any other threshold.",
+    "change_rule": "Changing a threshold or the corpus digest needs a new explicit approval with a reviewed rationale and must not be bundled with a change that regresses it."
   },
   "meets_thresholds": true,
   "gates": {
@@ -254,6 +256,9 @@
         }
       ],
       "patch_note": null,
+      "dbt_edit": null,
+      "validation_commands": [],
+      "unified_diff": null,
       "rationale_codes": [
         "triage:T-91",
         "correction:used_by_intent",
@@ -265,8 +270,8 @@
       "rules_version": "proposal-rules-v1",
       "status": "proposed",
       "created_by": "system:proposal-generator",
-      "created_at": "2026-10-10T05:08:21.199051Z",
-      "content_fingerprint": "90eb7f930d5625a3f94c5c7f19858305f99882b8c4836ac9a7ded110e43f215f"
+      "created_at": "2026-10-10T06:30:22.465023Z",
+      "content_fingerprint": "e967116a8133f073e974bfb560467f0d75f0afacdc87ce458ff5a6b93cd0f9c1"
     },
     {
       "proposal_version": "v1",
@@ -285,6 +290,9 @@
       "draft_version": null,
       "draft_patch": [],
       "patch_note": "No registry representation: this change belongs to the generated ontology/context, not a contract file.",
+      "dbt_edit": null,
+      "validation_commands": [],
+      "unified_diff": null,
       "rationale_codes": [
         "triage:T-90",
         "correction:not_in_context",
@@ -296,8 +304,8 @@
       "rules_version": "proposal-rules-v1",
       "status": "proposed",
       "created_by": "system:proposal-generator",
-      "created_at": "2026-10-10T05:08:21.329811Z",
-      "content_fingerprint": "b2cc5ab5af7873ff70b017681e0f3e9e1e4d0a69d468914eff3d38e10c55e2fd"
+      "created_at": "2026-10-10T06:30:22.669898Z",
+      "content_fingerprint": "88143a7eed4ed5504bf85095bc2d3e1f85fee64deebd5def7e676521776317f5"
     },
     {
       "proposal_version": "v1",
@@ -315,6 +323,9 @@
       "draft_version": null,
       "draft_patch": [],
       "patch_note": "No registry representation: this change belongs to the generated ontology/context, not a contract file.",
+      "dbt_edit": null,
+      "validation_commands": [],
+      "unified_diff": null,
       "rationale_codes": [
         "triage:T-30",
         "clarification:exhausted",
@@ -326,8 +337,8 @@
       "rules_version": "proposal-rules-v1",
       "status": "proposed",
       "created_by": "system:proposal-generator",
-      "created_at": "2026-10-10T05:08:21.397317Z",
-      "content_fingerprint": "af2e00f3bf1ee01cf8c67df08773159556230d53a7b53e156634b6b7618948c1"
+      "created_at": "2026-10-10T06:30:22.789067Z",
+      "content_fingerprint": "c17af53c515e41400cb011f4186b6e24675a2f223e28746ef14c219f09f2942f"
     }
   ]
 }
