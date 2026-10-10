@@ -1,0 +1,63 @@
+{
+  "suite_version": "review-corpus-v1",
+  "rules_version": "review-rules-v1",
+  "corpus_sha256": "ad45335a620faeee8208054dd90748c4b83bd241864ddc86729103e7fc8cdda8",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "scope_note": "The workflow is deterministic, so exact agreement with hand-written expectations is expected. These gates check separation of duties, staleness, expiry, and audit on the reference stack with token-based reviewers; they say nothing about real identity management.",
+  "gates": {
+    "outcome_agreement": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "cases whose outcome (approved, pending, or refused with a stable code) equals the hand-written expectation"
+    },
+    "forbidden_decision_rejection": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "decisions by authors, requesters, feedback submitters, automated identities, non-reviewers, other tenants, and unauthorized purposes that are refused"
+    },
+    "stale_decision_rejection": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "decisions naming the wrong content or made after the subject changed that are refused"
+    },
+    "expiry_enforcement": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "expired reviews that refuse decisions and record exactly one expiry event"
+    },
+    "audit_completeness": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "reviews whose events are contiguous from 1, start with the request, and carry actor and time"
+    },
+    "approvals_without_independent_review": {
+      "op": "<=",
+      "value": 0,
+      "measure": "subjects reported approved without an independent approval of the exact content"
+    },
+    "subject_mutations": {
+      "op": "<=",
+      "value": 0,
+      "measure": "reviewed proposals or candidates whose stored content changed"
+    },
+    "determinism": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "reviews whose derived status is identical when re-read"
+    },
+    "protected_file_writes": {
+      "op": "<=",
+      "value": 0,
+      "measure": "changes to the runtime prompt, registry contracts, goldens, thresholds, or manifest during the run"
+    }
+  },
+  "not_measured": {
+    "identity_management": "reviewers are reference-stack tokens with a group claim; a real identity provider and group sync are later work",
+    "M5_gate": "approving a subject is not the M5 separation_of_duties_review human gate"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "suite_version": "review-corpus-v1",
+  "note": "Expected outcomes were written by hand from the separation-of-duties rules, not produced by running the workflow. Each case runs in its own fresh reference stack so approvals never leak between cases.",
+  "cases": [
+    {"id": "W01", "op": "approve_independent", "expect": "approved", "group": "approve"},
+    {"id": "W02", "op": "generator_decides", "expect": "refused:automated_identity", "group": "separation"},
+    {"id": "W03", "op": "model_decides", "expect": "refused:automated_identity", "group": "separation"},
+    {"id": "W04", "op": "feedback_submitter_decides", "expect": "refused:is_contributor", "group": "separation"},
+    {"id": "W05", "op": "requester_decides", "expect": "refused:is_requester", "group": "separation"},
+    {"id": "W06", "op": "non_reviewer_decides", "expect": "refused:not_a_reviewer", "group": "separation"},
+    {"id": "W07", "op": "other_tenant_decides", "expect": "refused:review_not_found", "group": "separation"},
+    {"id": "W08", "op": "purpose_not_authorized", "expect": "refused:purpose_not_authorized", "group": "separation"},
+    {"id": "W09", "op": "wrong_fingerprint", "expect": "refused:fingerprint_mismatch", "group": "stale"},
+    {"id": "W10", "op": "subject_changed", "expect": "refused:subject_changed", "group": "stale"},
+    {"id": "W11", "op": "decide_after_expiry", "expect": "refused:expired", "group": "expiry"},
+    {"id": "W12", "op": "reject_then_approve", "expect": "refused:review_closed", "group": "approve"},
+    {"id": "W13", "op": "double_decision", "expect": "refused:already_decided_by_reviewer", "group": "separation"},
+    {"id": "W14", "op": "two_approvals_required", "expect": "approved", "group": "approve"},
+    {"id": "W15", "op": "prompt_candidate_independent", "expect": "approved", "group": "approve"},
+    {"id": "W16", "op": "prompt_candidate_creator", "expect": "refused:automated_identity", "group": "separation"},
+    {"id": "W17", "op": "example_submitter_decides", "expect": "refused:is_contributor", "group": "separation"},
+    {"id": "W18", "op": "released_baseline", "expect": "refused:not_reviewable", "group": "approve"},
+    {"id": "W19", "op": "pending_is_not_approved", "expect": "pending", "group": "approve"},
+    {"id": "W20", "op": "unknown_subject", "expect": "refused:subject_not_found", "group": "approve"}
+  ]
+}
