@@ -59,6 +59,7 @@ from app.runtime.governed_stages import CompiledPlanStore, PolicyValueStore, ana
 from app.runtime.run_start import new_governed_run_state
 from app.security import OIDCVerifier
 from app.semantic_registry import SemanticRegistry
+from app.triage import TriageService, TriageStore
 from packages.platform_contracts.agent_runtime import NodeOutput, RunBudget
 from packages.platform_contracts.security import AnalyticsIdentity
 from packages.platform_contracts.semantic import SemanticPolicy, SemanticRegistryDocument
@@ -112,6 +113,8 @@ class ReferenceStack:
     policy_values: PolicyValueStore = field(default_factory=PolicyValueStore)
     review_threshold: float = 1e9
     ambiguous: bool = False
+    omit_context_ids: tuple = ()
+    max_cost_units: float = REFERENCE_MAX_COST_UNITS
     executed_sql: list = field(default_factory=list)
     compiled_sql: set = field(default_factory=set)
     timings: list = field(default_factory=list)  # (node_id, seconds) for policy/compile
@@ -138,7 +141,7 @@ class ReferenceStack:
 
     def nodes(self, identity: AnalyticsIdentity, request: BootstrapRequest, review_store=None) -> dict:
         store = review_store or self.control
-        context, ontology = build_context(self.contracts.document, ambiguous=self.ambiguous)
+        context, ontology = build_context(self.contracts.document, ambiguous=self.ambiguous, omit=self.omit_context_ids)
         gateways = {self.gateway.dialect: RecordingGateway(self.gateway, self.executed_sql)}
 
         def go(ni, nxt):
@@ -202,14 +205,14 @@ class ReferenceStack:
         return AgentGraphRunner(self.control, governed_graph_v2(self.nodes(identity, request)))
 
     def new_state(self, request: BootstrapRequest, run_id: str, purpose: str):
-        context, _ = build_context(self.contracts.document, ambiguous=self.ambiguous)
+        context, _ = build_context(self.contracts.document, ambiguous=self.ambiguous, omit=self.omit_context_ids)
         # Gateway cost units are per dialect and uncalibrated (see ADS-040); the default budget of
         # 100 units rejects even an unfiltered scan of this 100-row table on DuckDB, so the
         # reference stack states its own budget explicitly.
         budget = RunBudget(
             deadline=datetime.now(timezone.utc) + timedelta(minutes=5),
             max_transitions=40,
-            max_cost_units=REFERENCE_MAX_COST_UNITS,
+            max_cost_units=self.max_cost_units,
             max_context_tokens=2_000,
         )
         return new_governed_run_state(SnapshotProvider(context), request, run_id=run_id, purpose=purpose, budget=budget)
@@ -227,6 +230,11 @@ class ReferenceStack:
             state_factory=self.new_state,
             answers=self,
             sealer=EvidenceSealer(self.control, self.evidence, self.reports),
+        )
+
+    def triage_service(self) -> TriageService:
+        return TriageService(
+            self.control, self.evidence, FeedbackStore(self.control.engine), TriageStore(self.control.engine)
         )
 
     def feedback_service(self) -> FeedbackService:
@@ -252,6 +260,8 @@ def build_stack(
     review_threshold: float = 1e9,
     denied: bool = False,
     ambiguous: bool = False,
+    omit_context_ids: tuple = (),
+    max_cost_units: float = REFERENCE_MAX_COST_UNITS,
 ) -> ReferenceStack:
     """Create the seeded data, migrated control store, gateway, and compiler for one dialect."""
     workdir = Path(workdir or tempfile.mkdtemp(prefix="analytics-reference-"))
@@ -300,6 +310,8 @@ def build_stack(
         contracts=ContractsProvider(document),
         review_threshold=review_threshold,
         ambiguous=ambiguous,
+        omit_context_ids=omit_context_ids,
+        max_cost_units=max_cost_units,
         compiled_sql=compiled_sql,
     )
 

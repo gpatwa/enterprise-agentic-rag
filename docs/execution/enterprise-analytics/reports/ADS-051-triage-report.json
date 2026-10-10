@@ -1,0 +1,410 @@
+{
+  "suite_version": "triage-corpus-v1",
+  "rules_version": "triage-rules-v1",
+  "corpus_sha256": "8445a9fa86c7f5fc00bf17d1dce6c96e387cc80ff00785e80ccd09500a26f550",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "meets_thresholds": true,
+  "gates": {
+    "category_agreement": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "cases whose category equals the hand-written label"
+    },
+    "rule_agreement": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "cases decided by the labelled rule, basis kind, and conflict flag"
+    },
+    "determinism": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "cases whose repeated triage yields an identical decision fingerprint"
+    },
+    "undetermined_lists_candidates": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "undetermined results that name their candidate causes"
+    },
+    "note_independence": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "twin cases that differ only in an injected note and receive the same decision"
+    },
+    "claim_only_over_failed_runs": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "records on non-succeeded runs decided by the reporter's claim alone"
+    },
+    "record_mutations": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "stored triage records changed by re-triage"
+    }
+  },
+  "not_measured": {
+    "real_feedback_quality": "needs real user feedback and independent labelling; not available at M5 start"
+  },
+  "cases": [
+    {
+      "case_id": "X01",
+      "scenario": "answer",
+      "expected": {
+        "category": "none",
+        "rule_id": "T-00",
+        "basis_kind": "none",
+        "conflict": false
+      },
+      "got": {
+        "category": "none",
+        "rule_id": "T-00",
+        "basis_kind": "none",
+        "conflict": false
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X02",
+      "scenario": "answer",
+      "expected": {
+        "category": "semantic",
+        "rule_id": "T-91",
+        "basis_kind": "both",
+        "conflict": false
+      },
+      "got": {
+        "category": "semantic",
+        "rule_id": "T-91",
+        "basis_kind": "both",
+        "conflict": false
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X03",
+      "scenario": "answer_omit_status",
+      "expected": {
+        "category": "retrieval",
+        "rule_id": "T-90",
+        "basis_kind": "both",
+        "conflict": false
+      },
+      "got": {
+        "category": "retrieval",
+        "rule_id": "T-90",
+        "basis_kind": "both",
+        "conflict": false
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X04",
+      "scenario": "answer",
+      "expected": {
+        "category": "undetermined",
+        "rule_id": "T-92",
+        "basis_kind": "both",
+        "conflict": false
+      },
+      "got": {
+        "category": "undetermined",
+        "rule_id": "T-92",
+        "basis_kind": "both",
+        "conflict": false
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X05",
+      "scenario": "answer",
+      "expected": {
+        "category": "undetermined",
+        "rule_id": "T-95",
+        "basis_kind": "reporter_claim",
+        "conflict": false
+      },
+      "got": {
+        "category": "undetermined",
+        "rule_id": "T-95",
+        "basis_kind": "reporter_claim",
+        "conflict": false
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X06",
+      "scenario": "answer",
+      "expected": {
+        "category": "prose",
+        "rule_id": "T-60",
+        "basis_kind": "both",
+        "conflict": false
+      },
+      "got": {
+        "category": "prose",
+        "rule_id": "T-60",
+        "basis_kind": "both",
+        "conflict": false
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X07",
+      "scenario": "answer",
+      "expected": {
+        "category": "policy",
+        "rule_id": "T-70",
+        "basis_kind": "reporter_claim",
+        "conflict": false
+      },
+      "got": {
+        "category": "policy",
+        "rule_id": "T-70",
+        "basis_kind": "reporter_claim",
+        "conflict": false
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X08",
+      "scenario": "answer",
+      "expected": {
+        "category": "undetermined",
+        "rule_id": "T-85",
+        "basis_kind": "reporter_claim",
+        "conflict": false
+      },
+      "got": {
+        "category": "undetermined",
+        "rule_id": "T-85",
+        "basis_kind": "reporter_claim",
+        "conflict": false
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X09",
+      "scenario": "answer",
+      "expected": {
+        "category": "undetermined",
+        "rule_id": "T-81",
+        "basis_kind": "both",
+        "conflict": true
+      },
+      "got": {
+        "category": "undetermined",
+        "rule_id": "T-81",
+        "basis_kind": "both",
+        "conflict": true
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X10",
+      "scenario": "policy_denied",
+      "expected": {
+        "category": "policy",
+        "rule_id": "T-10",
+        "basis_kind": "system_evidence",
+        "conflict": true
+      },
+      "got": {
+        "category": "policy",
+        "rule_id": "T-10",
+        "basis_kind": "system_evidence",
+        "conflict": true
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X11",
+      "scenario": "policy_denied",
+      "expected": {
+        "category": "policy",
+        "rule_id": "T-10",
+        "basis_kind": "system_evidence",
+        "conflict": false
+      },
+      "got": {
+        "category": "policy",
+        "rule_id": "T-10",
+        "basis_kind": "system_evidence",
+        "conflict": false
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X12",
+      "scenario": "unsupported_question",
+      "expected": {
+        "category": "intent",
+        "rule_id": "T-20",
+        "basis_kind": "system_evidence",
+        "conflict": false
+      },
+      "got": {
+        "category": "intent",
+        "rule_id": "T-20",
+        "basis_kind": "system_evidence",
+        "conflict": false
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X13",
+      "scenario": "unsupported_question",
+      "expected": {
+        "category": "intent",
+        "rule_id": "T-20",
+        "basis_kind": "system_evidence",
+        "conflict": true
+      },
+      "got": {
+        "category": "intent",
+        "rule_id": "T-20",
+        "basis_kind": "system_evidence",
+        "conflict": true
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X14",
+      "scenario": "clarification_exhausted",
+      "expected": {
+        "category": "ontology",
+        "rule_id": "T-30",
+        "basis_kind": "system_evidence",
+        "conflict": false
+      },
+      "got": {
+        "category": "ontology",
+        "rule_id": "T-30",
+        "basis_kind": "system_evidence",
+        "conflict": false
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X15",
+      "scenario": "cost_budget",
+      "expected": {
+        "category": "execution",
+        "rule_id": "T-40",
+        "basis_kind": "system_evidence",
+        "conflict": true
+      },
+      "got": {
+        "category": "execution",
+        "rule_id": "T-40",
+        "basis_kind": "system_evidence",
+        "conflict": true
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X16",
+      "scenario": "cost_budget",
+      "expected": {
+        "category": "execution",
+        "rule_id": "T-40",
+        "basis_kind": "system_evidence",
+        "conflict": false
+      },
+      "got": {
+        "category": "execution",
+        "rule_id": "T-40",
+        "basis_kind": "system_evidence",
+        "conflict": false
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X17",
+      "scenario": "answer",
+      "expected": {
+        "category": "undetermined",
+        "rule_id": "T-95",
+        "basis_kind": "reporter_claim",
+        "conflict": false
+      },
+      "got": {
+        "category": "undetermined",
+        "rule_id": "T-95",
+        "basis_kind": "reporter_claim",
+        "conflict": false
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "X18",
+      "scenario": "policy_denied",
+      "expected": {
+        "category": "policy",
+        "rule_id": "T-10",
+        "basis_kind": "system_evidence",
+        "conflict": true
+      },
+      "got": {
+        "category": "policy",
+        "rule_id": "T-10",
+        "basis_kind": "system_evidence",
+        "conflict": true
+      },
+      "category_ok": true,
+      "passed": true,
+      "detail": ""
+    }
+  ]
+}

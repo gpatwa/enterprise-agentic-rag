@@ -122,8 +122,13 @@ Canonical task status is in
     corrections name certified semantic IDs only, recording only (no effect on goldens/policy/prompts).
     The v2 service now seals evidence at terminal. Backend/API only. Packet: `ADS-050-feedback-capture.md`.
     Suite: **365 passed**.
-  - **Next:** ADS-051 (root-cause taxonomy and deterministic triage) once the user approves scope.
-    ADS-040..050 are still `review`, M1 certification is pending, nothing was validated live.
+  - **ADS-051** deterministic feedback triage (`packages/platform_contracts/triage.py`,
+    `app/triage/`, migration `0006`): nine-category taxonomy, 19 versioned rules, evidence outranks the
+    reporter, notes never an input, append-only records, on demand, no endpoint. Corpus thresholds in
+    `reference_stack/triage/triage-thresholds.proposed.json` are **PROPOSED, NOT APPROVED**. Packet:
+    `ADS-051-feedback-triage.md`. Suite: **415 passed**.
+  - **Next:** the user's call on the triage thresholds, then ADS-052..054 (change proposals; wave 5B,
+    parallel). ADS-040..051 are still `review`, M1 certification is pending, nothing was validated live.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls
     `new_governed_run_state`, `record_terminal_evidence`, or the control-total
     builder in a production path yet (ADS-045 owns API/worker wiring; the control
