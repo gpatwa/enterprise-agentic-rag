@@ -1,4 +1,4 @@
-"""dbt proposal corpus evaluation and report (ADS-053). Thresholds are PROPOSED until the user approves them."""
+"""dbt proposal corpus evaluation and report (ADS-053). Reports the approval status recorded with the thresholds."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from reference_stack.stack import DBT_FIXTURE, ReferenceStack
 
 HERE = Path(__file__).parent / "dbt_proposals"
 CORPUS = HERE / "dbt-corpus-v1.json"
-THRESHOLDS = HERE / "dbt-thresholds.proposed.json"
+THRESHOLDS = HERE / "dbt-thresholds.json"
 URL = "/api/v2/analytics"
 _OPS = {">=": operator.ge, "<=": operator.le}
 _SPAWNERS = (

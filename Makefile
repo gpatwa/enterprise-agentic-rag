@@ -202,11 +202,11 @@ analytics-reference-up:
 analytics-triage-eval:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack triage --write-report ../../docs/execution/enterprise-analytics/reports
 
-# ADS-052 change-proposal corpus (fakes only); thresholds are proposed until the user approves them.
+# ADS-052 change-proposal corpus (fakes only), reported against the user-approved thresholds.
 analytics-proposals-eval:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack proposals --write-report ../../docs/execution/enterprise-analytics/reports
 
-# ADS-053 dbt proposal corpus (fakes only; dbt is never run); thresholds are proposed until the user approves them.
+# ADS-053 dbt proposal corpus (fakes only; dbt is never run), reported against the user-approved thresholds.
 analytics-dbt-eval:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack dbt --write-report ../../docs/execution/enterprise-analytics/reports
 

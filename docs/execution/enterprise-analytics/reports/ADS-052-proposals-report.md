@@ -1,15 +1,15 @@
 # ADS-052: Change Proposal Report
 
-Generated 2026-10-10 05:08 UTC by `make analytics-proposals-eval`. Corpus `proposal-corpus-v1` (`3d609f357cc8`), rules `proposal-rules-v1`.
+Generated 2026-10-10 06:30 UTC by `make analytics-proposals-eval`. Corpus `proposal-corpus-v1` (`3d609f357cc8`), rules `proposal-rules-v1`.
 
-**Result: MEETS the proposed thresholds.** The thresholds are PROPOSED and NOT APPROVED. This is not a gate pass for any human gate and approves no proposal.
+**Result: MEETS the approved thresholds.** The thresholds were approved by user on 2026-10-09 (scope: these proposal-corpus thresholds only). This is not a gate pass for any human gate and approves no proposal.
 
 ## Scope and limits
 
 - Proposals are inert data (status `proposed`); nothing is applied, reviewed, or certified here (review is ADS-055).
 - Expectations were written by hand from the rule definitions on the fakes-only reference stack. They show the rules behave as specified and are safe; they say nothing about whether proposals are good fixes.
 
-## Metrics against proposed thresholds
+## Metrics against approved thresholds
 
 | Metric | Measured | Gate | Meets |
 |---|---:|---:|:---:|

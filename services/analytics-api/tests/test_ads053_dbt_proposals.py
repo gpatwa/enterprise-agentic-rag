@@ -260,10 +260,10 @@ def test_semantic_and_dbt_proposals_from_one_triage_record_coexist_without_clash
     assert set(stack.proposal_service().store.support(dbt.proposal_id, tenant_id="tenant-a")) == {triage.triage_id}
 
 
-# ---- pinned corpus evaluation (thresholds are PROPOSED, not approved) ----
+# ---- pinned corpus evaluation (thresholds approved by the user; the M5 gate is separate) ----
 
 
-def test_the_dbt_corpus_meets_its_proposed_thresholds_and_stays_unapproved(tmp_path):
+def test_the_dbt_corpus_meets_its_approved_thresholds_without_approving_the_m5_gate(tmp_path):
     from reference_stack import dbt_eval
 
     report = dbt_eval.run_corpus(tmp_path)
@@ -271,9 +271,20 @@ def test_the_dbt_corpus_meets_its_proposed_thresholds_and_stays_unapproved(tmp_p
     assert not failed, failed
     unmet = {name: gate for name, gate in report["gates"].items() if not gate["meets"]}
     assert report["meets_thresholds"] and not unmet and len(report["cases"]) == 9
-    assert report["approval"]["status"] == "proposed" and report["approval"]["approved_by"] is None
+    approval = report["approval"]
+    assert (
+        approval["status"] == "approved"
+        and approval["approved_by"] == "user"
+        and approval["approved_at"] == "2026-10-09"
+    )
+    assert "Not the M5 separation_of_duties_review approval" in approval["scope"]
     markdown = dbt_eval.render_markdown(report)
-    assert "PROPOSED and NOT APPROVED" in markdown and "dbt is never run" in markdown
+    assert "approved by user on 2026-10-09" in markdown and "dbt is never run" in markdown
+    pending = {**report, "approval": {"status": "proposed", "approved_by": None, "approved_at": None}}
+    assert "PROPOSED and NOT APPROVED" in dbt_eval.render_markdown(pending)
+    manifest = (REPO / "docs/execution/enterprise-analytics/agentic-data-stack-program.yaml").read_text()
+    m5 = manifest.split("  M5:")[1].split("  M6:")[0]
+    assert "m5_dbt_threshold_approval" in m5 and "human_gate_status: approved" not in m5
     assert len(report["proposals"]) == 2  # amount and status descriptions; the rest are duplicates or none
 
 
