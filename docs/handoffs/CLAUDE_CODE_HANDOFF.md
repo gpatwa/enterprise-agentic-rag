@@ -141,10 +141,19 @@ Canonical task status is in
     validation commands are text and dbt is never run (tests patch process spawning to raise). Corpus
     thresholds in `reference_stack/dbt_proposals/dbt-thresholds.json` were **approved by the user 2026-10-09** (scope: those thresholds only; `M5.m5_dbt_threshold_approval`).
     Packet: `ADS-053-dbt-proposals.md`. Suite: **498 passed**.
-  - **Next:** ADS-054 (immutable prompt/example candidate registry; the last wave-5B packet). Then wave 5C
-    (ADS-055 independent review workflow, 056, 057) and 5D, all before the M5 human gate (`separation_of_duties_review`,
-    still open). ADS-040..053 are still `review` (no independent review), M1 certification is pending, nothing was
-    validated live.
+  - **ADS-054** prompt/example candidate registry (`packages/platform_contracts/prompt_registry.py`,
+    `app/prompt_registry/`, migration `0008`): append-only; released versions are write-once and only the system
+    baseline can create one; a candidate's version is content-derived so it can never take a released version;
+    prompts must keep the defensive clauses; examples hold references and fingerprints only. `intent-prompt@v1`
+    is pinned to the runtime prompt by a drift test; **the runtime does not read the registry**. Corpus thresholds
+    in `reference_stack/prompt_registry/prompt-thresholds.proposed.json` are **PROPOSED, NOT APPROVED**. Packet:
+    `ADS-054-prompt-registry.md`. Suite: **520 passed**. This completes wave 5B.
+  - **Next (user asked for it after ADS-054):** wave 5C, ADS-055 (independent review and certification workflow,
+    separation of duties), ADS-056 (candidate evaluation and affected-case selection), ADS-057 (shadow, canary,
+    promotion, automatic rollback). These are consequential (review, promotion, rollback), so bring the scope to
+    the user for approval before building. All of ADS-040..054 are still `review` (no independent review), M1
+    certification is pending, nothing was validated live, and the M5 human gate (`separation_of_duties_review`)
+    is still open.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls
     `new_governed_run_state`, `record_terminal_evidence`, or the control-total
     builder in a production path yet (ADS-045 owns API/worker wiring; the control

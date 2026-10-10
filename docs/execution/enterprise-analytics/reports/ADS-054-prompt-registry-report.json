@@ -1,0 +1,235 @@
+{
+  "suite_version": "prompt-registry-corpus-v1",
+  "rules_version": "prompt-registry-rules-v1",
+  "corpus_sha256": "b048a2c371aa947041b7e8ce9dffcebf348e84a314c703b1e4952cdf1a6e3102",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "meets_thresholds": true,
+  "gates": {
+    "outcome_agreement": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "cases whose outcome (accepted, idempotent, rejected, visible, invisible) equals the hand-written expectation"
+    },
+    "overwrite_rejection": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "attempts to change or imitate a released version that are rejected"
+    },
+    "released_mutations": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "released rows whose stored content changed during the run"
+    },
+    "candidate_namespace_violations": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "registered candidates whose version is not content-derived or looks like a release"
+    },
+    "example_text_leakage": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "stored examples containing the request text or the feedback note"
+    },
+    "tenant_isolation": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "tenant reads that match the visibility rule (own tenant and system only)"
+    },
+    "determinism": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "re-registered entries that return the identical stored entry"
+    },
+    "runtime_prompt_drift": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "samples where the latest released baseline does not render exactly the runtime prompt"
+    },
+    "protected_file_writes": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "changes to the runtime prompt, registry contracts, goldens, thresholds, or manifest during the run"
+    }
+  },
+  "not_measured": {
+    "prompt_quality": "whether a candidate prompt improves answers needs evaluation against real data; that is ADS-056"
+  },
+  "cases": [
+    {
+      "case_id": "R01",
+      "op": "baseline_same",
+      "group": "baseline",
+      "expected": "idempotent",
+      "got": "idempotent",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "R02",
+      "op": "baseline_changed",
+      "group": "overwrite",
+      "expected": "rejected",
+      "got": "rejected",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "R03",
+      "op": "candidate_valid",
+      "group": "candidate",
+      "expected": "accepted",
+      "got": "accepted",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "R04",
+      "op": "candidate_valid",
+      "group": "candidate",
+      "expected": "idempotent",
+      "got": "idempotent",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "R05",
+      "op": "candidate_identical_to_parent",
+      "group": "candidate",
+      "expected": "rejected",
+      "got": "rejected",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "R06",
+      "op": "candidate_drops_untrusted_data_clause",
+      "group": "candidate",
+      "expected": "rejected",
+      "got": "rejected",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "R07",
+      "op": "candidate_drops_certified_ids_clause",
+      "group": "candidate",
+      "expected": "rejected",
+      "got": "rejected",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "R08",
+      "op": "candidate_drops_no_sql_clause",
+      "group": "candidate",
+      "expected": "rejected",
+      "got": "rejected",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "R09",
+      "op": "candidate_wrong_placeholders",
+      "group": "candidate",
+      "expected": "rejected",
+      "got": "rejected",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "R10",
+      "op": "candidate_unknown_parent",
+      "group": "candidate",
+      "expected": "rejected",
+      "got": "rejected",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "R11",
+      "op": "candidate_without_baseline",
+      "group": "candidate",
+      "expected": "rejected",
+      "got": "rejected",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "R12",
+      "op": "candidate_version_as_release",
+      "group": "overwrite",
+      "expected": "rejected",
+      "got": "rejected",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "R13",
+      "op": "example_ok",
+      "group": "example",
+      "expected": "accepted",
+      "got": "accepted",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "R14",
+      "op": "example_without_correction",
+      "group": "example",
+      "expected": "rejected",
+      "got": "rejected",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "R15",
+      "op": "example_unsafe_verdict",
+      "group": "example",
+      "expected": "rejected",
+      "got": "rejected",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "R16",
+      "op": "other_tenant_reads_candidate",
+      "group": "tenant",
+      "expected": "invisible",
+      "got": "invisible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "R17",
+      "op": "other_tenant_reads_baseline",
+      "group": "tenant",
+      "expected": "visible",
+      "got": "visible",
+      "passed": true,
+      "detail": ""
+    }
+  ]
+}

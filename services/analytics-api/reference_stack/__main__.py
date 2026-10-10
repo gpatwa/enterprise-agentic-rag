@@ -25,6 +25,8 @@ def main(argv: list[str] | None = None) -> int:
     proposals.add_argument("--write-report", metavar="DIR")
     dbt = sub.add_parser("dbt", help="run the ADS-053 dbt proposal corpus and print or write the report")
     dbt.add_argument("--write-report", metavar="DIR")
+    prompts = sub.add_parser("prompts", help="run the ADS-054 prompt registry corpus and print or write the report")
+    prompts.add_argument("--write-report", metavar="DIR")
     up = sub.add_parser("up", help="serve the v2 API locally with this stack (loopback only)")
     up.add_argument("--engine", choices=["duckdb", "postgres"], default="duckdb")
     up.add_argument("--port", type=int, default=8095)
@@ -47,6 +49,29 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"cross-dialect rows identical: {report['cross_dialect_rows_identical']}")
             print("RESULT:", "PASS" if report["ok"] else "FAIL")
         return 0 if report["ok"] else 1
+
+    if args.command == "prompts":
+        import tempfile
+        from pathlib import Path
+
+        from reference_stack.prompt_registry_eval import render_markdown, run_corpus
+
+        report = run_corpus(Path(tempfile.mkdtemp(prefix="analytics-prompts-")))
+        markdown = render_markdown(report)
+        if args.write_report:
+            target = Path(args.write_report)
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "ADS-054-prompt-registry-report.md").write_text(markdown)
+            (target / "ADS-054-prompt-registry-report.json").write_text(
+                json.dumps(report, indent=2, default=str) + "\n"
+            )
+        else:
+            print(markdown)
+        failed = [c for c in report["cases"] if not c["passed"]]
+        print(
+            f"cases: {len(report['cases']) - len(failed)}/{len(report['cases'])} passed; meets thresholds: {report['meets_thresholds']}"
+        )
+        return 0 if report["meets_thresholds"] else 1
 
     if args.command == "dbt":
         import tempfile

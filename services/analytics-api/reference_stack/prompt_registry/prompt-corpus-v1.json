@@ -1,0 +1,23 @@
+{
+  "suite_version": "prompt-registry-corpus-v1",
+  "note": "Expected outcomes were written by hand from the registry rules, not produced by running the registry.",
+  "cases": [
+    {"id": "R01", "op": "baseline_same", "expect": "idempotent", "group": "baseline"},
+    {"id": "R02", "op": "baseline_changed", "expect": "rejected", "group": "overwrite"},
+    {"id": "R03", "op": "candidate_valid", "expect": "accepted", "group": "candidate"},
+    {"id": "R04", "op": "candidate_valid", "expect": "idempotent", "group": "candidate"},
+    {"id": "R05", "op": "candidate_identical_to_parent", "expect": "rejected", "group": "candidate"},
+    {"id": "R06", "op": "candidate_drops_untrusted_data_clause", "expect": "rejected", "group": "candidate"},
+    {"id": "R07", "op": "candidate_drops_certified_ids_clause", "expect": "rejected", "group": "candidate"},
+    {"id": "R08", "op": "candidate_drops_no_sql_clause", "expect": "rejected", "group": "candidate"},
+    {"id": "R09", "op": "candidate_wrong_placeholders", "expect": "rejected", "group": "candidate"},
+    {"id": "R10", "op": "candidate_unknown_parent", "expect": "rejected", "group": "candidate"},
+    {"id": "R11", "op": "candidate_without_baseline", "expect": "rejected", "group": "candidate"},
+    {"id": "R12", "op": "candidate_version_as_release", "expect": "rejected", "group": "overwrite"},
+    {"id": "R13", "op": "example_ok", "expect": "accepted", "group": "example"},
+    {"id": "R14", "op": "example_without_correction", "expect": "rejected", "group": "example"},
+    {"id": "R15", "op": "example_unsafe_verdict", "expect": "rejected", "group": "example"},
+    {"id": "R16", "op": "other_tenant_reads_candidate", "expect": "invisible", "group": "tenant"},
+    {"id": "R17", "op": "other_tenant_reads_baseline", "expect": "visible", "group": "tenant"}
+  ]
+}

@@ -29,6 +29,7 @@ from app.execution import (
     PostgresGateway,
     run_control_totals,
 )
+from app.prompt_registry import ExampleCandidateService, PromptRegistry
 from app.proposals import DbtProject, DbtProposalService, ProposalService, ProposalStore
 from app.runtime import (
     AgentGraphRunner,
@@ -257,6 +258,13 @@ class ReferenceStack:
             self.contracts,
             project=project,
         )
+
+    def prompt_registry(self) -> PromptRegistry:
+        return PromptRegistry(self.control.engine)
+
+    def example_service(self) -> ExampleCandidateService:
+        engine = self.control.engine
+        return ExampleCandidateService(self.control, self.evidence, FeedbackStore(engine), PromptRegistry(engine))
 
     def triage_service(self) -> TriageService:
         return TriageService(
