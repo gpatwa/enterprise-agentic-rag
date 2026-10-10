@@ -1,147 +1,160 @@
-# services/analytics-api/app/analytics/safety.py
-"""
-SQL safety validation for the Data Analytics Agent.
+"""PostgreSQL AST validation and execution cost guards for analytics SQL.
 
-Enforces:
-- SELECT-only queries (no DDL/DML)
-- Disallowed keyword rejection (DROP, pg_sleep, COPY, etc.)
-- Table name allowlisting
-- Cost guard for large tables without WHERE/LIMIT
-- Result row cap
+This validator is a query-shape guard, not an authorization boundary. Later
+semantic compilation and policy milestones will determine what a caller may
+query; this module ensures generated SQL is a single, read-only query against
+the locally configured physical-table allowlist.
 """
+from __future__ import annotations
+
 import logging
-import re
-from typing import List, Tuple
+from typing import Iterable
+
+import sqlglot
+from sqlglot import exp
+from sqlglot.errors import ParseError
 
 from app.analytics.schema_context import OLIST_SCHEMA, get_all_table_names
 
 logger = logging.getLogger(__name__)
 
-# Keywords that should NEVER appear in generated SQL
-_DISALLOWED_KEYWORDS = {
-    "insert", "update", "delete", "drop", "alter", "create", "truncate",
-    "grant", "revoke", "copy", "execute", "pg_sleep", "pg_read_file",
-    "pg_write_file", "lo_import", "lo_export", "dblink",
+_READ_ONLY_ROOTS = (exp.Select, exp.Union, exp.Intersect, exp.Except)
+_MUTATING_EXPRESSIONS = tuple(
+    expression
+    for expression in (
+        exp.Insert,
+        exp.Update,
+        exp.Delete,
+        exp.Create,
+        exp.Drop,
+        exp.Alter,
+        exp.TruncateTable,
+        exp.Command,
+        exp.Transaction,
+        exp.Commit,
+        exp.Rollback,
+        exp.Grant,
+        exp.Revoke,
+    )
+    if expression is not None
+)
+_ALLOWED_FUNCTIONS = {
+    "abs", "avg", "cast", "coalesce", "concat", "count", "current_date",
+    "current_timestamp", "dense_rank", "extract", "greatest", "lag", "lead",
+    "least", "length", "lower", "max", "min", "nullif", "rank", "round",
+    "row_number", "substring", "sum", "timestamp_trunc", "trim", "upper",
 }
 
-# Regex to extract table names from FROM/JOIN clauses
-_TABLE_REF_PATTERN = re.compile(
-    r'\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)',
-    re.IGNORECASE,
-)
 
+def validate_sql(sql: str) -> tuple[bool, str]:
+    """Accept one PostgreSQL read-only query or return a stable failure message."""
+    try:
+        statements = sqlglot.parse(sql, read="postgres")
+    except ParseError:
+        return False, "[SQL_PARSE_ERROR] Query could not be parsed."
 
-def validate_sql(sql: str) -> Tuple[bool, str]:
-    """
-    Validate that SQL is safe to execute.
+    if len(statements) != 1 or statements[0] is None:
+        return False, "[SQL_MULTIPLE_STATEMENTS] Multiple SQL statements are not allowed."
+    tree = statements[0]
+    if not isinstance(tree, _READ_ONLY_ROOTS):
+        return False, "[SQL_NOT_READ_ONLY] Only SELECT queries are allowed."
+    if any(isinstance(node, _MUTATING_EXPRESSIONS) for node in tree.walk()):
+        return False, "[SQL_NOT_READ_ONLY] Only SELECT queries are allowed."
 
-    Returns:
-        (is_safe, error_message) — error_message is empty if safe.
-    """
-    sql_stripped = sql.strip().rstrip(";")
-    sql_lower = sql_stripped.lower()
+    unsafe_function = _find_unsafe_function(tree)
+    if unsafe_function:
+        return False, f"[SQL_DISALLOWED_FUNCTION] Disallowed SQL function: {unsafe_function}"
+    if any(isinstance(table.this, exp.Func) for table in tree.find_all(exp.Table)):
+        return False, "[SQL_TABLE_FUNCTION] Table-valued functions are not allowed."
 
-    # Must start with SELECT or WITH (CTE)
-    if not sql_lower.startswith(("select", "with")):
-        return False, "Only SELECT queries are allowed."
+    cte_aliases = {cte.alias_or_name.lower() for cte in tree.find_all(exp.CTE)}
+    _, aliases, unknown_tables = _resolve_physical_tables(tree, cte_aliases)
+    if unknown_tables:
+        return False, f"[SQL_UNKNOWN_TABLE] Unknown tables referenced: {', '.join(sorted(unknown_tables))}"
 
-    # Check for disallowed keywords
-    # Tokenize to avoid matching substrings (e.g. "updated_at" contains "update")
-    tokens = set(re.findall(r'\b[a-z_]+\b', sql_lower))
-    blocked = tokens & _DISALLOWED_KEYWORDS
-    if blocked:
-        return False, f"Disallowed SQL keywords: {', '.join(sorted(blocked))}"
-
-    # Validate table names against allowlist
-    valid_tables = set(get_all_table_names())
-    referenced_tables = set(_TABLE_REF_PATTERN.findall(sql_stripped))
-    # Normalize to lowercase
-    referenced_lower = {t.lower() for t in referenced_tables}
-    # Extract CTE aliases (WITH alias AS ...) to exclude from unknown check
-    cte_aliases = {m.lower() for m in re.findall(r'\bWITH\s+(\w+)\s+AS\b', sql_stripped, re.IGNORECASE)}
-    cte_aliases |= {m.lower() for m in re.findall(r',\s*(\w+)\s+AS\s*\(', sql_stripped, re.IGNORECASE)}
-    unknown = referenced_lower - valid_tables - cte_aliases - {"lateral", "unnest"}  # exclude SQL keywords & CTEs
-    if unknown:
-        return False, f"Unknown tables referenced: {', '.join(sorted(unknown))}"
-
-    # Check for multiple statements (;)
-    if ";" in sql_stripped:
-        return False, "Multiple SQL statements are not allowed."
-
-    # Per-table column allowlist check — catches LLM column hallucinations.
-    unknown_cols = _find_unknown_columns(sql_stripped, referenced_lower - cte_aliases)
-    if unknown_cols:
-        return False, f"Unknown columns referenced: {', '.join(sorted(unknown_cols))}"
+    unknown_columns = _find_unknown_columns(tree, aliases)
+    if unknown_columns:
+        return False, f"[SQL_UNKNOWN_COLUMN] Unknown columns referenced: {', '.join(sorted(unknown_columns))}"
 
     return True, ""
 
 
-_QUALIFIED_COL_PATTERN = re.compile(
-    r'\b([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)\b'
-)
+def _resolve_physical_tables(
+    tree: exp.Expression, cte_aliases: set[str]
+) -> tuple[set[str], dict[str, str], set[str]]:
+    valid_tables = {name.lower() for name in get_all_table_names()}
+    physical_tables: set[str] = set()
+    aliases: dict[str, str] = {}
+    unknown_tables: set[str] = set()
+    for table in tree.find_all(exp.Table):
+        table_name = table.name.lower()
+        schema_name = table.db.lower() if table.db else ""
+        if table_name in cte_aliases and not schema_name:
+            continue
+        if schema_name or table_name not in valid_tables:
+            unknown_tables.add(".".join(part for part in (schema_name, table_name) if part))
+            continue
+        physical_tables.add(table_name)
+        aliases[table.alias_or_name.lower()] = table_name
+        aliases[table_name] = table_name
+    return physical_tables, aliases, unknown_tables
 
 
-def _find_unknown_columns(sql: str, tables: set[str]) -> set[str]:
-    """
-    Verify any `table.column` reference in the SQL exists in the schema.
-
-    Conservative: only flags columns where the table prefix is a real
-    schema table (we don't try to resolve unprefixed columns since aliases
-    make that ambiguous). Aliases (`o.column`) are skipped because we
-    don't track FROM/JOIN aliases here — those slip past safely.
-    """
-    if not tables:
-        return set()
+def _find_unknown_columns(tree: exp.Expression, aliases: dict[str, str]) -> set[str]:
     unknown: set[str] = set()
-    for prefix, col in _QUALIFIED_COL_PATTERN.findall(sql):
-        prefix_lower = prefix.lower()
-        if prefix_lower not in tables:
-            continue  # alias or unrelated qualifier — skip
-        cols = OLIST_SCHEMA.get(prefix_lower, {}).get("columns", {})
-        if cols and col.lower() not in {c.lower() for c in cols}:
-            unknown.add(f"{prefix_lower}.{col}")
+    for column in tree.find_all(exp.Column):
+        prefix = column.table.lower() if column.table else ""
+        table_name = aliases.get(prefix)
+        if not table_name:
+            continue
+        columns = {name.lower() for name in OLIST_SCHEMA[table_name]["columns"]}
+        if column.name.lower() not in columns:
+            unknown.add(f"{table_name}.{column.name}")
     return unknown
 
 
-def check_cost_guard(sql: str) -> Tuple[bool, str]:
-    """
-    Reject queries on large tables that lack a WHERE or LIMIT clause.
+def _find_unsafe_function(tree: exp.Expression) -> str | None:
+    for function in tree.find_all(exp.Func):
+        function_name = (
+            function.name if isinstance(function, exp.Anonymous) else function.sql_name()
+        ).lower()
+        if function_name not in _ALLOWED_FUNCTIONS:
+            return function_name
+    return None
 
-    Returns:
-        (is_safe, error_message)
-    """
-    sql_lower = sql.lower()
 
-    # Extract referenced tables
-    referenced = {t.lower() for t in _TABLE_REF_PATTERN.findall(sql)}
+def _physical_tables(sql: str) -> Iterable[str]:
+    """Return physical tables for cost checks after the AST validator has run."""
+    try:
+        tree = sqlglot.parse_one(sql, read="postgres")
+    except ParseError:
+        return ()
+    cte_aliases = {cte.alias_or_name.lower() for cte in tree.find_all(exp.CTE)}
+    tables, _, _ = _resolve_physical_tables(tree, cte_aliases)
+    return tables
 
-    # Check if any large table is referenced without WHERE/LIMIT
-    has_where = " where " in sql_lower
-    has_limit = " limit " in sql_lower
-    has_group = " group by " in sql_lower  # GROUP BY with aggregation is OK
 
-    if has_where or has_limit or has_group:
+def check_cost_guard(sql: str) -> tuple[bool, str]:
+    """Reject unbounded scans of large configured physical tables."""
+    try:
+        tree = sqlglot.parse_one(sql, read="postgres")
+    except ParseError:
+        return False, "Unable to inspect query cost."
+
+    if tree.find(exp.Where) or tree.find(exp.Limit) or tree.find(exp.Group):
         return True, ""
-
-    for table_name in referenced:
-        schema = OLIST_SCHEMA.get(table_name, {})
-        row_count = schema.get("row_count_approx", 0)
-        if row_count > 500000:  # Only block very large tables (geolocation=1M)
+    for table_name in _physical_tables(sql):
+        row_count = OLIST_SCHEMA[table_name].get("row_count_approx", 0)
+        if row_count > 500_000:
             return False, (
                 f"Table '{table_name}' has ~{row_count:,} rows. "
                 "Add a WHERE clause, LIMIT, or GROUP BY to avoid full table scans."
             )
-
     return True, ""
 
 
-def sanitize_result(rows: List[dict], max_rows: int) -> Tuple[List[dict], bool]:
-    """
-    Cap results at max_rows.
-
-    Returns:
-        (truncated_rows, was_truncated)
-    """
+def sanitize_result(rows: list[dict], max_rows: int) -> tuple[list[dict], bool]:
+    """Cap returned rows while reporting whether any were omitted."""
     if len(rows) <= max_rows:
         return rows, False
     return rows[:max_rows], True

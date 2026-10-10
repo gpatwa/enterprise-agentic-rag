@@ -1,0 +1,107 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Governed Analytics Request and Improvement Loop",
+    "subtitle": "Bounded request-time decisions with an offline, reviewed learning loop",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "output": "agentic-data-stack-request.workflow.html",
+    "views": [
+      {
+        "id": "request-path",
+        "label": "Question to outcome",
+        "focus": ["question", "context_pack", "typed_intent", "compile", "policy", "execute", "evidence"],
+        "note": "The happy path is finite, typed, policy checked, read only, and fully evidenced."
+      },
+      {
+        "id": "clarification-path",
+        "label": "Clarify or stop",
+        "focus": ["typed_intent", "ambiguity", "clarify"],
+        "note": "Ambiguity permits two clarification turns before the run refuses or moves to review."
+      },
+      {
+        "id": "engine-paths",
+        "label": "Execution adapters",
+        "focus": ["policy", "execute", "postgres", "duckdb", "evidence"],
+        "note": "The gateway applies the same intent and budgets to PostgreSQL and DuckDB adapters."
+      },
+      {
+        "id": "improvement-loop",
+        "label": "Reviewed improvement",
+        "focus": ["feedback", "classify", "candidate", "evaluate", "human_review", "promote"],
+        "note": "No correction changes production until it passes evaluation, review, and controlled promotion."
+      }
+    ]
+  },
+  "lanes": [
+    {"id": "request", "label": "User and Calling Agent"},
+    {"id": "agent", "label": "Bounded Agent Graph"},
+    {"id": "trust", "label": "Deterministic Trust Gates"},
+    {"id": "data", "label": "Execution and Evidence"},
+    {"id": "clarification", "label": "Clarification or Review", "variant": "exception"},
+    {"id": "improvement", "label": "Offline Improvement", "variant": "exception"}
+  ],
+  "phases": [
+    {"id": "understand", "label": "Understand", "fromCol": 0, "toCol": 2},
+    {"id": "govern", "label": "Govern", "fromCol": 3, "toCol": 4, "variant": "security"},
+    {"id": "run_and_prove", "label": "Run and prove", "fromCol": 5, "toCol": 5, "variant": "emphasis"}
+  ],
+  "groups": [
+    {"id": "request_reasoning", "label": "No raw SQL", "lane": "agent", "fromCol": 1, "toCol": 2, "variant": "emphasis"},
+    {"id": "trust_boundary", "label": "Must pass in order", "lane": "trust", "fromCol": 3, "toCol": 4, "variant": "security"},
+    {"id": "approved_engines", "label": "Read-only adapters", "lane": "data", "fromCol": 4, "toCol": 5, "variant": "dashed"},
+    {"id": "bounded_clarification", "label": "Maximum two turns", "lane": "clarification", "fromCol": 2, "toCol": 5, "variant": "security"},
+    {"id": "offline_only", "label": "Never self-promotes", "lane": "improvement", "fromCol": 0, "toCol": 5, "variant": "security"}
+  ],
+  "mainPath": ["question", "context_pack", "typed_intent", "compile", "policy", "execute"],
+  "semanticChecks": {
+    "allowedRoots": ["question", "feedback"],
+    "allowedTerminals": ["clarify", "evidence", "postgres", "duckdb", "promote"],
+    "requiredEdges": [
+      {"from": "typed_intent", "to": "compile"},
+      {"from": "compile", "to": "policy"},
+      {"from": "policy", "to": "execute"}
+    ],
+    "requiredPaths": [
+      {"from": "question", "to": "execute"},
+      {"from": "feedback", "to": "promote"}
+    ]
+  },
+  "nodes": [
+    {"id": "question", "lane": "request", "col": 0, "type": "external", "label": "Business Question", "width": 144},
+    {"id": "context_pack", "lane": "agent", "col": 1, "type": "database", "label": "Context Pack", "width": 150},
+    {"id": "typed_intent", "lane": "agent", "col": 2, "type": "backend", "label": "Typed Intent", "width": 146},
+    {"id": "ambiguity", "lane": "agent", "col": 3, "type": "security", "label": "Ambiguity Gate", "width": 144},
+    {"id": "compile", "lane": "trust", "col": 3, "type": "backend", "label": "Compile + AST", "width": 144},
+    {"id": "policy", "lane": "trust", "col": 4, "type": "security", "label": "Policy + Cost", "width": 144},
+    {"id": "execute", "lane": "data", "col": 5, "type": "backend", "label": "Execute + Respond", "width": 154},
+    {"id": "postgres", "lane": "data", "col": 4, "type": "database", "label": "PostgreSQL", "width": 138},
+    {"id": "duckdb", "lane": "data", "col": 3, "type": "database", "label": "DuckDB", "width": 138},
+    {"id": "evidence", "lane": "data", "col": 2, "type": "database", "label": "Evidence Record", "width": 148},
+    {"id": "clarify", "lane": "clarification", "col": 5, "type": "external", "label": "Clarify or Review", "width": 150},
+    {"id": "feedback", "lane": "improvement", "col": 0, "type": "external", "label": "Trace or Feedback", "width": 144},
+    {"id": "classify", "lane": "improvement", "col": 1, "type": "backend", "label": "Classify Cause", "width": 144},
+    {"id": "candidate", "lane": "improvement", "col": 2, "type": "backend", "label": "Candidate Change", "width": 148},
+    {"id": "evaluate", "lane": "improvement", "col": 3, "type": "security", "label": "Offline Evals", "width": 150},
+    {"id": "human_review", "lane": "improvement", "col": 4, "type": "security", "label": "Human Review", "width": 146},
+    {"id": "promote", "lane": "improvement", "col": 5, "type": "messagebus", "label": "Shadow + Canary", "width": 146}
+  ],
+  "edges": [
+    {"id": "question_context", "from": "question", "to": "context_pack", "label": "retrieve allowed context", "variant": "emphasis", "role": "main"},
+    {"id": "context_intent", "from": "context_pack", "to": "typed_intent", "label": "bounded evidence", "variant": "emphasis", "role": "main"},
+    {"id": "intent_ambiguity", "from": "typed_intent", "to": "ambiguity", "label": "validate meaning", "variant": "default", "role": "main"},
+    {"id": "intent_compile", "from": "typed_intent", "to": "compile", "label": "certified intent", "variant": "emphasis", "role": "main"},
+    {"id": "compile_policy", "from": "compile", "to": "policy", "label": "AST + required filters", "variant": "security", "role": "main"},
+    {"id": "policy_execute", "from": "policy", "to": "execute", "label": "approved plan", "variant": "security", "role": "main"},
+    {"id": "ambiguity_clarify", "from": "ambiguity", "to": "clarify", "label": "missing or conflicting meaning", "variant": "security", "role": "branch", "route": "outside-right", "fromSide": "right", "toSide": "right", "channelX": 1420},
+    {"id": "execute_postgres", "from": "execute", "to": "postgres", "label": "customer SQL", "variant": "default", "role": "branch"},
+    {"id": "execute_duckdb", "from": "execute", "to": "duckdb", "label": "allowlisted file query", "variant": "default", "role": "branch"},
+    {"id": "execute_evidence", "from": "execute", "to": "evidence", "label": "result + execution facts", "variant": "dashed", "role": "async"},
+    {"id": "feedback_classify", "from": "feedback", "to": "classify", "variant": "default"},
+    {"id": "classify_candidate", "from": "classify", "to": "candidate", "variant": "default"},
+    {"id": "candidate_evaluate", "from": "candidate", "to": "evaluate", "variant": "security"},
+    {"id": "evaluate_review", "from": "evaluate", "to": "human_review", "variant": "security"},
+    {"id": "review_promote", "from": "human_review", "to": "promote", "variant": "emphasis"}
+  ]
+}

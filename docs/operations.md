@@ -61,6 +61,36 @@ gh workflow run deploy-prod.yml \
 
 ## Observability
 
+### Local Operations Dashboard
+
+The repository includes an opt-in operations plane for local Docker and the
+automated Azure remote development VM. It keeps product dashboards and
+operations dashboards separate:
+
+```bash
+# Start the operations plane locally.
+make observability-up
+
+# Stop the operations plane and its local containers.
+make observability-down
+```
+
+| Surface | URL | Purpose |
+|---|---|---|
+| Grafana | `http://localhost:3000` | Primary operations dashboard |
+| Prometheus | `http://localhost:9090` | Metrics and target health |
+| OpenSearch Dashboards | `http://localhost:5601` | Search index administration |
+
+Grafana provisions the `Compass Operations` dashboard automatically. It covers
+container CPU/memory, scrape target health, API request rate and latency, LLM
+token usage, PostgreSQL connections, Redis memory, and OpenSearch document
+counts. The default local Grafana login is `admin` / `admin`; set
+`GRAFANA_ADMIN_PASSWORD` before startup to override it.
+
+The observability profile is not a production deployment. Keep these ports
+private and put authentication, TLS, durable retention, alert routing, and
+managed monitoring in the staging/production platform.
+
 ### OpenTelemetry Integration
 
 The API includes built-in tracing via OpenTelemetry, configured by environment:

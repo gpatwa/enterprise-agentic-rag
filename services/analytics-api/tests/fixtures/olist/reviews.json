@@ -1,0 +1,7 @@
+[
+  {"review_id": "r-1", "order_id": "o-1", "review_score": 5},
+  {"review_id": "r-2", "order_id": "o-2", "review_score": 3},
+  {"review_id": "r-3", "order_id": "o-3", "review_score": 4},
+  {"review_id": "r-4", "order_id": "o-5", "review_score": 2},
+  {"review_id": "r-5", "order_id": "o-6", "review_score": 5}
+]

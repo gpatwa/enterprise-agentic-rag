@@ -1,0 +1,15 @@
+{
+  "delivered_revenue_brl": "370.00",
+  "delivered_order_count": 5,
+  "average_order_value_brl": "74.00",
+  "delivered_item_gmv_brl": "370.00",
+  "category_item_gmv_brl": {
+    "beleza_saude": "260.00",
+    "casa_conforto": "60.00",
+    "esporte_lazer": "50.00"
+  },
+  "average_review_score": "3.80",
+  "average_delivery_duration_days": "3.40",
+  "late_delivery_rate": "0.40",
+  "direct_payment_item_join_revenue_brl": "470.00"
+}

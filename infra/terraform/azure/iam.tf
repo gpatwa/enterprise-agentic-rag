@@ -32,6 +32,30 @@ resource "azurerm_federated_identity_credential" "api_federated" {
   subject             = "system:serviceaccount:default:api-sa" # K8s namespace:serviceaccount
 }
 
+# Dedicated identity for the standalone analytics product. It is intentionally
+# separate from the support API identity so analytics cannot inherit support
+# storage permissions.
+resource "azurerm_user_assigned_identity" "analytics_api_identity" {
+  name                = "${var.cluster_name}-analytics-api-identity"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+
+  tags = {
+    Project     = "Enterprise-RAG"
+    Product     = "Analytics"
+    Environment = var.environment
+  }
+}
+
+resource "azurerm_federated_identity_credential" "analytics_api_federated" {
+  name                = "analytics-api-federated-credential"
+  resource_group_name = azurerm_resource_group.main.name
+  parent_id           = azurerm_user_assigned_identity.analytics_api_identity.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = azurerm_kubernetes_cluster.aks.oidc_issuer_url
+  subject             = "system:serviceaccount:default:analytics-api-sa"
+}
+
 # User-Assigned Managed Identity for Ray workers (ingestion pipeline)
 resource "azurerm_user_assigned_identity" "ray_identity" {
   name                = "${var.cluster_name}-ray-identity"

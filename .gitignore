@@ -67,6 +67,10 @@ data/test-docs/*.docx
 # Docker / Misc
 # ============================================================
 *.log
+.local/
+.cache/archify/
+artifacts/
+docs/diagrams/*.visual-check.*
 .pytest_cache/
 .coverage
 htmlcov/

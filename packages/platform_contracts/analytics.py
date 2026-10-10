@@ -49,4 +49,10 @@ class AnalyticsHealthResponse(BaseModel):
     status: Literal["ready", "degraded"]
     database_configured: bool
     llm_configured: bool
+    context_index_configured: bool = False
+    context_index_ready: bool = False
+    context_documents_indexed: int = 0
+    dashboard_configured: bool = False
+    dashboard_ready: bool = False
+    context_bootstrap_error: str | None = None
     contract_version: Literal["v1"] = "v1"

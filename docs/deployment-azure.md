@@ -2,6 +2,31 @@
 
 Deploy the RAG platform to **Azure AKS** with PostgreSQL Flexible Server, Azure Cache for Redis, Blob Storage, and Key Vault.
 
+The current staging deployment is recorded in
+[`docs/execution/azure/AZURE-STAGING-DEPLOYMENT-2026-08-23.md`](execution/azure/AZURE-STAGING-DEPLOYMENT-2026-08-23.md).
+It is a controlled demo deployment, not production approval.
+
+## Public Landing Deployment
+
+The public Compass landing page is deployed independently from AKS to Azure
+Static Web Apps. Current production endpoint:
+
+`https://red-pond-0fa9a940f.7.azurestaticapps.net`
+
+The root route rewrites to the prerendered `/welcome` landing page. Rebuild
+and publish it with:
+
+```bash
+./scripts/deploy_azure_landing.sh
+```
+
+The script obtains the Static Web Apps deployment token through Azure CLI and
+does not store it in the repository. The manual GitHub Actions workflow
+`Deploy Public Landing to Azure` provides the same path; configure the
+production variable `PUBLIC_SITE_URL` and secret
+`AZURE_STATIC_WEB_APPS_API_TOKEN` first. Add a custom domain in Azure Static
+Web Apps after DNS ownership is available.
+
 ---
 
 ## Prerequisites
@@ -138,12 +163,16 @@ make bootstrap-azure
 4. **Qdrant** — vector database
 5. **Neo4j** — graph database
 6. **Ray Cluster** — head node + GPU workers
-7. **NGINX Ingress** — load balancer + TLS
+7. **NGINX Ingress** — load balancer; configure TLS before public production use
 8. **API** — FastAPI backend with Workload Identity
 
 AKS node pools use the native Azure Cluster Autoscaler configured in Terraform.
 Karpenter manifests in this repository are AWS/EKS-specific and are not installed on AKS.
 Qdrant and Neo4j are installed inside AKS with Azure Disk CSI-backed persistence.
+OpenSearch is the enterprise search target, but its Terraform module is
+provider-neutral and does not provision a managed service. Supply and validate
+an approved OpenSearch endpoint before setting the API search provider to
+OpenSearch; the current staging fallback remains Qdrant.
 
 ---
 
@@ -276,10 +305,31 @@ curl -X POST http://localhost:8080/api/v1/context/annotations \
 ### Analytics Product
 
 Analytics now has independent API and web images under
-`services/analytics-api` and `apps/analytics-web`. The current Azure Helm chart
-deploys the support API only. Add separate analytics workloads, secrets,
-ingress, and database credentials before enabling analytics in Azure; the local
-product split does not deploy or mutate Azure resources.
+`services/analytics-api` and `apps/analytics-web`. Deploy the two workloads
+with the dedicated charts and script:
+
+```bash
+export ACR_NAME="<acr-name>"
+export RESOURCE_GROUP="<resource-group>"
+export CLUSTER_NAME="<aks-cluster>"
+export ANALYTICS_HOSTNAME="analytics.example.com"
+export ANALYTICS_API_IDENTITY_CLIENT_ID="$(terraform -chdir=infra/terraform/azure output -raw analytics_api_identity_client_id)"
+kubectl apply -f deploy/secrets/analytics-external-secret-azure.yaml
+./scripts/deploy_azure_analytics.sh
+```
+
+The script builds and pushes `compass-analytics-api` from the repository root
+and `compass-analytics-web`, then installs `analytics-api` and `analytics-web`
+Helm releases. The analytics API uses the `analytics-api-secrets` Kubernetes
+Secret populated from Key Vault; create `analytics-db-url` and
+`analytics-control-db-url` in Key Vault before rollout. The web chart proxies
+`/api` and `/health` to the internal `analytics-api:8090` service and exposes
+the configured hostname through the cluster ingress.
+
+For GitHub Actions, use the manual `Deploy Analytics to Azure` workflow. It
+requires OIDC secrets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`,
+`AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `AKS_CLUSTER_NAME`,
+`ACR_NAME`, `ANALYTICS_API_IDENTITY_CLIENT_ID`, and `ANALYTICS_HOSTNAME`.
 
 ### Key Vault Secrets for Features
 
@@ -296,6 +346,7 @@ product split does not deploy or mutate Azure resources.
 ```bash
 make build-azure        # Rebuild Docker image
 make deploy-api-azure   # Helm upgrade
+make deploy-analytics-azure # Build and deploy analytics API + web
 ```
 
 ---

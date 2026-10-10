@@ -1,0 +1,12 @@
+[
+  {"case_id":"policy-001","category":"age","user_id":"user-009","requested_experience_id":"exp-047","expected_decision":"deny","reason_code":"age_rating_exceeds_profile_limit","synthetic":true},
+  {"case_id":"policy-002","category":"safety","user_id":"user-009","requested_experience_id":"exp-047","expected_decision":"deny","reason_code":"safety_state_restricted","synthetic":true},
+  {"case_id":"policy-003","category":"locale","user_id":"user-010","requested_experience_id":"exp-010","expected_decision":"deny","reason_code":"locale_not_supported","synthetic":true},
+  {"case_id":"policy-004","category":"device","user_id":"user-006","requested_experience_id":"exp-009","expected_decision":"deny","reason_code":"device_not_supported","synthetic":true},
+  {"case_id":"policy-005","category":"unavailable","user_id":"user-001","requested_experience_id":"exp-048","expected_decision":"deny","reason_code":"experience_unavailable","synthetic":true},
+  {"case_id":"policy-006","category":"blocked-item","user_id":"user-001","requested_experience_id":"exp-047","expected_decision":"deny","reason_code":"safety_block","synthetic":true},
+  {"case_id":"policy-007","category":"creator-repetition","user_id":"user-014","requested_experience_id":"exp-008","expected_decision":"deny","reason_code":"creator_quota_reached","context":{"already_selected":["exp-001"],"max_per_creator":1},"synthetic":true},
+  {"case_id":"policy-008","category":"cross-tenant-isolation","user_id":"user-016","requested_experience_id":"exp-025","expected_decision":"deny","reason_code":"tenant_scope_mismatch","synthetic":true},
+  {"case_id":"policy-009","category":"consent","user_id":"user-008","requested_experience_id":"exp-001","expected_decision":"allow_without_personalization","reason_code":"personalization_consent_denied","synthetic":true},
+  {"case_id":"policy-010","category":"cold-start","user_id":"user-007","requested_experience_id":"exp-002","expected_decision":"allow","reason_code":"safe_catalog_fallback","synthetic":true}
+]

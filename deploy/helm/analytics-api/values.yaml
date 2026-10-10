@@ -1,0 +1,27 @@
+replicaCount: 1
+
+image:
+  repository: compass-analytics-api
+  pullPolicy: IfNotPresent
+  tag: "0.1.0"
+
+service:
+  type: ClusterIP
+  port: 8090
+
+secretRef: ""
+serviceAccount:
+  create: false
+  name: ""
+  annotations: {}
+podLabels: {}
+env:
+  ENV: prod
+  ANALYTICS_CORS_ORIGINS: "https://analytics.example.com"
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi

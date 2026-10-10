@@ -10,7 +10,7 @@ resource "azurerm_postgresql_flexible_server" "main" {
   name                   = "ragplatform-pgdb-central"
   resource_group_name    = azurerm_resource_group.main.name
   location               = "centralus" # eastus/eastus2/westus2 restricted for Postgres Burstable
-  version                = "15" # Match Aurora PostgreSQL 15
+  version                = "15"        # Match Aurora PostgreSQL 15
   administrator_login    = "ragadmin"
   administrator_password = var.db_password
   storage_mb             = 32768 # 32 GB (minimum for Burstable)

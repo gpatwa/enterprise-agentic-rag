@@ -1,0 +1,5 @@
+[
+  {"product_id": "p-health", "product_category_name": "beleza_saude"},
+  {"product_id": "p-home", "product_category_name": "casa_conforto"},
+  {"product_id": "p-sports", "product_category_name": "esporte_lazer"}
+]

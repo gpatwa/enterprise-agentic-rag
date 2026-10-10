@@ -1,0 +1,25 @@
+replicaCount: 1
+
+image:
+  repository: compass-analytics-web
+  pullPolicy: IfNotPresent
+  tag: "0.1.0"
+
+service:
+  type: ClusterIP
+  port: 80
+
+apiHost: analytics-api:8090
+podLabels: {}
+ingress:
+  enabled: false
+  className: nginx
+  host: analytics.example.com
+  tlsSecret: ""
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi

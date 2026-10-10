@@ -123,10 +123,14 @@ OLIST_SCHEMA: Dict[str, dict] = {
 
 COMMON_METRICS = {
     "revenue": {
-        "sql": "SUM(op.payment_value)",
-        "tables": ["olist_order_payments op"],
-        "join": "JOIN olist_order_payments op ON o.order_id = op.order_id",
-        "description": "Total revenue in BRL from payment_value",
+        "sql": "SUM(CASE WHEN o.order_status = 'delivered' THEN payment_totals.order_revenue END)",
+        "tables": ["olist_orders o", "payment_totals"],
+        "join": (
+            "JOIN (SELECT order_id, SUM(payment_value) AS order_revenue "
+            "FROM olist_order_payments GROUP BY order_id) payment_totals "
+            "ON payment_totals.order_id = o.order_id"
+        ),
+        "description": "Delivered-order revenue in BRL, with payments aggregated per order",
     },
     "total_orders": {
         "sql": "COUNT(DISTINCT o.order_id)",
@@ -135,28 +139,38 @@ COMMON_METRICS = {
         "description": "Count of unique orders",
     },
     "average_order_value": {
-        "sql": "AVG(op.payment_value)",
-        "tables": ["olist_order_payments op"],
-        "join": "JOIN olist_order_payments op ON o.order_id = op.order_id",
-        "description": "Average payment value per order",
+        "sql": "AVG(CASE WHEN o.order_status = 'delivered' THEN payment_totals.order_revenue END)",
+        "tables": ["olist_orders o", "payment_totals"],
+        "join": (
+            "JOIN (SELECT order_id, SUM(payment_value) AS order_revenue "
+            "FROM olist_order_payments GROUP BY order_id) payment_totals "
+            "ON payment_totals.order_id = o.order_id"
+        ),
+        "description": "Average delivered-order revenue after aggregating split payments",
+    },
+    "item_gmv": {
+        "sql": "SUM(CASE WHEN o.order_status = 'delivered' THEN oi.price END)",
+        "tables": ["olist_order_items oi"],
+        "join": "JOIN olist_order_items oi ON oi.order_id = o.order_id",
+        "description": "Delivered item GMV in BRL; use this, not payments, for product-category analysis",
     },
     "average_review_score": {
-        "sql": "AVG(r.review_score)",
+        "sql": "AVG(CASE WHEN o.order_status = 'delivered' THEN r.review_score END)",
         "tables": ["olist_order_reviews r"],
         "join": "JOIN olist_order_reviews r ON o.order_id = r.order_id",
-        "description": "Average customer review rating (1-5 scale)",
+        "description": "Average customer review rating (1-5 scale) for delivered orders",
     },
     "delivery_time_days": {
-        "sql": "AVG(EXTRACT(EPOCH FROM (o.order_delivered_customer_date - o.order_purchase_timestamp)) / 86400)",
+        "sql": "AVG(CASE WHEN o.order_status = 'delivered' THEN EXTRACT(EPOCH FROM (o.order_delivered_customer_date - o.order_purchase_timestamp)) / 86400 END)",
         "tables": ["olist_orders o"],
         "join": "",
-        "description": "Average days from purchase to delivery",
+        "description": "Average days from purchase to delivery for delivered orders",
     },
     "late_delivery_rate": {
-        "sql": "AVG(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1.0 ELSE 0.0 END)",
+        "sql": "AVG(CASE WHEN o.order_status = 'delivered' THEN CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1.0 ELSE 0.0 END END)",
         "tables": ["olist_orders o"],
         "join": "",
-        "description": "Fraction of orders delivered after estimated date",
+        "description": "Fraction of delivered orders delivered after their estimated date",
     },
 }
 
@@ -245,7 +259,8 @@ def build_schema_prompt(query: str) -> str:
     lines.append("### Important Notes")
     lines.append("- All monetary values are in BRL (Brazilian Real)")
     lines.append("- Use olist_orders.order_purchase_timestamp for time-based analysis")
-    lines.append("- Revenue = SUM(olist_order_payments.payment_value)")
+    lines.append("- Revenue requires payment aggregation to one row per order before SUM or AVG")
+    lines.append("- Use item GMV (SUM(order_items.price)) for product-category analysis; do not allocate payments by joining them to items")
     lines.append("- Always JOIN through olist_orders.order_id as the central key")
     lines.append("- Product categories are in Portuguese (e.g. 'beleza_saude' = health & beauty)")
 

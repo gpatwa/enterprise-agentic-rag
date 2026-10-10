@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -302,6 +303,106 @@ class TestSupportJobManager:
 
 
 class TestSupportActionQueue:
+    @pytest.mark.asyncio
+    async def test_typed_proposal_is_policy_gated_and_receipt_is_versioned(self, monkeypatch):
+        import app.memory.postgres as pg
+        import app.routes.support as routes
+
+        engine, Session = await _session()
+        monkeypatch.setattr(pg, "AsyncSessionLocal", Session)
+        monkeypatch.setattr(routes.audit_mgr, "log_event", AsyncMock())
+        command = {
+            "command_type": "send_customer_reply", "parameters": {"response": "Retry export"},
+            "evidence_ids": ["ticket-1"], "idempotency_key": "proposal-1", "risk_level": "medium",
+            "approval_requirement": "required", "contract_version": "support-command.v1",
+            "context": {"tenant_id": "tenant-a", "principal_id": "agent-1"},
+        }
+        try:
+            created = await routes.create_support_action_proposal(
+                routes.SupportActionProposalRequest(command=command), ctx=_ctx()
+            )
+            action_id = created["action"]["id"]
+            assert created["action"]["status"] == "generated"
+            assert created["action"]["policy_status"] == "require_human_review"
+            with pytest.raises(Exception) as duplicate:
+                await routes.create_support_action_proposal(
+                    routes.SupportActionProposalRequest(command=command), ctx=_ctx()
+                )
+            assert duplicate.value.status_code == 409
+            with pytest.raises(Exception) as skipped:
+                await routes.update_support_action_status(
+                    action_id, routes.SupportActionStatusRequest(status="ready_to_execute"), ctx=_ctx()
+                )
+            assert skipped.value.status_code == 409
+            await routes.update_support_action_status(
+                action_id, routes.SupportActionStatusRequest(status="approved"), ctx=_ctx(user_id="reviewer")
+            )
+            await routes.update_support_action_status(
+                action_id, routes.SupportActionStatusRequest(status="ready_to_execute"), ctx=_ctx(user_id="reviewer")
+            )
+            executed = await routes.execute_support_action(
+                action_id, routes.SupportActionExecuteRequest(), ctx=_ctx(user_id="operator")
+            )
+            receipt = executed["action"]["execution_result"]
+            assert receipt["receipt_version"] == "support-execution-receipt.v1"
+            assert receipt["command_version"] == "support-command.v1"
+            assert receipt["evidence_version"] == "evidence.v1"
+            assert receipt["policy_version"] == "support-policy.v1"
+        finally:
+            await engine.dispose()
+
+    @pytest.mark.asyncio
+    async def test_typed_command_lineage_is_tenant_scoped_and_idempotent(self):
+        from app.support.models import SupportAction
+
+        engine, Session = await _session()
+        try:
+            async with Session() as session:
+                first = SupportAction(
+                    id="support-action-command-a",
+                    tenant_id="tenant-a",
+                    created_by="alice",
+                    cluster_title="Export + Timeout",
+                    command_text="send customer reply",
+                    command_contract_version="support-command.v1",
+                    command_payload={"command_type": "send_customer_reply", "parameters": {"response": "Retry export"}},
+                    policy_status="requires_review",
+                    policy_reason="Customer communication requires approval",
+                    evidence_ids=["ZD-1001"],
+                    idempotency_key="resolution-command-1",
+                )
+                second = SupportAction(
+                    id="support-action-command-b",
+                    tenant_id="tenant-b",
+                    created_by="bob",
+                    cluster_title="Export + Timeout",
+                    command_text="send customer reply",
+                    idempotency_key="resolution-command-1",
+                )
+                session.add_all([first, second])
+                await session.commit()
+
+                persisted = await session.get(SupportAction, first.id)
+                assert persisted is not None
+                assert persisted.status == "generated"
+                assert persisted.command_payload["command_type"] == "send_customer_reply"
+                assert persisted.evidence_ids == ["ZD-1001"]
+
+                duplicate = SupportAction(
+                    id="support-action-command-duplicate",
+                    tenant_id="tenant-a",
+                    created_by="alice",
+                    cluster_title="Duplicate",
+                    command_text="duplicate",
+                    idempotency_key="resolution-command-1",
+                )
+                session.add(duplicate)
+                with pytest.raises(IntegrityError):
+                    await session.commit()
+                await session.rollback()
+        finally:
+            await engine.dispose()
+
     @pytest.mark.asyncio
     async def test_support_action_routes_create_list_and_update_status(self, monkeypatch):
         import app.memory.postgres as pg

@@ -1,0 +1,8 @@
+[
+  {"order_id": "o-1", "customer_id": "c-1", "order_status": "delivered", "order_purchase_timestamp": "2024-01-01T09:00:00", "order_delivered_customer_date": "2024-01-05T09:00:00", "order_estimated_delivery_date": "2024-01-04T09:00:00"},
+  {"order_id": "o-2", "customer_id": "c-1", "order_status": "delivered", "order_purchase_timestamp": "2024-01-02T09:00:00", "order_delivered_customer_date": "2024-01-04T09:00:00", "order_estimated_delivery_date": "2024-01-06T09:00:00"},
+  {"order_id": "o-3", "customer_id": "c-2", "order_status": "delivered", "order_purchase_timestamp": "2024-01-03T09:00:00", "order_delivered_customer_date": "2024-01-10T09:00:00", "order_estimated_delivery_date": "2024-01-08T09:00:00"},
+  {"order_id": "o-4", "customer_id": "c-2", "order_status": "canceled", "order_purchase_timestamp": "2024-01-04T09:00:00", "order_delivered_customer_date": null, "order_estimated_delivery_date": "2024-01-09T09:00:00"},
+  {"order_id": "o-5", "customer_id": "c-1", "order_status": "delivered", "order_purchase_timestamp": "2024-01-05T09:00:00", "order_delivered_customer_date": "2024-01-06T09:00:00", "order_estimated_delivery_date": "2024-01-07T09:00:00"},
+  {"order_id": "o-6", "customer_id": "c-2", "order_status": "delivered", "order_purchase_timestamp": "2024-01-07T09:00:00", "order_delivered_customer_date": "2024-01-10T09:00:00", "order_estimated_delivery_date": "2024-01-11T09:00:00"}
+]

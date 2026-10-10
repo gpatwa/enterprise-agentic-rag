@@ -4,6 +4,20 @@ These packets are the first bounded assignments from the
 [Enterprise Analytics Roadmap](../../ENTERPRISE_ANALYTICS_EXECUTION_PLAN.md).
 They are written for independent coding-model sessions and human reviewers.
 
+The next integrated program is defined in the
+[Agentic Data Stack Execution Plan](../../AGENTIC_DATA_STACK_EXECUTION_PLAN.md).
+It introduces `ADS-001` through `ADS-079` for ontology/context, harness,
+bounded graph, safe learning-loop, enterprise runtime, and final evaluation
+work. PostgreSQL is the first customer-shaped execution adapter; DuckDB is the
+first embedded local and governed data-lake-file adapter. Expand one ADS packet
+at a time in this directory before dispatching it to Luna.
+
+Review the animated
+[Agentic Data Stack system diagram](../../diagrams/agentic-data-stack-system.html)
+and [request workflow](../../diagrams/agentic-data-stack-request.html) before
+changing a major boundary. The Archify sources present the system boundaries
+first, followed by the bounded graph, execution adapters, and improvement loop.
+
 ## Dispatch Order
 
 | Packet | Can start | Merge order | Primary ownership |

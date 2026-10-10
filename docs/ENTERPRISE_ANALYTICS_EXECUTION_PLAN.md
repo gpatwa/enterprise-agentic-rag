@@ -5,6 +5,11 @@ Audience: Product, engineering, security, data platform, and delegated coding ag
 Scope: The standalone analytics product under `apps/analytics-web`,
 `services/analytics-api`, and `packages/platform_contracts`
 
+> The continuation that integrates these components into a typed agent graph,
+> ontology/context layer, safe improvement loop, and final end-to-end evaluation
+> is maintained in the
+> [Agentic Data Stack Execution Plan](AGENTIC_DATA_STACK_EXECUTION_PLAN.md).
+
 ## 1. Executive Decision
 
 Build Compass Analytics as a catalog-neutral Trust and Execution layer for

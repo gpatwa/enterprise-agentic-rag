@@ -13,6 +13,8 @@ from app.tracing import set_span_attributes, start_span
 logger = logging.getLogger(__name__)
 
 _llm_client = None
+_resolution_pipeline = None
+_resolution_enabled = False
 _CITATION_RE = re.compile(r"\[(\d+)\]")
 
 
@@ -26,6 +28,13 @@ def set_clients(llm) -> None:
     _llm_client = llm
 
 
+def set_resolution_pipeline(pipeline, *, enabled: bool = False) -> None:
+    """Inject the optional grounded pipeline; it is disabled by default."""
+    global _resolution_pipeline, _resolution_enabled
+    _resolution_pipeline = pipeline
+    _resolution_enabled = enabled
+
+
 class SupportResolver:
     async def resolve(
         self,
@@ -36,6 +45,7 @@ class SupportResolver:
         status: str | None = None,
         limit: int = 6,
         session: Any = None,
+        acl_scope: Any = None,
     ) -> dict[str, Any]:
         query = " ".join(question.split())
         if len(query) < 2:
@@ -80,6 +90,24 @@ class SupportResolver:
                     "next_action": "route_to_human",
                 }
 
+            pipeline_failed = False
+            if _resolution_enabled and _resolution_pipeline is not None:
+                try:
+                    grounded = await _resolution_pipeline.resolve(
+                        tenant_id=tenant_id,
+                        acl_scope=acl_scope,
+                        provider=provider,
+                        status=status,
+                        question=query,
+                        matches=matches,
+                    )
+                    return self._safe_pipeline_result(grounded, matches)
+                except Exception as e:
+                    pipeline_failed = True
+                    logger.warning(
+                        "grounded support resolution failed, using fallback: %s", e, exc_info=True
+                    )
+
             with start_span(
                 "support.resolve.llm",
                 tenant_id=tenant_id,
@@ -87,7 +115,11 @@ class SupportResolver:
                 match_count=len(matches),
                 llm_configured=_llm_client is not None,
             ) as llm_span:
-                answer = await self._generate_answer(query=query, matches=matches)
+                answer = (
+                    self._fallback_answer(query=query, matches=matches)
+                    if pipeline_failed
+                    else await self._generate_answer(query=query, matches=matches)
+                )
                 set_span_attributes(llm_span, answer_length=len(answer or ""))
 
             answer, verification_status = self._verified_answer(
@@ -113,6 +145,44 @@ class SupportResolver:
                 "matches": matches,
                 "next_action": next_action,
             }
+
+    def _safe_pipeline_result(
+        self, result: Any, matches: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Accept only the public response fields from an injected pipeline."""
+        if not isinstance(result, dict):
+            raise ValueError("resolution pipeline returned a non-object")
+        answer = result.get("answer")
+        if not isinstance(answer, str) or not answer.strip():
+            raise ValueError("resolution pipeline returned no answer")
+        citations = result.get("citations")
+        if not isinstance(citations, list):
+            raise ValueError("resolution pipeline returned invalid citations")
+        match_source_ids = {match.get("source_id") for match in matches}
+        supplied_labels: set[str] = set()
+        for citation in citations:
+            if not isinstance(citation, dict):
+                raise ValueError("resolution pipeline returned an invalid citation")
+            label = citation.get("label")
+            if not isinstance(label, str) or not label.strip() or label in supplied_labels:
+                raise ValueError("resolution pipeline returned a blank or duplicate citation label")
+            if citation.get("source_id") not in match_source_ids:
+                raise ValueError("resolution pipeline citation source is not a returned match")
+            supplied_labels.add(label)
+        if not supplied_labels or not any(label in answer for label in supplied_labels):
+            raise ValueError("resolution pipeline answer omitted a supplied citation")
+        confidence = result.get("confidence")
+        next_action = result.get("next_action")
+        if not isinstance(confidence, str) or not isinstance(next_action, str):
+            raise ValueError("resolution pipeline omitted confidence or next action")
+        return {
+            "answer": answer,
+            "confidence": confidence,
+            "citations": citations,
+            "matches": matches,
+            "next_action": next_action,
+            "abstention": bool(result.get("abstention", False)),
+        }
 
     async def _generate_answer(self, *, query: str, matches: list[dict[str, Any]]) -> str:
         if _llm_client is None:

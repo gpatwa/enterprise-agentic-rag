@@ -1,0 +1,22 @@
+{
+  "lifecycle": "certified",
+  "contract": {
+    "id": "sales-core",
+    "tenant_id": "tenant-a",
+    "domain": "sales",
+    "version": "v1",
+    "owners": [{"id": "team.data", "display_name": "Data Team", "owner_type": "team"}],
+    "datasets": [{"id": "orders", "display_name": "Orders", "source_asset_id": "warehouse.orders", "physical_name": "sales_orders", "description": "One row per order", "owner_ids": ["team.data"]}],
+    "fields": [
+      {"id": "orders.id", "dataset_id": "orders", "physical_name": "id", "data_type": "string"},
+      {"id": "orders.amount", "dataset_id": "orders", "physical_name": "amount", "data_type": "decimal"},
+      {"id": "orders.status", "dataset_id": "orders", "physical_name": "status", "data_type": "string"},
+      {"id": "orders.created_at", "dataset_id": "orders", "physical_name": "created_at", "data_type": "timestamp"}
+    ],
+    "dimensions": [
+      {"id": "status", "dataset_id": "orders", "field_id": "orders.status", "dimension_type": "categorical", "owner_ids": ["team.data"]},
+      {"id": "created_at", "dataset_id": "orders", "field_id": "orders.created_at", "dimension_type": "temporal", "owner_ids": ["team.data"]}
+    ],
+    "metrics": [{"id": "revenue", "dataset_id": "orders", "aggregation": "sum", "measure_field_id": "orders.amount", "grain": {"kind": "order", "key_field_ids": ["orders.id"]}, "certification": "certified", "owner_ids": ["team.data"]}]
+  }
+}

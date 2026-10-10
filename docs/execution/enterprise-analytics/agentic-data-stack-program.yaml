@@ -1,0 +1,193 @@
+schema_version: 1
+program_id: agentic-data-stack
+source_plan: ../../AGENTIC_DATA_STACK_EXECUTION_PLAN.md
+status: in_progress
+
+status_values:
+  - planned
+  - ready
+  - in_progress
+  - blocked
+  - review
+  - complete
+
+rules:
+  packet_directory: .
+  packet_name: "<TASK-ID>-<short-name>.md"
+  one_task_per_branch: true
+  commit_required: true
+  independent_review_required: true
+  push_after_milestone: true
+  no_self_approval:
+    - architecture
+    - security
+    - semantic_certification
+    - threshold_change
+    - final_go_no_go
+
+validation:
+  - ruff check packages/platform_contracts services/analytics-api/app services/analytics-api/tests
+  - (cd services/analytics-api && PYTHONPATH=.:../.. pytest -q)
+  - git diff --check
+
+milestones:
+  M0:
+    name: Program and graph foundations
+    status: complete
+    waves:
+      - [ADS-001, ADS-007, ADS-008]
+      - [ADS-002]
+      - [ADS-003]
+      - [ADS-004, ADS-005, ADS-006]
+      - [ADS-009]
+    human_gate: architecture_and_security
+  M1:
+    name: Ontology and context layer
+    status: in_progress
+    waves:
+      - [ADS-010, ADS-012, ADS-013, ADS-014]
+      - [ADS-011, ADS-015]
+      - [ADS-016, ADS-017, ADS-018, ADS-019]
+    human_gate: semantic_certification
+  M2:
+    name: Deterministic agent harness
+    status: complete
+    waves:
+      - [ADS-020, ADS-021, ADS-022]
+      - [ADS-023, ADS-024, ADS-025]
+      - [ADS-026, ADS-027, ADS-028, ADS-029]
+    human_gate: threshold_and_harness_review
+    human_gate_status: approved
+    human_gate_approved_at: 2026-09-24
+    human_gate_approval_record: "User approved M2 threshold-and-harness review in conversation."
+  M3:
+    name: Governed agent graph
+    status: complete
+    waves:
+      - [ADS-030, ADS-031, ADS-032, ADS-033]
+      - [ADS-034, ADS-035, ADS-036]
+      - [ADS-037, ADS-038, ADS-039]
+    human_gate: graph_and_policy_review
+    human_gate_status: approved
+    human_gate_approved_at: 2026-09-28
+    human_gate_approval_record: "User approved the M3 graph-and-policy review in conversation."
+  M4:
+    name: Live read-only execution and evidence
+    status: in_progress
+    waves:
+      - [ADS-040, ADS-044]
+      - [ADS-041, ADS-042, ADS-043]
+      - [ADS-045, ADS-046, ADS-047]
+      - [ADS-048, ADS-049]
+    human_gate: local_demo_review
+    m4_threshold_approval:
+      status: approved
+      approved_by: user
+      approved_at: 2026-10-08
+      record: "User wrote \"I approve the proposed thresholds\" in conversation. Applies only to services/analytics-api/reference_stack/golden/m4-thresholds.json (local M4 reference stack). It is not the local_demo_review approval and not independent packet review."
+  M5:
+    name: Safe learning and correction loops
+    status: planned
+    waves:
+      - [ADS-050, ADS-051]
+      - [ADS-052, ADS-053, ADS-054]
+      - [ADS-055, ADS-056, ADS-057]
+      - [ADS-058, ADS-059]
+    human_gate: separation_of_duties_review
+  M6:
+    name: Agent-operable and enterprise runtime
+    status: planned
+    waves:
+      - [ADS-060, ADS-062, ADS-063]
+      - [ADS-061, ADS-064, ADS-065]
+      - [ADS-066, ADS-067, ADS-068, ADS-069]
+    human_gate: security_and_operations_review
+  M7:
+    name: Final evaluation and pilot decision
+    status: planned
+    waves:
+      - [ADS-070]
+      - [ADS-071, ADS-072, ADS-073, ADS-074, ADS-075, ADS-076, ADS-077, ADS-078]
+      - [ADS-079]
+    human_gate: final_go_no_go
+
+tasks:
+  ADS-001: {milestone: M0, status: review, depends_on: []}
+  ADS-002: {milestone: M0, status: complete, depends_on: [ADS-001]}
+  ADS-003: {milestone: M0, status: complete, depends_on: [ADS-002]}
+  ADS-004: {milestone: M0, status: complete, depends_on: [ADS-003]}
+  ADS-005: {milestone: M0, status: complete, depends_on: [ADS-003]}
+  ADS-006: {milestone: M0, status: complete, depends_on: [ADS-003]}
+  ADS-007: {milestone: M0, status: review, depends_on: []}
+  ADS-008: {milestone: M0, status: complete, depends_on: [ADS-001]}
+  ADS-009: {milestone: M0, status: complete, depends_on: [ADS-003, ADS-004, ADS-005, ADS-006, ADS-007, ADS-008]}
+  ADS-010: {milestone: M1, status: complete, depends_on: [ADS-008]}
+  ADS-011: {milestone: M1, status: complete, depends_on: [ADS-008, ADS-010]}
+  ADS-012: {milestone: M1, status: complete, depends_on: [ADS-010]}
+  ADS-013: {milestone: M1, status: complete, depends_on: [ADS-010]}
+  ADS-014: {milestone: M1, status: complete, depends_on: [ADS-010]}
+  ADS-015: {milestone: M1, status: complete, depends_on: [ADS-012, ADS-013, ADS-014]}
+  ADS-016: {milestone: M1, status: complete, depends_on: [ADS-015]}
+  ADS-017: {milestone: M1, status: complete, depends_on: [ADS-016]}
+  ADS-018: {milestone: M1, status: complete, depends_on: [ADS-017]}
+  ADS-019: {milestone: M1, status: complete, depends_on: [ADS-011, ADS-012, ADS-013, ADS-014, ADS-015, ADS-016, ADS-017, ADS-018]}
+  ADS-020: {milestone: M2, status: complete, depends_on: [ADS-003]}
+  ADS-021: {milestone: M2, status: complete, depends_on: [ADS-020]}
+  ADS-022: {milestone: M2, status: complete, depends_on: [ADS-020]}
+  ADS-023: {milestone: M2, status: complete, depends_on: [ADS-020, ADS-021, ADS-022]}
+  ADS-024: {milestone: M2, status: complete, depends_on: [ADS-023]}
+  ADS-025: {milestone: M2, status: complete, depends_on: [ADS-023]}
+  ADS-026: {milestone: M2, status: complete, depends_on: [ADS-023]}
+  ADS-027: {milestone: M2, status: complete, depends_on: [ADS-023]}
+  ADS-028: {milestone: M2, status: complete, depends_on: [ADS-027]}
+  ADS-029: {milestone: M2, status: complete, depends_on: [ADS-024, ADS-025, ADS-026, ADS-027, ADS-028]}
+  ADS-030: {milestone: M3, status: complete, depends_on: [ADS-009, ADS-023]}
+  ADS-031: {milestone: M3, status: complete, depends_on: [ADS-030]}
+  ADS-032: {milestone: M3, status: complete, depends_on: [ADS-018, ADS-030]}
+  ADS-033: {milestone: M3, status: complete, depends_on: [ADS-018, ADS-030]}
+  ADS-034: {milestone: M3, status: complete, depends_on: [ADS-032, ADS-033]}
+  ADS-035: {milestone: M3, status: complete, depends_on: [ADS-034]}
+  ADS-036: {milestone: M3, status: complete, depends_on: [ADS-034]}
+  ADS-037: {milestone: M3, status: complete, depends_on: [ADS-036]}
+  ADS-038: {milestone: M3, status: complete, depends_on: [ADS-005, ADS-037]}
+  ADS-039: {milestone: M3, status: complete, depends_on: [ADS-030, ADS-031, ADS-032, ADS-033, ADS-034, ADS-035, ADS-036, ADS-037, ADS-038]}
+  ADS-040: {milestone: M4, status: review, depends_on: [ADS-037]}
+  ADS-041: {milestone: M4, status: review, depends_on: [ADS-040]}
+  ADS-042: {milestone: M4, status: review, depends_on: [ADS-041]}
+  ADS-043: {milestone: M4, status: review, depends_on: [ADS-041, ADS-042]}
+  ADS-044: {milestone: M4, status: review, depends_on: [ADS-016]}
+  ADS-045: {milestone: M4, status: review, depends_on: [ADS-038, ADS-043]}
+  ADS-046: {milestone: M4, status: review, depends_on: [ADS-045]}
+  ADS-047: {milestone: M4, status: review, depends_on: [ADS-045]}
+  ADS-048: {milestone: M4, status: review, depends_on: [ADS-040, ADS-044, ADS-045, ADS-046, ADS-047]}
+  ADS-049: {milestone: M4, status: review, depends_on: [ADS-040, ADS-041, ADS-042, ADS-043, ADS-044, ADS-045, ADS-046, ADS-047, ADS-048]}
+  ADS-050: {milestone: M5, status: planned, depends_on: [ADS-042, ADS-047]}
+  ADS-051: {milestone: M5, status: planned, depends_on: [ADS-050]}
+  ADS-052: {milestone: M5, status: planned, depends_on: [ADS-051]}
+  ADS-053: {milestone: M5, status: planned, depends_on: [ADS-051]}
+  ADS-054: {milestone: M5, status: planned, depends_on: [ADS-051]}
+  ADS-055: {milestone: M5, status: planned, depends_on: [ADS-052, ADS-053, ADS-054]}
+  ADS-056: {milestone: M5, status: planned, depends_on: [ADS-055]}
+  ADS-057: {milestone: M5, status: planned, depends_on: [ADS-056]}
+  ADS-058: {milestone: M5, status: planned, depends_on: [ADS-049, ADS-057]}
+  ADS-059: {milestone: M5, status: planned, depends_on: [ADS-050, ADS-051, ADS-052, ADS-053, ADS-054, ADS-055, ADS-056, ADS-057, ADS-058]}
+  ADS-060: {milestone: M6, status: planned, depends_on: [ADS-045]}
+  ADS-061: {milestone: M6, status: planned, depends_on: [ADS-060]}
+  ADS-062: {milestone: M6, status: planned, depends_on: [ADS-042, ADS-060]}
+  ADS-063: {milestone: M6, status: planned, depends_on: [ADS-031, ADS-045]}
+  ADS-064: {milestone: M6, status: planned, depends_on: [ADS-040, ADS-063]}
+  ADS-065: {milestone: M6, status: planned, depends_on: [ADS-042, ADS-064]}
+  ADS-066: {milestone: M6, status: planned, depends_on: [ADS-065]}
+  ADS-067: {milestone: M6, status: planned, depends_on: [ADS-061, ADS-062, ADS-063, ADS-064, ADS-065, ADS-066]}
+  ADS-068: {milestone: M6, status: planned, depends_on: [ADS-005, ADS-065]}
+  ADS-069: {milestone: M6, status: planned, depends_on: [ADS-058, ADS-065, ADS-066, ADS-067, ADS-068]}
+  ADS-070: {milestone: M7, status: planned, depends_on: [ADS-049]}
+  ADS-071: {milestone: M7, status: planned, depends_on: [ADS-070]}
+  ADS-072: {milestone: M7, status: planned, depends_on: [ADS-019, ADS-070]}
+  ADS-073: {milestone: M7, status: planned, depends_on: [ADS-039, ADS-070]}
+  ADS-074: {milestone: M7, status: planned, depends_on: [ADS-067, ADS-070]}
+  ADS-075: {milestone: M7, status: planned, depends_on: [ADS-068]}
+  ADS-076: {milestone: M7, status: planned, depends_on: [ADS-066]}
+  ADS-077: {milestone: M7, status: planned, depends_on: [ADS-057, ADS-070]}
+  ADS-078: {milestone: M7, status: planned, depends_on: [ADS-011, ADS-064]}
+  ADS-079: {milestone: M7, status: planned, depends_on: [ADS-071, ADS-072, ADS-073, ADS-074, ADS-075, ADS-076, ADS-077, ADS-078]}

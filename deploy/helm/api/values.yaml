@@ -32,6 +32,18 @@ tolerations: []
 # Extra environment variables (merged into container env)
 env: {}
 
+# OpenSearch is disabled by default. Credentials stay in `secretRef`; these
+# values contain only non-secret routing/configuration inputs.
+enterpriseSearch:
+  enabled: false
+  url: ""
+  indexAlias: "compass-support-search"
+  vectorDimensions: 768
+  authSecretKeys:
+    username: OPENSEARCH_USERNAME
+    password: OPENSEARCH_PASSWORD
+    apiKey: OPENSEARCH_API_KEY
+
 supportWorker:
   enabled: false
   replicaCount: 1
@@ -40,6 +52,22 @@ supportWorker:
     - support_worker.py
   env:
     SUPPORT_JOB_WORKER_ENABLED: "true"
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+searchWorker:
+  enabled: false
+  replicaCount: 1
+  command:
+    - python
+    - search_worker.py
+  env:
+    SEARCH_INDEX_WORKER_ENABLED: "true"
   resources:
     requests:
       cpu: 250m

@@ -16,7 +16,6 @@ resource "azurerm_kubernetes_cluster" "aks" {
   default_node_pool {
     name                = "system"
     vm_size             = "Standard_B2s" # Burstable 2 vCPU, 4 GB — similar to t3a.medium
-    node_count          = 1
     min_count           = 1
     max_count           = 2
     enable_auto_scaling = true
@@ -60,7 +59,6 @@ resource "azurerm_kubernetes_cluster_node_pool" "app" {
   name                  = "app"
   kubernetes_cluster_id = azurerm_kubernetes_cluster.aks.id
   vm_size               = "Standard_B2s_v2" # Dev: burstable v2 (prod: Standard_D4s_v5+)
-  node_count            = 1
   min_count             = 1
   max_count             = 3
   enable_auto_scaling   = true

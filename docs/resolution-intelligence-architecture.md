@@ -16,6 +16,16 @@ External write-back is not enabled. Local execution demonstrates the trust and
 execution contract without changing Zendesk, Intercom, a knowledge base, or a product
 tracker.
 
+### Search Authority
+
+OpenSearch is the derived search plane for this workflow. Its support index stores
+lexical fields, dense vectors, tenant/ACL metadata, and index-generation/version
+metadata. It performs exact-term/BM25, vector, and hybrid retrieval before any
+reranking or LLM synthesis. PostgreSQL remains the canonical support record store;
+object storage remains authoritative for uploaded source artifacts. Qdrant is not
+used for the enterprise support-resolution path and is retained only for legacy or
+local compatibility paths outside this workflow.
+
 ## Current Components
 
 Backend:
@@ -24,8 +34,10 @@ Backend:
 - `support.models`: canonical tickets, comments, articles, sync runs, index records,
   durable jobs, and persisted support actions.
 - `support.jobs`: durable sync/index job state and worker execution.
-- `support.indexer`: support-specific Qdrant indexing plus vector/lexical search fusion.
-- `support.lexical`: exact-term scoring for errors, IDs, product names, and plan names.
+- `support.indexer`: support-document indexing into OpenSearch, including lexical
+  fields, dense vectors, ACL metadata, and generation/version state.
+- `support.lexical`: exact-term/BM25 query construction for errors, IDs, product names,
+  and plan names through the OpenSearch provider.
 - `support.insights`: repeat-ticket clustering from normalized support tickets.
 - `support.resolver`: cited resolution generation from fused retrieval results.
 - `support.workflow`: playbook, knowledge-gap, and deflection-estimate assembly.
@@ -45,10 +57,8 @@ flowchart LR
     Sync --> Store
     Store --> Jobs["Durable sync/index jobs"]
     Jobs --> Indexer["Support indexer"]
-    Indexer --> Vector[("Qdrant support index")]
-    Store --> Lexical["Lexical retrieval"]
-    Vector --> Fusion["Weighted result fusion"]
-    Lexical --> Fusion
+    Indexer --> Search[("OpenSearch support index\nBM25 + vector + ACL")]
+    Search --> Fusion["Authorized hybrid result set"]
     Store --> Clusters["Repeat issue clustering"]
     Clusters --> Workflow["Resolution workflow builder"]
     Fusion --> Resolver["Cited resolver"]
@@ -139,10 +149,13 @@ Connector management is exposed under `/api/v1/support-integrations`.
 ## Evidence And Retrieval Rules
 
 Current retrieval:
-- Qdrant vector search finds semantically similar ticket/article chunks.
-- Database-backed lexical search rewards exact query terms and support metadata.
-- Weighted fusion combines vector and lexical ranks and returns `vector_score`,
+- OpenSearch vector search finds semantically similar ticket/article chunks.
+- OpenSearch BM25/exact-term search rewards IDs, errors, product names, plan names,
+  and support metadata.
+- OpenSearch hybrid ranking combines vector and lexical signals and returns `vector_score`,
   `lexical_score`, `fusion_score`, and `retrieval_source` trace fields.
+- Tenant and ACL filters are applied inside the provider before results reach the
+  resolver or reranker.
 - The resolver cites the fused results used in its response.
 
 Current evidence gates:
@@ -184,8 +197,10 @@ Completed locally:
 - demo seed and reset;
 - durable sync/index jobs;
 - repeat clusters and deflection estimate;
-- vector plus lexical retrieval fusion and trace fields;
+- OpenSearch-backed vector plus lexical retrieval, ACL filtering, fusion, and trace fields;
 - cited playbook and knowledge-gap recommendation;
+- bounded LLM resolution with citation validation, abstention, shadow isolation, and
+  redacted telemetry;
 - persisted agent commands;
 - review, approval, rejection, readiness, and local execution flow;
 - audit events and reviewable execution artifacts.

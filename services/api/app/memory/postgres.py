@@ -83,10 +83,19 @@ try:
         SupportCustomer,
         SupportIndexRecord,
         SupportJob,
+        SupportSearchCheckpoint,
+        SupportSearchOutboxEvent,
         SupportSyncRun,
         SupportTicket,
         SupportTicketComment,
     )
+except ImportError:
+    pass
+
+# Import enterprise search interaction events so the table is available for
+# local create_all startup and Alembic autogeneration.
+try:
+    from app.search.persistence import SearchInteractionEventRecord  # noqa: F401
 except ImportError:
     pass
 

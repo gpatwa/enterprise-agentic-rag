@@ -1,0 +1,13 @@
+image:
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: analytics-api-sa
+
+podLabels:
+  azure.workload.identity/use: "true"
+
+env:
+  CLOUD_PROVIDER: azure
+  SECRETS_PROVIDER: azure_kv

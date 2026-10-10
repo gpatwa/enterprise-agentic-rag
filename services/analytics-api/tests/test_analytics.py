@@ -6,6 +6,7 @@ Covers schema context, SQL safety, formatting, shared contracts, and the
 standalone service boundary.
 """
 import ast
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -409,5 +410,5 @@ class TestSyntaxCheck:
         "app/main.py",
     ])
     def test_file_parses(self, filepath):
-        source = open(filepath).read()
+        source = (Path(__file__).parent.parent / filepath).read_text()
         ast.parse(source)  # Raises SyntaxError if invalid

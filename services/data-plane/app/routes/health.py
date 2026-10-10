@@ -7,7 +7,8 @@ returning data plane metadata for the control plane.
 """
 import time
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 router = APIRouter()
 
@@ -19,6 +20,12 @@ _start_time = time.time()
 # Data plane metadata (set during startup)
 _dp_id = "unknown"
 _dp_version = "0.0.0"
+
+
+@router.get("/metrics", include_in_schema=False)
+async def metrics() -> Response:
+    """Prometheus scrape endpoint for process/runtime metrics."""
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 def set_health_clients(vectordb, graphdb):

@@ -2,17 +2,22 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, desc, select
+from sqlalchemy.exc import IntegrityError
 
 from app.audit import manager as audit_mgr
 from app.auth.tenant import TenantContext, get_tenant_context
 from app.config import settings
+from app.search.events import InteractionKind, SearchInteractionEvent, pseudonymize_principal
+from app.search.persistence import persist_interaction_event
+from app.support.command_policy import PolicyOutcome, evaluate_support_command
+from app.support.commands import SupportCommand
 from app.support.demo import DEMO_PROVIDER, seed_demo_data
 from app.support.indexer import SupportIndexError, support_indexer
 from app.support.insights import repeat_ticket_insights
@@ -21,7 +26,11 @@ from app.support.models import SupportAction, SupportSyncRun, SupportTicket
 from app.support.resolver import SupportResolveError, support_resolver
 from app.support.store import support_data_store
 from app.support.sync import SupportSyncError, support_sync_runner
-from app.support.workflow import SupportWorkflowError, build_repeat_resolution_workflow
+from app.support.workflow import (
+    SupportWorkflowError,
+    build_repeat_resolution_workflow,
+    emit_support_interaction_event,
+)
 
 router = APIRouter()
 ADMIN_ROLES = ("admin",)
@@ -91,11 +100,24 @@ class SupportSearchResultResponse(BaseModel):
     chunk_count: Optional[int]
 
 
+class SupportInteractionRequest(BaseModel):
+    idempotency_key: str = Field(min_length=1, max_length=255)
+    kind: InteractionKind
+    document_id: Optional[str] = Field(default=None, max_length=255)
+    request_id: Optional[str] = Field(default=None, max_length=255)
+    consent_granted: bool = False
+    expires_at: Optional[datetime] = None
+    metadata: dict[str, str] = Field(default_factory=dict)
+
+
 class SupportResolveRequest(BaseModel):
     question: str
     provider: Optional[str] = None
     status: Optional[str] = None
     limit: int = 6
+    request_id: Optional[str] = Field(default=None, max_length=255)
+    consent_granted: bool = False
+    expires_at: Optional[datetime] = None
 
 
 class SupportCitationResponse(BaseModel):
@@ -108,12 +130,26 @@ class SupportCitationResponse(BaseModel):
     score: Optional[float]
 
 
+class SupportEvidenceResponse(BaseModel):
+    verification_status: str = Field(min_length=1, max_length=64)
+    citation_count: int = Field(ge=0)
+
+
+class SupportNextActionResponse(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    explanation: str = Field(min_length=1, max_length=1000)
+
+
 class SupportResolveResponse(BaseModel):
     answer: str
     confidence: str
     citations: list[SupportCitationResponse]
     matches: list[SupportSearchResultResponse]
     next_action: str
+    evidence: SupportEvidenceResponse
+    abstention: bool = False
+    explanation: Optional[str] = Field(default=None, max_length=2000)
+    next_action_data: SupportNextActionResponse
 
 
 class SupportSyncIndexJobRequest(BaseModel):
@@ -206,6 +242,13 @@ class SupportActionCreateRequest(BaseModel):
     action_type: str = Field(default="support_agent_command", max_length=64)
 
 
+class SupportActionProposalRequest(BaseModel):
+    command: SupportCommand
+    cluster_title: str = Field(default="Typed support resolution", min_length=1, max_length=500)
+    cluster_id: Optional[str] = None
+    command_text: Optional[str] = None
+
+
 class SupportActionStatusRequest(BaseModel):
     status: str
     review_notes: Optional[str] = None
@@ -225,6 +268,12 @@ class SupportActionResponse(BaseModel):
     cluster_title: str
     command_text: str
     workflow: dict[str, Any]
+    command_contract_version: Optional[str]
+    command_payload: Optional[dict[str, Any]]
+    policy_status: Optional[str]
+    policy_reason: Optional[str]
+    evidence_ids: Optional[list[str]]
+    idempotency_key: Optional[str]
     review_notes: Optional[str]
     approved_by: Optional[str]
     approved_at: Optional[str]
@@ -271,6 +320,47 @@ async def create_support_action(
 
     payload = _action_to_response(action).model_dump()
     await _audit_action(ctx, "create", True, start, payload, status.HTTP_201_CREATED)
+    return {"action": payload}
+
+
+@router.post("/actions/proposals", response_model=dict, status_code=status.HTTP_201_CREATED)
+async def create_support_action_proposal(
+    body: SupportActionProposalRequest,
+    ctx: TenantContext = Depends(get_tenant_context),
+):
+    from app.memory.postgres import AsyncSessionLocal
+
+    if body.command.context.tenant_id != ctx.tenant_id:
+        raise HTTPException(status_code=403, detail="support command tenant mismatch")
+    decision = evaluate_support_command(body.command)
+    if decision.outcome is PolicyOutcome.DENY:
+        raise HTTPException(status_code=403, detail=f"support command denied: {decision.reason_code.value}")
+    if AsyncSessionLocal is None:
+        raise HTTPException(status_code=503, detail="database unavailable")
+
+    command_payload = body.command.model_dump(mode="json")
+    command_payload.update(policy_version="support-policy.v1", evidence_version="evidence.v1")
+    start = time.monotonic()
+    async with AsyncSessionLocal() as session:
+        action = SupportAction(
+            id=f"support-action-{uuid4().hex[:12]}", tenant_id=ctx.tenant_id,
+            created_by=ctx.user_id, action_type=body.command.command_type.value,
+            status="generated", cluster_id=body.cluster_id, cluster_title=body.cluster_title,
+            command_text=body.command_text or body.command.command_type.value,
+            workflow={"proposal": True}, command_contract_version=body.command.contract_version,
+            command_payload=command_payload, policy_status=decision.outcome.value,
+            policy_reason=decision.reason_code.value, evidence_ids=list(body.command.evidence_ids),
+            idempotency_key=body.command.idempotency_key,
+        )
+        session.add(action)
+        try:
+            await session.commit()
+        except IntegrityError as exc:
+            await session.rollback()
+            raise HTTPException(status_code=409, detail="duplicate support command idempotency key") from exc
+        await session.refresh(action)
+    payload = _action_to_response(action).model_dump()
+    await _audit_action(ctx, "create_proposal", True, start, payload, status.HTTP_201_CREATED)
     return {"action": payload}
 
 
@@ -353,6 +443,14 @@ async def update_support_action_status(
             )
             raise HTTPException(status_code=404, detail="support action not found")
 
+        if action.command_payload:
+            allowed = {
+                "generated": {"approved", "rejected"},
+                "approved": {"ready_to_execute"},
+            }.get(action.status, set())
+            if body.status not in allowed:
+                raise HTTPException(status_code=409, detail="invalid support proposal state transition")
+
         action.status = body.status
         action.review_notes = body.review_notes
         if body.status == "approved":
@@ -366,6 +464,16 @@ async def update_support_action_status(
         await session.refresh(action)
 
     payload = _action_to_response(action).model_dump()
+    if body.status in {"approved", "rejected"}:
+        await emit_support_interaction_event(
+            ctx=ctx,
+            kind=InteractionKind.APPROVE if body.status == "approved" else InteractionKind.REJECT,
+            correlation_id=action.id,
+            document_id=action.id,
+            consent_granted=True,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=90),
+            metadata={"action_status": body.status},
+        )
     await _audit_action(ctx, "status", True, start, payload)
     return {"action": payload}
 
@@ -419,6 +527,15 @@ async def execute_support_action(
         await session.refresh(action)
 
     payload = _action_to_response(action).model_dump()
+    await emit_support_interaction_event(
+        ctx=ctx,
+        kind=InteractionKind.EXECUTE,
+        correlation_id=action.id,
+        document_id=action.id,
+        consent_granted=True,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=90),
+        metadata={"action_status": "executed"},
+    )
     await _audit_action(ctx, "execute", True, start, payload)
     return {"action": payload}
 
@@ -773,6 +890,41 @@ async def search_support_resolution_index(
     }
 
 
+@router.post("/interactions", response_model=dict)
+async def record_support_search_interaction(
+    body: SupportInteractionRequest,
+    ctx: TenantContext = Depends(get_tenant_context),
+):
+    """Record an explicitly consented interaction without storing raw query text."""
+    from app.memory.postgres import AsyncSessionLocal
+
+    if AsyncSessionLocal is None:
+        raise HTTPException(status_code=503, detail="database unavailable")
+    occurred_at = datetime.now(timezone.utc)
+    expires_at = body.expires_at or occurred_at + timedelta(days=90)
+    event = SearchInteractionEvent(
+        idempotency_key=body.idempotency_key,
+        tenant_id=ctx.tenant_id,
+        principal_pseudonym=pseudonymize_principal(
+            ctx.user_id,
+            tenant_id=ctx.tenant_id,
+            salt=settings.JWT_SECRET_KEY,
+        ),
+        purpose="support-search",
+        kind=body.kind,
+        request_id=body.request_id,
+        document_id=body.document_id,
+        occurred_at=occurred_at,
+        expires_at=expires_at,
+        consent_granted=body.consent_granted,
+        metadata=body.metadata,
+    )
+    async with AsyncSessionLocal() as session:
+        accepted = await persist_interaction_event(session, event)
+        await session.commit()
+    return {"accepted": accepted, "duplicate": not accepted and body.consent_granted}
+
+
 @router.post("/resolve", response_model=dict)
 async def resolve_support_issue(
     body: SupportResolveRequest,
@@ -809,7 +961,39 @@ async def resolve_support_issue(
             "match_count": len(result["matches"]),
         },
     )
-    return {"resolution": SupportResolveResponse(**result).model_dump()}
+    correlation_id = body.request_id or f"resolution-{uuid4().hex}"
+    await emit_support_interaction_event(
+        ctx=ctx,
+        kind=InteractionKind.RESOLVE,
+        correlation_id=correlation_id,
+        document_id=f"resolution:{uuid4().hex}",
+        consent_granted=body.consent_granted,
+        expires_at=body.expires_at or datetime.now(timezone.utc) + timedelta(days=90),
+        metadata={"confidence": str(result["confidence"]), "match_count": str(len(result["matches"]))},
+    )
+    citations = result.get("citations", [])
+    verification_status = result.get("verification_status")
+    if not isinstance(verification_status, str) or not verification_status.strip():
+        verification_status = result.get("citation_verification_status")
+    if not isinstance(verification_status, str) or not verification_status.strip():
+        verification_status = "unverified" if result.get("abstention", False) else "fallback"
+    next_action = result["next_action"]
+    explanation = result.get("explanation")
+    if explanation is not None and not isinstance(explanation, str):
+        raise HTTPException(status_code=500, detail="invalid resolution explanation")
+    response = SupportResolveResponse(
+        **result,
+        evidence={
+            "verification_status": verification_status,
+            "citation_count": len(citations),
+        },
+        explanation=explanation,
+        next_action_data={
+            "name": next_action,
+            "explanation": explanation or "Follow the recommended support workflow.",
+        },
+    )
+    return {"resolution": response.model_dump()}
 
 
 @router.get("/tickets", response_model=dict)
@@ -914,6 +1098,12 @@ def _action_to_response(action: SupportAction) -> SupportActionResponse:
         cluster_title=action.cluster_title,
         command_text=action.command_text,
         workflow=action.workflow or {},
+        command_contract_version=action.command_contract_version,
+        command_payload=action.command_payload,
+        policy_status=action.policy_status,
+        policy_reason=action.policy_reason,
+        evidence_ids=action.evidence_ids,
+        idempotency_key=action.idempotency_key,
         review_notes=action.review_notes,
         approved_by=action.approved_by,
         approved_at=_dt(action.approved_at),
@@ -960,6 +1150,11 @@ def _mock_support_action_execution(
 
     return {
         "mode": "local_mock",
+        "receipt_version": "support-execution-receipt.v1",
+        "command_version": action.command_contract_version,
+        "evidence_version": (action.command_payload or {}).get("evidence_version"),
+        "policy_version": (action.command_payload or {}).get("policy_version"),
+        "evidence_ids": list(action.evidence_ids or []),
         "executed_by": executed_by,
         "executed_at": _dt(executed_at),
         "notes": notes,

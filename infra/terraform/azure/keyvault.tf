@@ -45,6 +45,16 @@ resource "azurerm_key_vault" "main" {
     ]
   }
 
+  # Analytics API can read only the secrets needed by its provider adapters.
+  access_policy {
+    tenant_id = data.azurerm_client_config.current.tenant_id
+    object_id = azurerm_user_assigned_identity.analytics_api_identity.principal_id
+
+    secret_permissions = [
+      "Get", "List",
+    ]
+  }
+
   tags = {
     Project     = "Enterprise-RAG"
     Environment = var.environment

@@ -185,6 +185,67 @@ class SupportIndexRecord(Base):
     )
 
 
+class SupportSearchOutboxEvent(Base):
+    """Durable source change waiting to be projected into enterprise search."""
+
+    __tablename__ = "support_search_outbox"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    idempotency_key = Column(String(255), nullable=False)
+    tenant_id = Column(String(255), nullable=False, index=True)
+    provider = Column(String(64), nullable=False, index=True)
+    event_type = Column(String(64), nullable=False, index=True)
+    source_type = Column(String(32), nullable=False)
+    source_id = Column(String(255), nullable=False)
+    content_version = Column(String(255), nullable=True)
+    payload = Column(JSON, nullable=True)
+    status = Column(String(32), nullable=False, default="queued", index=True)
+    attempt_count = Column(Integer, nullable=False, default=0)
+    max_attempts = Column(Integer, nullable=False, default=5)
+    available_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    locked_by = Column(String(255), nullable=True)
+    locked_at = Column(DateTime, nullable=True)
+    last_error = Column(Text, nullable=True)
+    processed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_support_search_outbox_idempotency"),
+        Index("idx_support_search_outbox_claim", "status", "available_at", "locked_at"),
+        Index("idx_support_search_outbox_tenant_source", "tenant_id", "source_type", "source_id"),
+    )
+
+
+class SupportSearchCheckpoint(Base):
+    """Per-tenant/provider cursor for resumable source synchronization."""
+
+    __tablename__ = "support_search_checkpoints"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(String(255), nullable=False, index=True)
+    provider = Column(String(64), nullable=False, index=True)
+    stream_key = Column(String(255), nullable=False)
+    cursor = Column(String(1000), nullable=True)
+    last_event_id = Column(String(255), nullable=True)
+    last_source_updated_at = Column(DateTime, nullable=True)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "provider",
+            "stream_key",
+            name="uq_support_search_checkpoint_stream",
+        ),
+        Index("idx_support_search_checkpoint_tenant_provider", "tenant_id", "provider"),
+    )
+
+
 class SupportJob(Base):
     __tablename__ = "support_jobs"
 
@@ -233,6 +294,12 @@ class SupportAction(Base):
     cluster_title = Column(String(500), nullable=False)
     command_text = Column(Text, nullable=False)
     workflow = Column(JSON, default=dict)
+    command_contract_version = Column(String(32), nullable=True)
+    command_payload = Column(JSON, nullable=True)
+    policy_status = Column(String(32), nullable=True)
+    policy_reason = Column(Text, nullable=True)
+    evidence_ids = Column(JSON, nullable=True)
+    idempotency_key = Column(String(255), nullable=True)
     review_notes = Column(Text, nullable=True)
     approved_by = Column(String(255), nullable=True)
     approved_at = Column(DateTime, nullable=True)
@@ -247,6 +314,11 @@ class SupportAction(Base):
     )
 
     __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "idempotency_key",
+            name="uq_support_action_tenant_idempotency",
+        ),
         Index("idx_support_action_tenant_status_created", "tenant_id", "status", "created_at"),
         Index("idx_support_action_tenant_cluster", "tenant_id", "cluster_id"),
     )

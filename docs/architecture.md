@@ -8,6 +8,27 @@
 4. **Async ingestion** — document processing runs as a separate Ray pipeline, never blocking query latency.
 5. **Zero static credentials** — all secrets live in Key Vault / Secrets Manager, injected at runtime via Workload Identity.
 
+### Architecture Status
+
+For enterprise search, support resolution, personalization, and recommendation,
+**OpenSearch is the target and authoritative derived search plane**. It owns
+BM25/exact-term fields, dense-vector fields, hybrid retrieval, tenant/ACL filters,
+and index-generation metadata. PostgreSQL and object storage remain canonical
+system-of-record stores. Qdrant remains only as a legacy/local compatibility
+adapter for older generic RAG and multimodal paths; it is not the authority for
+the enterprise support-search workflow.
+
+The standalone analytics product is evolving through the
+[Agentic Data Stack Execution Plan](AGENTIC_DATA_STACK_EXECUTION_PLAN.md).
+Its Archify-generated [animated system diagram](diagrams/agentic-data-stack-system.html)
+shows the ontology/context layer, PostgreSQL customer path, and DuckDB
+local/data-lake path. The companion
+[request workflow](diagrams/agentic-data-stack-request.html) follows the bounded
+agent graph, deterministic trust gates, execution, evidence, and reviewed
+improvement loop. This analytics path is separately deployable and does not
+make the support API its runtime boundary. Diagram sources and update rules are
+documented in the [diagram README](diagrams/README.md).
+
 ---
 
 ## 1. System Architecture (Multi-Cloud)
@@ -42,7 +63,7 @@ graph TB
                 vLLM_AWS["vLLM Engine\nLlama-3-70B"]
                 Embed_AWS["Embedding Engine\nnomic-embed-text / bge-m3"]
             end
-            Qdrant_AWS["Qdrant\nVector DB"]
+            Search_AWS["OpenSearch\nEnterprise Search\nBM25 · vector · ACL"]
             Neo4j_AWS["Neo4j\nGraph DB"]
         end
         subgraph Managed_AWS["Managed Services"]
@@ -68,7 +89,7 @@ graph TB
                 vLLM_AZ["vLLM Engine\nLlama-3-70B"]
                 Embed_AZ["Embedding Engine\nnomic-embed-text / bge-m3"]
             end
-            Qdrant_AZ["Qdrant\nVector DB"]
+            Search_AZ["OpenSearch\nEnterprise Search\nBM25 · vector · ACL"]
             Neo4j_AZ["Neo4j\nGraph DB"]
         end
         subgraph Managed_AZ["Managed Services"]
@@ -89,12 +110,12 @@ graph TB
     API_AWS <--> Aurora & ElastiCache
     API_AWS --> Ray_AWS & Sandbox_AWS
     Ray_AWS --> vLLM_AWS & Embed_AWS
-    Ray_AWS <--> Qdrant_AWS & Neo4j_AWS
+    Ray_AWS <--> Search_AWS & Neo4j_AWS
 
     API_AZ <--> PgFlex & AzRedis
     API_AZ --> Ray_AZ & Sandbox_AZ
     Ray_AZ --> vLLM_AZ & Embed_AZ
-    Ray_AZ <--> Qdrant_AZ & Neo4j_AZ
+    Ray_AZ <--> Search_AZ & Neo4j_AZ
 
     SM -.->|"ESO + IRSA"| API_AWS
     KeyVault -.->|"ESO + Workload Identity"| API_AZ
@@ -113,7 +134,7 @@ sequenceDiagram
     participant C as Semantic Cache (Redis)
     participant LG as LangGraph Agent
     participant E as Embedding Engine (Ray)
-    participant V as Qdrant (Vector Search)
+    participant S as OpenSearch (BM25 + Vector + ACL)
     participant G as Neo4j (Graph Search)
     participant R as Re-ranker
     participant L as vLLM (Llama-3)
@@ -129,12 +150,12 @@ sequenceDiagram
     else Cache MISS
         A->>LG: Start LangGraph execution
         LG->>E: Embed query
-        par Parallel retrieval
-            E->>V: Vector search (top-k chunks)
+        par Hybrid retrieval
+            E->>S: BM25 + vector search with tenant/ACL filters
         and
             LG->>G: Graph search (entity relationships)
         end
-        V-->>LG: Relevant chunks
+        S-->>LG: Ranked authorized candidates
         G-->>LG: Entity graph context
         LG->>R: Re-rank merged results (filter score < threshold)
         R-->>LG: Top-ranked chunks
@@ -181,9 +202,10 @@ flowchart LR
     end
 
     subgraph Indexes
-        QdrantIdx["Qdrant\nVector Index"]
+        OpenSearchIdx["OpenSearch\nLexical + Vector Index"]
         Neo4jIdx["Neo4j\nGraph Index"]
-        EmbedI -->|"Upsert vectors"| QdrantIdx
+        Chunk -->|"Index text + support metadata"| OpenSearchIdx
+        EmbedI -->|"Index dense vectors"| OpenSearchIdx
         GraphEx -->|"Upsert nodes/edges"| Neo4jIdx
     end
 ```
@@ -282,7 +304,7 @@ flowchart TD
     JWT --> API["FastAPI\nTenantContext injection"]
 
     API --> PG["Postgres\nWHERE tenant_id = ?"]
-    API --> QD["Qdrant\nfilter: tenant_id"]
+    API --> OS["OpenSearch\nfilter: tenant_id + ACL"]
     API --> N4J["Neo4j\nWHERE n.tenant_id = ?"]
     API --> STORE["S3 / Blob\nuploads/{tenant_id}/{user_id}/..."]
     API --> REDIS["Redis\nKey prefix: tenant:{id}:..."]
@@ -295,7 +317,8 @@ flowchart TD
 
 ## 7. Re-Ranking Layer
 
-After hybrid retrieval merges vector + graph results, an optional re-ranker re-scores documents for relevance:
+After OpenSearch hybrid retrieval combines BM25/exact-term and vector candidates,
+with optional graph context, an optional re-ranker re-scores documents for relevance:
 
 | Provider | Env Var | Latency | Use Case |
 |----------|---------|---------|----------|
@@ -307,7 +330,8 @@ After hybrid retrieval merges vector + graph results, an optional re-ranker re-s
 - Scores normalized to 0.0–1.0 range
 - Threshold filtering (default 0.3) removes irrelevant chunks but always keeps at least 1
 - Graceful failure — any error falls back to original document order
-- Graph results are prioritized (merged before vector results)
+- OpenSearch applies tenant/ACL filters before candidates reach the re-ranker
+- Graph context is supplemental and never broadens the authorized search scope
 
 ---
 
@@ -514,7 +538,8 @@ The generic loader (`scripts/seed_dataset.py`) auto-generates a `schema_context.
 | API | FastAPI | FastAPI | Query orchestration, auth, streaming |
 | AI engines | Ray Serve + vLLM + Embedding | Ray Serve + vLLM + Embedding | LLM inference, embeddings (nomic-embed-text / bge-m3) |
 | Re-ranker | none / LLM / cross-encoder | none / LLM / cross-encoder | Post-retrieval relevance scoring |
-| Vector DB | Qdrant (in-cluster) | Qdrant (in-cluster) | Semantic similarity search |
+| Search plane | OpenSearch (private endpoint/provider) | OpenSearch (private endpoint/provider) | BM25, exact-term, vector, hybrid ranking, tenant/ACL filters |
+| Legacy vector adapter | Qdrant (compatibility/local only) | Qdrant (compatibility/local only) | Older generic RAG or multimodal paths; not enterprise support authority |
 | Graph DB | Neo4j (in-cluster Helm) | Neo4j (in-cluster Helm) | Entity relationship queries |
 | Relational DB | Aurora Postgres | Postgres Flexible Server | Chat history, session state |
 | Cache | ElastiCache Redis | Azure Cache for Redis | Semantic cache, rate limiting |
@@ -567,7 +592,7 @@ graph TB
     subgraph DP1["Data Plane — Customer A (eu-west-1)"]
         DPAuth1["API Key Auth\n(X-DataPlane-Key)"]
         Pipeline1["LangGraph Agent\nPlan → Retrieve → Respond → Evaluate"]
-        VDB1["Qdrant"]
+        VDB1["OpenSearch\nBM25 + vector + ACL"]
         GDB1["Neo4j"]
         LLM1["LLM (Ray/OpenAI)"]
         PG1["Postgres\n(chat history)"]
@@ -580,7 +605,7 @@ graph TB
     subgraph DP2["Data Plane — Customer B (us-east-1)"]
         DPAuth2["API Key Auth"]
         Pipeline2["LangGraph Agent"]
-        VDB2["Qdrant"]
+        VDB2["OpenSearch\nBM25 + vector + ACL"]
         LLM2["LLM"]
     end
 

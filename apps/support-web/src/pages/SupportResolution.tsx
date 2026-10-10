@@ -646,6 +646,12 @@ export function SupportResolutionPage() {
           onSaveAction={saveWorkflowAction}
         />
 
+        <GroundedResolutionState
+          resolution={resolveMutation.data?.resolution}
+          workflow={workflowMutation.data?.workflow}
+          action={latestExecutedAction}
+        />
+
         <ActionQueuePanel
           actions={actions}
           isLoading={actionsQuery.isLoading}
@@ -1230,6 +1236,85 @@ function ResolutionCard({ resolution }: { resolution: SupportResolution }) {
         ))}
       </div>
     </article>
+  );
+}
+
+function GroundedResolutionState({
+  resolution,
+  workflow,
+  action,
+}: {
+  resolution: SupportResolution | undefined;
+  workflow: SupportResolutionWorkflow | undefined;
+  action: SupportAction | undefined;
+}) {
+  const citations = resolution?.citations ?? workflow?.playbook.citations ?? [];
+  const confidence = resolution?.confidence ?? workflow?.playbook.confidence;
+  const abstained = confidence === 'low' || citations.length === 0;
+  const command = workflow ? buildAgentCommand(workflow) : undefined;
+  const approval = action ? formatLabel(action.status) : 'Not queued';
+
+  return (
+    <section className="glass rounded-2xl p-4 md:p-5 mb-6" aria-labelledby="grounded-state-heading">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-accent">
+            <ShieldCheck className="w-4 h-4" />
+            Local demo trust state
+          </div>
+          <h2 id="grounded-state-heading" className="text-lg font-semibold tracking-tight mt-1">
+            Grounded resolution state
+          </h2>
+          <p className="text-sm text-fg-secondary mt-1">
+            Why the answer is usable, what remains reviewable, and what can happen next.
+          </p>
+        </div>
+        <span className="text-[11px] px-2 py-1 rounded border border-governance/20 bg-governance/10 text-governance whitespace-nowrap">
+          Local only
+        </span>
+      </div>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-2">
+        <TrustPill label="Why" value={resolution ? 'Cited answer' : 'Awaiting resolution'} tone="accent" />
+        <TrustPill label="Evidence" value={`${citations.length} citation${citations.length === 1 ? '' : 's'}`} tone="knowledge" />
+        <TrustPill label="Confidence" value={confidence ? formatLabel(confidence) : 'Pending'} tone="accent" />
+        <TrustPill label="Abstention" value={abstained ? 'Review required' : 'Not triggered'} tone={abstained ? 'governance' : 'knowledge'} />
+        <TrustPill label="Approval" value={approval} tone="governance" />
+      </div>
+
+      <div className="grid lg:grid-cols-[1fr_1fr] gap-3 mt-3">
+        <div className="rounded-xl border border-border/70 bg-surface-muted/30 p-4">
+          <div className="text-xs uppercase tracking-wider text-fg-muted">Next action and risk</div>
+          <p className="text-sm text-fg-secondary mt-2">
+            {resolution?.next_action ? formatLabel(resolution.next_action) : workflow?.playbook.next_action ? formatLabel(workflow.playbook.next_action) : 'Build or review the resolution first.'}
+          </p>
+          <p className="text-xs text-fg-muted mt-2">
+            Risk: {abstained ? 'Do not act until evidence is reviewed.' : 'Low risk; approval remains mandatory before execution.'}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {citations.slice(0, 5).map((citation) => (
+              <span key={`${citation.label}-${citation.source_id}`} className="text-[11px] px-2 py-1 rounded border border-border bg-bg/40 text-fg-muted">
+                {citation.label} {citation.title || citation.source_id || citation.source_type}
+              </span>
+            ))}
+            {citations.length === 0 && <span className="text-xs text-fg-muted">No evidence attached.</span>}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border/70 bg-bg/30 overflow-hidden">
+          <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2 text-[11px] uppercase tracking-wider text-fg-muted">
+            <Terminal className="w-3.5 h-3.5" />
+            Typed command
+          </div>
+          <pre className="max-h-36 overflow-auto p-3 text-xs leading-relaxed text-fg-secondary whitespace-pre-wrap break-words">
+            {command || 'No command proposed until a grounded workflow is built.'}
+          </pre>
+          <div className="border-t border-border/60 px-3 py-2 text-[11px] text-fg-muted">
+            {action?.execution_result ? 'Local execution outcome recorded; no external system changed.' : 'Proposal only; human approval is required.'}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 

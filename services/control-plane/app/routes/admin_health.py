@@ -2,7 +2,8 @@
 """
 Health and admin dashboard endpoints for the control plane.
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy import func, select
 
 from .. import db as db_module
@@ -32,6 +33,12 @@ async def readiness():
             content={"status": "not_ready", "error": str(e)},
             status_code=503,
         )
+
+
+@router.get("/metrics", include_in_schema=False)
+async def metrics() -> Response:
+    """Prometheus scrape endpoint for process/runtime metrics."""
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @router.get("/dashboard")

@@ -1,0 +1,45 @@
+name: CI (architecture diagrams)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/diagrams/**"
+      - "docs/architecture.md"
+      - "docs/AGENTIC_DATA_STACK_EXECUTION_PLAN.md"
+      - "scripts/architecture/**"
+      - ".github/workflows/ci-architecture.yml"
+      - ".gitignore"
+      - "Makefile"
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/diagrams/**"
+      - "docs/architecture.md"
+      - "docs/AGENTIC_DATA_STACK_EXECUTION_PLAN.md"
+      - "scripts/architecture/**"
+      - ".github/workflows/ci-architecture.yml"
+      - ".gitignore"
+      - "Makefile"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate and detect generated drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build diagrams with pinned Archify
+        run: make architecture-build
+
+      - name: Reject stale generated diagrams
+        run: git diff --exit-code -- docs/diagrams/agentic-data-stack-system.html docs/diagrams/agentic-data-stack-request.html

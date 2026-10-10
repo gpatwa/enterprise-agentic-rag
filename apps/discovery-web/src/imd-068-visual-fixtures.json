@@ -1,0 +1,24 @@
+{
+  "viewports": {
+    "desktop": { "width": 1280, "height": 900 },
+    "mobile": { "width": 390, "height": 844 }
+  },
+  "states": [
+    "search",
+    "search-loading",
+    "search-empty",
+    "search-error",
+    "home",
+    "details",
+    "persona",
+    "feedback",
+    "ranking-inspector"
+  ],
+  "layoutContract": {
+    "desktopColumns": 3,
+    "mobileColumns": 1,
+    "minimumBodyWidth": 320,
+    "focusOutlineWidth": 2,
+    "focusOutlineOffset": 3
+  }
+}

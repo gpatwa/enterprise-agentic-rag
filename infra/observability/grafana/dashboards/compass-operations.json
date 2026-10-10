@@ -1,0 +1,98 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Healthy scrape targets",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "targets": [{"expr": "sum(up)", "legendFormat": "healthy"}],
+      "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 5}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "auto", "colorMode": "background"}
+    },
+    {
+      "type": "stat",
+      "title": "Scrape targets",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "targets": [{"expr": "count(up)", "legendFormat": "targets"}],
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "auto", "colorMode": "value"}
+    },
+    {
+      "type": "timeseries",
+      "title": "Container CPU",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "targets": [{"expr": "topk(10, sum by (name) (rate(container_cpu_usage_seconds_total{name=~\".+\"}[5m])) * 100)", "legendFormat": "{{name}}"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Container memory",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "targets": [{"expr": "topk(10, sum by (name) (container_memory_working_set_bytes{name=~\".+\"}))", "legendFormat": "{{name}}"}],
+      "fieldConfig": {"defaults": {"unit": "bytes", "min": 0}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Support API request rate",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "targets": [{"expr": "sum by (status) (rate(rag_api_requests_total[5m]))", "legendFormat": "status {{status}}"}],
+      "fieldConfig": {"defaults": {"unit": "reqps", "min": 0}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Support API p95 latency",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(rag_api_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p95"}],
+      "fieldConfig": {"defaults": {"unit": "s", "min": 0}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "LLM token rate",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+      "targets": [{"expr": "sum by (type) (rate(rag_llm_tokens_total[5m]))", "legendFormat": "{{type}}"}],
+      "fieldConfig": {"defaults": {"unit": "short", "min": 0}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "PostgreSQL connections",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+      "targets": [{"expr": "sum(pg_stat_database_numbackends)", "legendFormat": "connections"}],
+      "fieldConfig": {"defaults": {"unit": "short", "min": 0}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Redis memory",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 28},
+      "targets": [{"expr": "redis_memory_used_bytes", "legendFormat": "used"}],
+      "fieldConfig": {"defaults": {"unit": "bytes", "min": 0}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "OpenSearch documents",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28},
+      "targets": [{"expr": "sum(elasticsearch_indices_docs_total) by (name)", "legendFormat": "{{name}}"}],
+      "fieldConfig": {"defaults": {"unit": "short", "min": 0}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["compass", "operations", "local"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Compass Operations",
+  "uid": "compass-operations",
+  "version": 1
+}

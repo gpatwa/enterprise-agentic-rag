@@ -3,6 +3,18 @@
 > This document tracks the original support/RAG platform roadmap. The
 > catalog-neutral enterprise analytics program is maintained separately in
 > [Enterprise Analytics Roadmap and Execution Plan](ENTERPRISE_ANALYTICS_EXECUTION_PLAN.md).
+> Its next integrated agent-graph, ontology/context, harness, and evaluation
+> program is maintained in the
+> [Agentic Data Stack Execution Plan](AGENTIC_DATA_STACK_EXECUTION_PLAN.md).
+> The OpenSearch migration, enterprise retrieval, personalization, and
+> recommendation program is maintained in
+> [Enterprise Search and Recommendation OpenSearch Execution Plan](ENTERPRISE_SEARCH_OPENSEARCH_EXECUTION_PLAN.md).
+> The bounded LLM reasoning, grounded resolution, and typed action program is
+> maintained in
+> [LLM Search and Resolution Intelligence Execution Plan](LLM_RESOLUTION_INTELLIGENCE_EXECUTION_PLAN.md).
+> The separate Roblox-like search, recommendation, and personalization vertical
+> is maintained in the
+> [Immersive Discovery Vertical Execution Plan](IMMERSIVE_DISCOVERY_EXECUTION_PLAN.md).
 
 ## Current State (v1.0)
 

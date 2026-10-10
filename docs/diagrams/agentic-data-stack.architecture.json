@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Agentic Data Stack",
+    "subtitle": "From a business question to a governed, replayable outcome",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "output": "agentic-data-stack.architecture.html",
+    "views": [
+      {
+        "id": "question-to-answer",
+        "label": "Question to trusted answer",
+        "focus": ["callers", "api_identity", "bounded_agent", "trust_gate", "execution_gateway", "postgres", "duckdb", "evidence"],
+        "note": "Follow an authenticated question through planning, policy, read-only execution, and evidence."
+      },
+      {
+        "id": "trusted-context",
+        "label": "Trusted context",
+        "focus": ["context_sources", "opensearch", "semantic_registry", "bounded_agent"],
+        "note": "See how catalog metadata and certified semantics become a bounded context pack."
+      },
+      {
+        "id": "execution-options",
+        "label": "PostgreSQL and DuckDB",
+        "focus": ["trust_gate", "execution_gateway", "postgres", "duckdb", "evidence"],
+        "note": "Both engines compile from certified intent, but only the customer warehouse proves its own policy."
+      },
+      {
+        "id": "reviewed-improvement",
+        "label": "Reviewed improvement",
+        "focus": ["evidence", "review_promotion", "semantic_registry"],
+        "note": "Feedback creates a candidate; evaluation and human review control promotion."
+      }
+    ]
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [48, 74],
+    "cols": 6,
+    "gapX": 34,
+    "gapY": 78,
+    "cellW": 120,
+    "cellH": 78
+  },
+  "components": [
+    {"id": "context_sources", "type": "external", "label": "Context Sources", "sublabel": "dbt + OpenMetadata + DB", "row": 0, "col": 1},
+    {"id": "opensearch", "type": "database", "label": "OpenSearch", "sublabel": "lexical + vector + ACL", "row": 0, "col": 2},
+    {"id": "semantic_registry", "type": "database", "label": "Semantic Registry", "sublabel": "certified contracts + Ossie", "row": 0, "col": 3},
+    {"id": "callers", "type": "external", "label": "People and Agents", "sublabel": "web + REST + MCP", "row": 1, "col": 0},
+    {"id": "api_identity", "type": "security", "label": "API + Identity", "sublabel": "tenant + user + purpose", "row": 1, "col": 1},
+    {"id": "bounded_agent", "type": "backend", "label": "Bounded Agent Graph", "sublabel": "context + intent + clarify", "row": 1, "col": 2},
+    {"id": "trust_gate", "type": "security", "label": "Trust Gate", "sublabel": "compile + policy + cost", "row": 1, "col": 3},
+    {"id": "execution_gateway", "type": "backend", "label": "Read-only Gateway", "sublabel": "budgets + cancellation", "row": 1, "col": 4},
+    {"id": "evidence", "type": "database", "label": "Evidence + Audit", "sublabel": "answer + trace + replay", "row": 1, "col": 5},
+    {"id": "review_promotion", "type": "security", "label": "Review + Promotion", "sublabel": "eval + approval + rollback", "row": 2, "col": 2},
+    {"id": "postgres", "type": "database", "label": "PostgreSQL", "sublabel": "customer warehouse", "row": 2, "col": 4},
+    {"id": "duckdb", "type": "database", "label": "DuckDB", "sublabel": "local + approved lake files", "row": 2, "col": 5}
+  ],
+  "boundaries": [
+    {"kind": "region", "label": "Compass control and trust plane", "wraps": ["opensearch", "semantic_registry", "api_identity", "bounded_agent", "trust_gate", "evidence", "review_promotion"]},
+    {"kind": "security-group", "label": "Customer execution boundary", "wraps": ["execution_gateway", "postgres", "duckdb"]}
+  ],
+  "connections": [
+    {"id": "ask", "from": "callers", "to": "api_identity", "variant": "emphasis"},
+    {"id": "authorize", "from": "api_identity", "to": "bounded_agent", "variant": "security"},
+    {"id": "publish_metadata", "from": "context_sources", "to": "opensearch", "variant": "dashed"},
+    {"id": "publish_semantics", "from": "semantic_registry", "to": "opensearch", "variant": "security"},
+    {"id": "retrieve_context", "from": "opensearch", "to": "bounded_agent", "variant": "emphasis"},
+    {"id": "typed_intent", "from": "bounded_agent", "to": "trust_gate", "variant": "emphasis"},
+    {"id": "approved_plan", "from": "trust_gate", "to": "execution_gateway", "variant": "security"},
+    {"id": "execute_postgres", "from": "execution_gateway", "to": "postgres", "variant": "default"},
+    {"id": "execute_duckdb", "from": "execution_gateway", "to": "duckdb", "variant": "default"},
+    {"id": "record_evidence", "from": "execution_gateway", "to": "evidence", "variant": "emphasis"},
+    {"id": "feedback_candidate", "from": "evidence", "to": "review_promotion", "variant": "dashed", "fromSide": "right", "toSide": "bottom", "via": [[1000, 260], [1000, 520], [416, 520]]}
+  ],
+  "cards": [
+    {"dot": "amber", "title": "AI is bounded", "items": ["The model extracts typed intent and writes explanations", "The model never authors executable SQL on the certified path"]},
+    {"dot": "emerald", "title": "Data stays controlled", "items": ["PostgreSQL represents the customer-shaped path", "DuckDB reads approved local and lake files"]},
+    {"dot": "violet", "title": "Trust is inspectable", "items": ["Policy, cost, evidence, and terminal outcomes are deterministic", "Changes pass evaluation and independent approval before promotion"]}
+  ]
+}

@@ -10,6 +10,7 @@ simpleeval==0.9.13  # Safe math evaluation
 # Async Database & Cache
 sqlalchemy==2.0.25
 asyncpg==0.29.0
+psycopg2-binary==2.9.9  # Sync PostgreSQL driver required by Alembic runtime migrations
 aiosqlite>=0.19.0  # Async SQLite driver used by CI/unit tests
 alembic>=1.13.0  # Runtime migration job in Helm deploys
 greenlet>=3.0.0  # Required by SQLAlchemy async
@@ -24,6 +25,9 @@ google-genai>=0.5.0  # Gemini multimodal embeddings (text + image)
 # Graph & Vector DBs
 neo4j==5.16.0
 qdrant-client==1.7.3
+
+# Enterprise Search — provider is disabled until configured.
+opensearch-py>=2.4,<3.0
 
 # Agent Framework
 langgraph==0.0.21  # pulls in langchain-core automatically

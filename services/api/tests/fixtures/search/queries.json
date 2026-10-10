@@ -1,0 +1,86 @@
+[
+  {
+    "query_id": "q-acme-ticket-id",
+    "tenant_id": "tenant-acme",
+    "text": "A-1001",
+    "filters": {},
+    "acl_tokens": ["tenant:tenant-acme", "group:support"]
+  },
+  {
+    "query_id": "q-acme-error-code",
+    "tenant_id": "tenant-acme",
+    "text": "ERR_EXPORT_504",
+    "filters": {"source_type": "ticket"},
+    "acl_tokens": ["tenant:tenant-acme", "group:support"]
+  },
+  {
+    "query_id": "q-acme-export-resolution",
+    "tenant_id": "tenant-acme",
+    "text": "How do I fix an export that times out after thirty seconds?",
+    "filters": {},
+    "acl_tokens": ["tenant:tenant-acme", "group:support"]
+  },
+  {
+    "query_id": "q-acme-webhook-secret",
+    "tenant_id": "tenant-acme",
+    "text": "webhook signature mismatch after secret rotation",
+    "filters": {},
+    "acl_tokens": ["tenant:tenant-acme", "group:engineering"]
+  },
+  {
+    "query_id": "q-acme-scim-departed-user",
+    "tenant_id": "tenant-acme",
+    "text": "remove a departed employee from SSO",
+    "filters": {"status": "pending"},
+    "acl_tokens": ["tenant:tenant-acme", "group:support"]
+  },
+  {
+    "query_id": "q-acme-rate-limit",
+    "tenant_id": "tenant-acme",
+    "text": "429 during bulk user import",
+    "filters": {"status": "open"},
+    "acl_tokens": ["tenant:tenant-acme", "group:support"]
+  },
+  {
+    "query_id": "q-acme-csv-unicode",
+    "tenant_id": "tenant-acme",
+    "text": "CSV import corrupts accented names",
+    "filters": {},
+    "acl_tokens": ["tenant:tenant-acme", "group:support"]
+  },
+  {
+    "query_id": "q-acme-finance-hidden",
+    "tenant_id": "tenant-acme",
+    "text": "duplicate invoice charge on annual renewal",
+    "filters": {"source_type": "ticket"},
+    "acl_tokens": ["tenant:tenant-acme", "group:support"]
+  },
+  {
+    "query_id": "q-zen-saml",
+    "tenant_id": "tenant-zen",
+    "text": "SAML login loop caused by an audience mismatch",
+    "filters": {},
+    "acl_tokens": ["tenant:tenant-zen", "group:support"]
+  },
+  {
+    "query_id": "q-zen-csv",
+    "tenant_id": "tenant-zen",
+    "text": "How should a CSV field with a quoted comma be imported?",
+    "filters": {"source_type": "article"},
+    "acl_tokens": ["tenant:tenant-zen", "group:support"]
+  },
+  {
+    "query_id": "q-zen-cross-tenant-id",
+    "tenant_id": "tenant-zen",
+    "text": "A-1001",
+    "filters": {},
+    "acl_tokens": ["tenant:tenant-zen", "group:support"]
+  },
+  {
+    "query_id": "q-acme-no-match",
+    "tenant_id": "tenant-acme",
+    "text": "mobile push notification is missing",
+    "filters": {},
+    "acl_tokens": ["tenant:tenant-acme", "group:support"]
+  }
+]

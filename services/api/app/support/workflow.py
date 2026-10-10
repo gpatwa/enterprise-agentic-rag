@@ -1,10 +1,15 @@
 # services/api/app/support/workflow.py
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.tenant import TenantContext
+from app.config import settings
+from app.search.events import InteractionKind, SearchInteractionEvent, pseudonymize_principal
+from app.search.persistence import persist_interaction_event
 from app.support.insights import repeat_ticket_insights
 from app.support.resolver import SupportResolveError, support_resolver
 from app.tracing import set_span_attributes, start_span
@@ -12,6 +17,45 @@ from app.tracing import set_span_attributes, start_span
 
 class SupportWorkflowError(RuntimeError):
     pass
+
+
+async def emit_support_interaction_event(
+    *,
+    ctx: TenantContext,
+    kind: InteractionKind,
+    correlation_id: str,
+    document_id: str,
+    consent_granted: bool,
+    expires_at,
+    metadata: dict[str, str] | None = None,
+) -> None:
+    """Best-effort redacted feedback event; telemetry never affects the request."""
+    try:
+        from app.memory.postgres import AsyncSessionLocal
+
+        if AsyncSessionLocal is None:
+            return
+        occurred_at = datetime.now(timezone.utc)
+        async with AsyncSessionLocal() as session:
+            event = SearchInteractionEvent(
+                idempotency_key=f"support:{kind.value}:{correlation_id}",
+                tenant_id=ctx.tenant_id,
+                principal_pseudonym=pseudonymize_principal(
+                    ctx.user_id, tenant_id=ctx.tenant_id, salt=settings.JWT_SECRET_KEY
+                ),
+                purpose="support-resolution",
+                kind=kind,
+                request_id=correlation_id,
+                document_id=document_id,
+                occurred_at=occurred_at,
+                expires_at=expires_at,
+                consent_granted=consent_granted,
+                metadata=metadata or {},
+            )
+            await persist_interaction_event(session, event)
+            await session.commit()
+    except Exception:
+        return
 
 
 async def build_repeat_resolution_workflow(

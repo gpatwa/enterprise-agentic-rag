@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.search.models import FilterOperator, RetrievalSource, SearchFilter, SearchMode, SearchRequest, SearchScope
 from app.support.documents import (
     SupportIndexDocument,
     article_to_document,
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 _vectordb_client = None
 _embed_client = None
+_enterprise_search_service = None
 
 
 class SupportIndexError(RuntimeError):
@@ -37,6 +39,12 @@ def set_clients(vectordb, embedder) -> None:
     global _vectordb_client, _embed_client
     _vectordb_client = vectordb
     _embed_client = embedder
+
+
+def set_enterprise_search_service(service) -> None:
+    """Install the canonical enterprise search path during API startup."""
+    global _enterprise_search_service
+    _enterprise_search_service = service
 
 
 class SupportIndexer:
@@ -163,6 +171,15 @@ class SupportIndexer:
             query_length=len(query or ""),
             lexical_enabled=session is not None,
         ) as span:
+            if _enterprise_search_service is not None:
+                return await self._search_enterprise(
+                    tenant_id=tenant_id,
+                    query=query,
+                    provider=provider,
+                    status=status,
+                    limit=limit,
+                    span=span,
+                )
             self._require_clients()
             filters: dict[str, Any] = {"tenant_id": tenant_id}
             if provider:
@@ -227,6 +244,46 @@ class SupportIndexer:
                 vector_failed=vector_error is not None,
             )
             return fused
+
+    async def _search_enterprise(
+        self,
+        *,
+        tenant_id: str,
+        query: str,
+        provider: str | None,
+        status: str | None,
+        limit: int,
+        span: Any,
+    ) -> list[dict[str, Any]]:
+        if _embed_client is None:
+            raise SupportIndexError("enterprise search requires the configured embedding client")
+        try:
+            query_vector = await _embed_client.embed_query(query)
+            filters: list[SearchFilter] = []
+            if provider:
+                filters.append(SearchFilter(field="provider", operator=FilterOperator.EQ, value=provider))
+            if status:
+                filters.append(SearchFilter(field="status", operator=FilterOperator.EQ, value=status))
+            request = SearchRequest(
+                text=query,
+                scope=SearchScope(
+                    tenant_id=tenant_id,
+                    principal_id="support-agent",
+                    purpose="support-search",
+                    acl_tokens=(f"tenant:{tenant_id}",),
+                ),
+                mode=SearchMode.HYBRID,
+                filters=tuple(filters),
+                limit=limit,
+                query_vector=query_vector,
+            )
+            response = await _enterprise_search_service.search(request)
+            results = [_enterprise_result_to_response(result) for result in response.results]
+            set_span_attributes(span, retrieval_source="opensearch", fused_result_count=len(results))
+            return results
+        except Exception as error:
+            record_span_error(span, error)
+            raise SupportIndexError("enterprise search is unavailable") from error
 
     async def _index_document(
         self,
@@ -471,3 +528,28 @@ def _max_score(left: Any, right: Any) -> Any:
 
 
 support_indexer = SupportIndexer()
+
+
+def _enterprise_result_to_response(result) -> dict[str, Any]:
+    metadata = result.metadata if isinstance(result.metadata, dict) else {}
+    return {
+        "id": result.document_id,
+        "score": result.score,
+        "vector_score": result.vector_score,
+        "lexical_score": result.lexical_score,
+        "fusion_score": result.fusion_score,
+        "retrieval_source": result.retrieval_source.value
+        if isinstance(result.retrieval_source, RetrievalSource)
+        else str(result.retrieval_source),
+        "provider": metadata.get("provider"),
+        "source_type": result.source_type,
+        "source_id": result.source_id,
+        "title": result.title,
+        "text": result.text,
+        "status": metadata.get("status"),
+        "priority": metadata.get("priority"),
+        "tags": metadata.get("tags") if isinstance(metadata.get("tags"), list) else [],
+        "source_url": result.source_uri or metadata.get("source_url"),
+        "chunk_index": metadata.get("chunk_index"),
+        "chunk_count": metadata.get("chunk_count"),
+    }

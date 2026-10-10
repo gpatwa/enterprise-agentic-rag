@@ -23,3 +23,6 @@ known-first-party = ["app", "packages", "pipelines"]
 testpaths = ["services/api/tests"]
 asyncio_mode = "auto"
 filterwarnings = ["ignore::DeprecationWarning"]
+markers = [
+    "opensearch_integration: requires an explicitly started local OpenSearch service",
+]

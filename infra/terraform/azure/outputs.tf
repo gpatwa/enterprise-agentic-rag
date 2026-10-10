@@ -61,6 +61,11 @@ output "api_identity_client_id" {
   value       = azurerm_user_assigned_identity.api_identity.client_id
 }
 
+output "analytics_api_identity_client_id" {
+  description = "Client ID of the standalone analytics API managed identity."
+  value       = azurerm_user_assigned_identity.analytics_api_identity.client_id
+}
+
 output "ray_identity_client_id" {
   description = "Client ID of the Ray Managed Identity (for Workload Identity)."
   value       = azurerm_user_assigned_identity.ray_identity.client_id

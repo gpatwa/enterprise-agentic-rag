@@ -13,8 +13,8 @@ resource "azurerm_redis_cache" "main" {
   family   = "C"
   sku_name = "Basic" # Dev: Basic (prod: Standard or Premium)
 
-  non_ssl_port_enabled          = false # Force TLS (matches AWS transit encryption)
-  minimum_tls_version           = "1.2"
+  non_ssl_port_enabled = false # Force TLS (matches AWS transit encryption)
+  minimum_tls_version  = "1.2"
   # SECURITY: Set to false for production (use private endpoint below)
   public_network_access_enabled = var.environment == "prod" ? false : true
 

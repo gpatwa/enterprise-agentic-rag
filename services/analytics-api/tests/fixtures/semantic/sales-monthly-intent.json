@@ -1,0 +1,12 @@
+{
+  "query_id": "golden-sales-monthly",
+  "tenant_id": "tenant-a",
+  "dataset_id": "orders",
+  "semantic_contract": {"contract_id": "sales-core", "contract_version": "v1"},
+  "metrics": [{"metric_id": "revenue"}],
+  "group_by": [{"dimension_id": "created_at", "time_granularity": "month"}],
+  "time_range": {"dimension_id": "created_at", "start": "2024-01-01T00:00:00Z", "end": "2024-03-31T23:59:59Z"},
+  "filters": [{"field_id": "orders.status", "operator": "equals", "values": ["paid"]}],
+  "sort": [{"target_kind": "metric", "target_id": "revenue", "direction": "desc"}],
+  "limit": 25
+}

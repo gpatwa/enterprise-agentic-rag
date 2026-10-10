@@ -29,7 +29,10 @@ from app.routes import support as support_routes
 from app.routes import support_integrations as support_integrations_routes
 from app.routes import threads as threads_routes
 from app.routes.health import set_clients as set_health_clients
+from app.search.factory import create_search_provider
+from app.search.service import SearchService
 from app.support.indexer import set_clients as set_support_index_clients
+from app.support.indexer import set_enterprise_search_service
 from app.support.jobs import support_job_worker
 from app.support.resolver import set_clients as set_support_resolver_clients
 
@@ -48,6 +51,8 @@ reranker_client = create_reranker_client(
     settings.RERANKER_PROVIDER,
     score_threshold=settings.RERANKER_SCORE_THRESHOLD,
 )
+enterprise_search_provider = None
+enterprise_search_service = None
 
 # Storage client (for presigned download URLs — used by multimodal retriever)
 storage_client = create_storage_client(settings.STORAGE_PROVIDER)
@@ -183,6 +188,20 @@ async def lifespan(app: FastAPI):
 
     set_health_clients(vectordb_client, graphdb_client)
     set_support_index_clients(vectordb_client, embed_client)
+    global enterprise_search_provider, enterprise_search_service
+    if settings.OPENSEARCH_ENABLED:
+        try:
+            enterprise_search_provider = create_search_provider("opensearch", config=settings)
+            await enterprise_search_provider.connect()
+            enterprise_search_service = SearchService(
+                enterprise_search_provider,
+                timeout_seconds=settings.OPENSEARCH_REQUEST_TIMEOUT_SECONDS,
+            )
+            set_enterprise_search_service(enterprise_search_service)
+            logger.info("Enterprise OpenSearch support retrieval enabled")
+        except Exception:
+            logger.exception("OpenSearch enabled but enterprise retrieval could not start")
+            raise
     set_support_resolver_clients(llm_client)
     if settings.SUPPORT_JOB_WORKER_ENABLED:
         from app.memory import postgres as pg
@@ -288,6 +307,8 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Closing clients...")
+    if enterprise_search_provider is not None:
+        await enterprise_search_provider.close()
     await support_job_worker.shutdown()
     # Drain MCP pool first so its child subprocesses don't outlive their parents.
     try:

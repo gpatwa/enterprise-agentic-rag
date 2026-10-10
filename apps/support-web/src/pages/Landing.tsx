@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
+  BarChart3,
   ChevronDown,
   Database,
   FileSearch,
@@ -41,7 +42,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: 'What data sources does Compass connect to?',
-    a: 'Compass speaks Postgres, Snowflake, BigQuery, and Qdrant out of the box. For SaaS apps we are rolling out MCP (Model Context Protocol) connectors — Slack, GitHub, Notion, Drive, Jira, Linear and more. Custom connectors via Airbyte or LlamaHub are supported.',
+    a: 'Compass connects to PostgreSQL, warehouses, support systems, and OpenSearch for governed lexical, vector, and hybrid retrieval. Qdrant remains a temporary local demo fixture while the enterprise search plane uses OpenSearch. SaaS connectors include Zendesk, Intercom, Slack, GitHub, Notion, Drive, Jira, and Linear.',
   },
   {
     q: 'Do answers cite their sources?',
@@ -54,6 +55,11 @@ const FAQS: { q: string; a: string }[] = [
 ];
 
 const VALUE_PROPS: { icon: LucideIcon; title: string; body: string }[] = [
+  {
+    icon: FileSearch,
+    title: 'Search resolution memory',
+    body: 'Turn historical support tickets, comments, and articles into tenant-scoped lexical, vector, and hybrid answers with citations.',
+  },
   {
     icon: MessageSquare,
     title: 'Ask in plain English',
@@ -172,7 +178,9 @@ export function LandingPage() {
     <PublicLayout>
       <Hero />
       <TrustStrip />
+      <ResolutionMemorySection />
       <ValuePropsSection />
+      <AnalyticsSection />
       <HowItWorksSection />
       <TestimonialSection />
       <PersonasSection />
@@ -180,6 +188,90 @@ export function LandingPage() {
       <FAQSection />
       <FinalCTA />
     </PublicLayout>
+  );
+}
+
+function ResolutionMemorySection() {
+  return (
+    <section
+      id="resolution-memory"
+      aria-labelledby="resolution-memory-heading"
+      className="py-16 sm:py-20 lg:py-24 border-b border-border/40 bg-surface/20 scroll-mt-16"
+    >
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-10 lg:gap-16 items-start">
+        <div>
+          <div className="text-xs uppercase tracking-widest text-fg-muted mb-3">Compass Resolution Intelligence</div>
+          <h2 id="resolution-memory-heading" className="text-3xl sm:text-4xl font-semibold tracking-tight leading-[1.1] max-w-xl">
+            Make every solved ticket searchable before you automate.
+          </h2>
+          <p className="text-fg-secondary text-base sm:text-lg leading-relaxed mt-4 max-w-xl">
+            OpenSearch combines exact terms, BM25, vector similarity, and deterministic hybrid ranking so agents can find the right prior resolution quickly.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[
+            ['Ingest', 'Tickets, comments, and knowledge articles become versioned resolution memory.'],
+            ['Retrieve', 'Tenant and ACL filters apply before results reach the agent.'],
+            ['Trust', 'Citations, ranking explanations, reviewed actions, and audit evidence stay attached.'],
+          ].map(([title, body]) => (
+            <div key={title} className="border border-border/60 bg-background/70 p-5 rounded-xl">
+              <div className="font-semibold">{title}</div>
+              <p className="text-sm text-fg-secondary leading-relaxed mt-2">{body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------- Analytics product --------------------------- */
+
+function AnalyticsSection() {
+  return (
+    <section
+      id="analytics"
+      aria-labelledby="analytics-heading"
+      className="py-16 sm:py-20 lg:py-24 border-y border-border/40 bg-surface/30 scroll-mt-16"
+    >
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 lg:gap-16 items-center">
+        <div>
+          <div className="text-xs uppercase tracking-widest text-fg-muted mb-3">Compass Analytics</div>
+          <h2 id="analytics-heading" className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight leading-[1.1] max-w-3xl">
+            Turn messy business questions into governed answers.
+          </h2>
+          <p className="text-fg-secondary text-base sm:text-lg leading-relaxed mt-4 max-w-2xl">
+            Start with searchable resolution memory, then add certified metrics, typed intent, deterministic SQL, policy checks, and an evidence trail your data team can approve.
+          </p>
+          <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <Button asChild size="lg" className="h-12 text-base">
+              <Link to="/">
+                Open the governed workspace <ArrowRight className="w-4 h-4" />
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="h-12 text-base">
+              <a href="#book-demo">See the analytics demo</a>
+            </Button>
+          </div>
+        </div>
+        <div className="glass-strong rounded-2xl p-6 sm:p-8" aria-label="Governed analytics workflow">
+          <div className="flex items-center gap-3 pb-5 border-b border-border/60">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-accent/15 text-accent ring-1 ring-accent/30">
+              <BarChart3 className="w-5 h-5" aria-hidden="true" />
+            </div>
+            <div><div className="font-semibold">Certified analytics path</div><div className="text-sm text-fg-secondary">Every step leaves evidence</div></div>
+          </div>
+          <ol className="mt-5 space-y-4">
+            {['Select trusted context', 'Compile typed intent', 'Enforce policy and budget', 'Return answer with proof'].map((step, index) => (
+              <li key={step} className="flex items-center gap-3 text-sm">
+                <span className="w-6 h-6 rounded-full bg-accent/15 text-accent text-xs font-semibold flex items-center justify-center">{index + 1}</span>
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </section>
   );
 }
 

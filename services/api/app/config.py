@@ -76,6 +76,43 @@ class Settings(BaseSettings):
     QDRANT_COLLECTION: str = "rag_collection"
 
     # -----------------------------------------------------------------
+    # Enterprise Search — OpenSearch provider
+    # -----------------------------------------------------------------
+    # Disabled by default. OS-012+ will select the provider explicitly after
+    # the connection and migration gates pass.
+    OPENSEARCH_ENABLED: bool = False
+    OPENSEARCH_URL: Optional[str] = None
+    OPENSEARCH_SCHEME: str = "http"
+    OPENSEARCH_HOST: str = "opensearch"
+    OPENSEARCH_PORT: int = 9200
+    OPENSEARCH_AUTH_MODE: str = "none"  # "none" | "basic" | "api_key"
+    OPENSEARCH_USERNAME: Optional[str] = None
+    OPENSEARCH_PASSWORD: Optional[str] = None
+    OPENSEARCH_API_KEY: Optional[str] = None
+    OPENSEARCH_VERIFY_CERTS: bool = True
+    OPENSEARCH_CA_CERT_PATH: Optional[str] = None
+    OPENSEARCH_CONNECT_TIMEOUT_SECONDS: float = 5.0
+    OPENSEARCH_REQUEST_TIMEOUT_SECONDS: float = 10.0
+    OPENSEARCH_MAX_RETRIES: int = 3
+    OPENSEARCH_RETRY_ON_TIMEOUT: bool = True
+    OPENSEARCH_POOL_MAXSIZE: int = 10
+    OPENSEARCH_INDEX_ALIAS: str = "compass-support-search"
+    OPENSEARCH_VECTOR_DIMENSIONS: int = 768
+    OPENSEARCH_EMBEDDING_MODEL_VERSION: str = "default"
+    OPENSEARCH_SHADOW_ENABLED: bool = False
+    OPENSEARCH_SHADOW_PERCENT: int = 0
+    OPENSEARCH_CANARY_PERCENT: int = 0
+
+    # -----------------------------------------------------------------
+    # Enterprise search indexing worker
+    # -----------------------------------------------------------------
+    SEARCH_INDEX_WORKER_POLL_SECONDS: float = 2.0
+    SEARCH_INDEX_WORKER_BATCH_SIZE: int = 10
+    SEARCH_INDEX_WORKER_LEASE_SECONDS: int = 900
+    SEARCH_INDEX_WORKER_RETRY_BASE_SECONDS: float = 5.0
+    SEARCH_INDEX_WORKER_RETRY_MAX_SECONDS: float = 300.0
+
+    # -----------------------------------------------------------------
     # Graph DB — Provider Selection
     # -----------------------------------------------------------------
     GRAPHDB_PROVIDER: str = "neo4j"  # "neo4j" | "cosmosdb" | "none"
@@ -170,6 +207,7 @@ class Settings(BaseSettings):
     SUPPORT_INTEGRATIONS_ENABLED: bool = True
     SUPPORT_CONNECTOR_TIMEOUT_SECONDS: int = 10
     SUPPORT_RESOLVE_LLM_TIMEOUT_SECONDS: float = 8.0
+    RESOLUTION_SHADOW_ENABLED: bool = False
     SUPPORT_INDEX_COLLECTION: str = "support_resolution_index"
     SUPPORT_INDEX_VERSION: str = "support-v1"
     SUPPORT_INDEX_CHUNK_CHARS: int = 1800
@@ -355,6 +393,45 @@ class Settings(BaseSettings):
         raise ValueError(
             "Either REDIS_URL or REDIS_HOST must be set."
         )
+
+    def get_opensearch_url(self) -> str:
+        """Return the configured OpenSearch endpoint."""
+        if self.OPENSEARCH_URL:
+            return self.OPENSEARCH_URL.rstrip("/")
+        return f"{self.OPENSEARCH_SCHEME}://{self.OPENSEARCH_HOST}:{self.OPENSEARCH_PORT}"
+
+    def validate_opensearch_settings(self) -> None:
+        """Fail closed on unsafe OpenSearch settings when the provider is enabled."""
+        if not self.OPENSEARCH_ENABLED:
+            return
+
+        scheme = self.get_opensearch_url().split(":", 1)[0].lower()
+        auth_mode = self.OPENSEARCH_AUTH_MODE.strip().lower()
+        if auth_mode not in {"none", "basic", "api_key"}:
+            raise ValueError("OPENSEARCH_AUTH_MODE must be one of: none, basic, api_key")
+        if self.OPENSEARCH_PORT < 1 or self.OPENSEARCH_PORT > 65535:
+            raise ValueError("OPENSEARCH_PORT must be between 1 and 65535")
+        if self.OPENSEARCH_CONNECT_TIMEOUT_SECONDS <= 0:
+            raise ValueError("OPENSEARCH_CONNECT_TIMEOUT_SECONDS must be positive")
+        if self.OPENSEARCH_REQUEST_TIMEOUT_SECONDS <= 0:
+            raise ValueError("OPENSEARCH_REQUEST_TIMEOUT_SECONDS must be positive")
+        if self.OPENSEARCH_MAX_RETRIES < 0:
+            raise ValueError("OPENSEARCH_MAX_RETRIES cannot be negative")
+        if self.OPENSEARCH_POOL_MAXSIZE < 1:
+            raise ValueError("OPENSEARCH_POOL_MAXSIZE must be positive")
+        if not 0 <= self.OPENSEARCH_SHADOW_PERCENT <= 100:
+            raise ValueError("OPENSEARCH_SHADOW_PERCENT must be between 0 and 100")
+        if not 0 <= self.OPENSEARCH_CANARY_PERCENT <= 100:
+            raise ValueError("OPENSEARCH_CANARY_PERCENT must be between 0 and 100")
+        if self.ENV.lower() in {"prod", "production", "staging"}:
+            if scheme != "https":
+                raise ValueError("OpenSearch must use HTTPS outside development")
+            if not self.OPENSEARCH_VERIFY_CERTS:
+                raise ValueError("OpenSearch certificate verification cannot be disabled outside development")
+        if auth_mode == "basic" and not (self.OPENSEARCH_USERNAME and self.OPENSEARCH_PASSWORD):
+            raise ValueError("basic OpenSearch auth requires username and password")
+        if auth_mode == "api_key" and not self.OPENSEARCH_API_KEY:
+            raise ValueError("api_key OpenSearch auth requires OPENSEARCH_API_KEY")
 
     def get_otel_endpoint(self) -> str | None:
         """Return the OTLP collector endpoint, accepting app-native and standard env names."""

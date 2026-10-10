@@ -27,6 +27,41 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
+  # Opt-in enterprise search plane. This deliberately does not alter the
+  # default Qdrant demo; start it with `docker compose --profile search up`.
+  opensearch:
+    image: opensearchproject/opensearch:2.15.0
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    profiles: ["search", "analytics", "products", "observability"]
+
+  # Local-only search administration UI. Security is intentionally disabled in
+  # the dev OpenSearch profile; keep this service behind an SSH tunnel.
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.15.0
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+    ports:
+      - "5601:5601"
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    profiles: ["search", "analytics", "products", "observability"]
+
   # 4. Neo4j (Graph DB)
   neo4j:
     image: neo4j:5.16.0-community
@@ -121,13 +156,20 @@ services:
       - ENV=dev
       - ANALYTICS_DB_URL=postgresql://ragadmin:changeme@postgres:5432/rag_db
       - ANALYTICS_DEMO_MODE=${ANALYTICS_DEMO_MODE:-true}
+      - ANALYTICS_OPENSEARCH_URL=${ANALYTICS_OPENSEARCH_URL:-http://opensearch:9200}
+      - ANALYTICS_CONTEXT_INDEX=${ANALYTICS_CONTEXT_INDEX:-context-v1}
+      - ANALYTICS_DASHBOARDS_URL=${ANALYTICS_DASHBOARDS_URL:-http://opensearch-dashboards:5601}
+      - ANALYTICS_CONTEXT_BOOTSTRAP=${ANALYTICS_CONTEXT_BOOTSTRAP:-true}
       - ANALYTICS_LLM_MODEL=${ANALYTICS_LLM_MODEL:-gpt-4o-mini}
       - ANALYTICS_LLM_BASE_URL=${ANALYTICS_LLM_BASE_URL:-}
       - ANALYTICS_LLM_API_KEY=${ANALYTICS_LLM_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANALYTICS_CORS_ORIGINS=http://localhost:5174
     depends_on:
-      - postgres
+      postgres:
+        condition: service_started
+      opensearch:
+        condition: service_healthy
     profiles: ["analytics", "products"]
 
   analytics-web:
@@ -141,6 +183,74 @@ services:
     depends_on:
       - analytics-api
     profiles: ["analytics", "products"]
+
+  # ─── Local operations plane ────────────────────────────────────────────
+  # Start with: docker compose --profile observability up -d
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    profiles: ["observability"]
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    profiles: ["observability"]
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    profiles: ["observability"]
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    environment:
+      DATA_SOURCE_NAME: postgresql://ragadmin:changeme@postgres:5432/rag_db?sslmode=disable
+    depends_on:
+      - postgres
+    profiles: ["observability"]
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    command: ["--redis.addr=redis://redis:6379"]
+    depends_on:
+      - redis
+    profiles: ["observability"]
+
+  opensearch-exporter:
+    image: quay.io/prometheuscommunity/elasticsearch-exporter:v1.7.0
+    command: ["--es.uri=http://opensearch:9200"]
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    profiles: ["observability"]
 
   # ─── Split-plane services ──────────────────────────────────────────────
   # Start with: docker compose --profile split up
@@ -212,3 +322,6 @@ volumes:
   pg_data:
   qdrant_data:
   neo4j_data:
+  opensearch_data:
+  prometheus_data:
+  grafana_data:

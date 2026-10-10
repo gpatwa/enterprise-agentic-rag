@@ -1,0 +1,93 @@
+name: Deploy Analytics to Azure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub deployment environment
+        required: true
+        type: environment
+      image_tag:
+        description: Optional immutable image tag (defaults to commit SHA)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  verify:
+    name: Verify analytics product
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/analytics-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/analytics-api/requirements.txt
+      - run: pip install -r requirements.txt pytest ruff
+      - run: ruff check ../../packages/platform_contracts app tests
+      - run: PYTHONPATH=.:../.. pytest -q
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/analytics-web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+        working-directory: apps/analytics-web
+      - run: npm run build
+        working-directory: apps/analytics-web
+
+  deploy:
+    name: Deploy analytics workloads to AKS
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
+      ACR_NAME: ${{ secrets.ACR_NAME }}
+      ACR_URI: ${{ secrets.ACR_NAME }}.azurecr.io
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - run: az acr login --name "$ACR_NAME"
+      - run: |
+          docker build --platform linux/amd64 -t "$ACR_URI/compass-analytics-api:$IMAGE_TAG" -f services/analytics-api/Dockerfile .
+          docker build --platform linux/amd64 -t "$ACR_URI/compass-analytics-web:$IMAGE_TAG" -f apps/analytics-web/Dockerfile apps/analytics-web
+          docker push "$ACR_URI/compass-analytics-api:$IMAGE_TAG"
+          docker push "$ACR_URI/compass-analytics-web:$IMAGE_TAG"
+      - uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+      - run: |
+          kubectl apply -f deploy/secrets/analytics-external-secret-azure.yaml
+          helm upgrade --install analytics-api deploy/helm/analytics-api \
+            --namespace default --create-namespace \
+            -f deploy/helm/analytics-api/values-azure.yaml \
+            --set-string image.repository="$ACR_URI/compass-analytics-api" \
+            --set-string image.tag="$IMAGE_TAG" \
+            --set-string secretRef=analytics-api-secrets \
+            --set-string 'serviceAccount.annotations.azure\.workload\.identity/client-id=${{ secrets.ANALYTICS_API_IDENTITY_CLIENT_ID }}' \
+            --wait --timeout 300s
+          helm upgrade --install analytics-web deploy/helm/analytics-web \
+            --namespace default \
+            -f deploy/helm/analytics-web/values-azure.yaml \
+            --set-string image.repository="$ACR_URI/compass-analytics-web" \
+            --set-string image.tag="$IMAGE_TAG" \
+            --set-string apiHost=analytics-api:8090 \
+            --set ingress.enabled=true \
+            --set-string ingress.host="${{ secrets.ANALYTICS_HOSTNAME }}" \
+            --wait --timeout 300s
+          kubectl rollout status deployment/analytics-api --timeout=180s
+          kubectl rollout status deployment/analytics-web --timeout=180s

@@ -1,11 +1,12 @@
 # Makefile
 
-.PHONY: help install install-analytics dev dev-support-web dev-analytics-api dev-analytics-web dev-products up down stop init support-demo demo-ready-local deploy infra build bootstrap init-cloud smoke-test verify destroy test test-analytics ingest \
+.PHONY: help install install-analytics analytics-reference-smoke analytics-reference-up analytics-golden dev dev-support-web dev-analytics-api dev-analytics-web dev-products up down stop init support-demo demo-ready-local deploy infra build bootstrap init-cloud smoke-test verify destroy test test-analytics ingest \
        infra-staging bootstrap-staging deploy-staging deploy-aws \
-       deploy-azure infra-azure build-azure bootstrap-azure deploy-api-azure destroy-azure \
+       deploy-azure infra-azure build-azure bootstrap-azure deploy-api-azure deploy-analytics-azure deploy-landing-azure destroy-azure \
        pause-azure resume-azure import-azure \
+       azure-dev-up azure-dev-sync azure-dev-start azure-dev-stop azure-dev-status azure-dev-ssh azure-dev-tunnel azure-dev-destroy observability-up observability-down \
        verify-cleanup verify-cleanup-delete verify-cleanup-azure verify-cleanup-azure-delete \
-       setup lint format \
+       setup lint format architecture-check architecture-build verify-context-local \
        dev-control-plane dev-data-plane dev-split test-control-plane test-data-plane test-all
 
 help:
@@ -19,7 +20,12 @@ help:
 	@echo "    make dev-support-web - Run the support web product on port 5173"
 	@echo "    make dev-analytics-api - Run the analytics API on port 8090"
 	@echo "    make dev-analytics-web - Run the analytics web product on port 5174"
+	@echo "    make analytics-reference-smoke - Run both governed smoke journeys (fakes only)"
+	@echo "    make analytics-reference-up - Serve the governed v2 API locally with fakes (port 8095)"
+	@echo "    make analytics-golden - Run the M4 golden suite and write its report (fakes only)"
 	@echo "    make dev-products  - Run both products as Docker deployables"
+	@echo "    make observability-up - Start Grafana, Prometheus, exporters, and admin UIs"
+	@echo "    make observability-down - Stop the local operations plane"
 	@echo "    make support-demo  - Validate Resolution Intelligence demo workflow"
 	@echo "    make demo-ready-local - Start local deps, seed demo data, and run demo acceptance"
 	@echo "    make ingest FILE=x - Ingest a file, directory, or --sample"
@@ -47,15 +53,27 @@ help:
 	@echo "    make build-azure       - Build & push Docker image to ACR"
 	@echo "    make bootstrap-azure   - Bootstrap AKS cluster (K8s resources)"
 	@echo "    make deploy-api-azure  - Helm upgrade API only (code changes)"
+	@echo "    make deploy-analytics-azure - Build and deploy analytics API + web"
+	@echo "    make deploy-landing-azure - Build and publish public landing to Azure Static Web Apps"
 	@echo "    make pause-azure       - Pause billing: stop Postgres, delete Redis, release IPs, prune ACR, stop App Service, trim Log Analytics (~\$$19/day saved)"
 	@echo "    make resume-azure      - Resume: start Postgres + App Service back up (Redis recreated on next deploy)"
 	@echo "    make import-azure      - Import manually-created resources into Terraform state (run once)"
 	@echo "    make destroy-azure     - Tear down ALL Azure resources + verify"
+	@echo "    make azure-dev-up      - Provision/update remote Docker development VM and start Compose"
+	@echo "    make azure-dev-sync    - Sync this checkout to the remote Docker VM"
+	@echo "    make azure-dev-start   - Start the VM and remote Compose services"
+	@echo "    make azure-dev-stop    - Deallocate the VM while preserving Docker volumes"
+	@echo "    make azure-dev-status  - Show remote Docker VM status"
+	@echo "    make azure-dev-ssh     - Open an SSH shell on the remote Docker VM"
+	@echo "    make azure-dev-tunnel  - Forward local app/API/search ports over SSH"
+	@echo "    make azure-dev-destroy - Destroy the isolated remote-dev environment"
 	@echo ""
 	@echo "  Developer Setup:"
 	@echo "    make setup         - Install deps + pre-commit hooks"
 	@echo "    make lint          - Run ruff linter"
 	@echo "    make format        - Auto-fix lint + format code"
+	@echo "    make architecture-check - Validate Archify diagram sources at showcase quality"
+	@echo "    make architecture-build - Validate and regenerate interactive architecture HTML"
 	@echo ""
 	@echo "  Split-Plane Development:"
 	@echo "    make dev-control-plane  - Run control plane locally"
@@ -98,8 +116,22 @@ lint:
 format:
 	ruff check --fix && ruff format
 
+architecture-check:
+	./scripts/architecture/archify.sh validate architecture docs/diagrams/agentic-data-stack.architecture.json --quality showcase --json
+	./scripts/architecture/archify.sh validate workflow docs/diagrams/agentic-data-stack-request.workflow.json --quality showcase --json
+
+architecture-build: architecture-check
+	./scripts/architecture/archify.sh deliver architecture docs/diagrams/agentic-data-stack.architecture.json docs/diagrams/agentic-data-stack-system.html --quality showcase --json
+	./scripts/architecture/archify.sh deliver workflow docs/diagrams/agentic-data-stack-request.workflow.json docs/diagrams/agentic-data-stack-request.html --quality showcase --json
+
 up:
 	docker compose up -d
+
+observability-up:
+	docker compose --profile observability up -d
+
+observability-down:
+	docker compose --profile observability down
 
 down:
 	docker compose down
@@ -156,8 +188,23 @@ test:
 	pytest services/api/tests
 	cd services/analytics-api && PYTHONPATH=.:../.. pytest
 
+# Local reference stack (fakes only, no network): both smoke journeys, or serve the v2 API locally.
+analytics-reference-smoke:
+	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack smoke
+
+analytics-reference-up:
+	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack up
+
+# M4 golden suite (fakes only); regenerates the report against the user-approved M4 thresholds.
+analytics-golden:
+	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack golden --write-report ../../docs/execution/enterprise-analytics/reports
+
 test-analytics:
 	cd services/analytics-api && PYTHONPATH=.:../.. pytest
+
+verify-context-local:
+	docker compose --profile search up -d opensearch
+	PYTHONPATH=.:services/analytics-api python3 scripts/verify_context_local.py
 
 seed-context:
 	python3 scripts/seed_context_layers.py
@@ -299,6 +346,14 @@ deploy-api-azure:
 		--set image.tag="$${TAG}" \
 		--namespace default
 
+# Build and deploy the standalone analytics product to an existing Azure AKS cluster.
+deploy-analytics-azure:
+	./scripts/deploy_azure_analytics.sh
+
+# Build and publish the public landing page to Azure Static Web Apps.
+deploy-landing-azure:
+	./scripts/deploy_azure_landing.sh
+
 # Import manually-created Azure resources into Terraform state (run once before first apply)
 import-azure:
 	./scripts/terraform_import_azure.sh
@@ -319,6 +374,34 @@ destroy-azure:
 	@echo ""
 	@echo "Running post-destroy verification (Azure)..."
 	./scripts/verify-cleanup-azure.sh
+
+# ============================================================
+# AZURE REMOTE DOCKER DEVELOPMENT
+# ============================================================
+
+azure-dev-up:
+	./scripts/azure_dev.sh up
+
+azure-dev-sync:
+	./scripts/azure_dev.sh sync
+
+azure-dev-start:
+	./scripts/azure_dev.sh start
+
+azure-dev-stop:
+	./scripts/azure_dev.sh stop
+
+azure-dev-status:
+	./scripts/azure_dev.sh status
+
+azure-dev-ssh:
+	./scripts/azure_dev.sh ssh
+
+azure-dev-tunnel:
+	./scripts/azure_dev.sh tunnel
+
+azure-dev-destroy:
+	./scripts/azure_dev.sh destroy --yes
 
 verify-cleanup-azure:
 	./scripts/verify-cleanup-azure.sh

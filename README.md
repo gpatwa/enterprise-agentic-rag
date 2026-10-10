@@ -155,6 +155,9 @@ See [Architecture docs](docs/architecture.md#11-control-plane--data-plane-archit
 | [Architecture & Design](docs/architecture.md) | System design, agentic pipeline, retrieval strategies, multi-tenancy, CP/DP split |
 | [AWS Deployment](docs/deployment-aws.md) | EKS provisioning, staging/prod environments, bootstrap, cost management |
 | [Azure Deployment](docs/deployment-azure.md) | AKS provisioning, Workload Identity, Key Vault integration |
+| [Azure Remote Docker Development](docs/azure-remote-dev.md) | Automated Azure VM development host, Docker bootstrap, sync, tunnels, and lifecycle |
+| [Azure Analytics Deployment](docs/deployment-azure.md#analytics-product) | Separate analytics API/web images, Helm releases, Key Vault sync, and manual workflow |
+| [Public Landing](docs/deployment-azure.md#public-landing-deployment) | Azure Static Web Apps production landing deployment |
 | [API Reference & Chat UI](docs/api-reference.md) | Endpoints (monolith + CP/DP), streaming protocol, sample queries, Chat UI |
 | [Local Demo Readiness](docs/LOCAL_DEMO_READINESS.md) | Local-only demo checklist, acceptance gates, and caveats |
 | [Resolution Intelligence Architecture](docs/resolution-intelligence-architecture.md) | Support memory, hybrid retrieval, trust gates, action commands, and audit |
@@ -167,6 +170,8 @@ See [Architecture docs](docs/architecture.md#11-control-plane--data-plane-archit
 | [Roadmap](docs/ROADMAP.md) | Enterprise features, SaaS connectors, zero trust roadmap |
 | [Enterprise Analytics Execution Plan](docs/ENTERPRISE_ANALYTICS_EXECUTION_PLAN.md) | Catalog-neutral analytics architecture, phased delivery gates, and model-ready delegation plan |
 | [Enterprise Analytics Task Packets](docs/execution/enterprise-analytics/README.md) | Initial bounded assignments with file ownership, acceptance tests, and handoff rules |
+| [Immersive Discovery Execution Plan](docs/IMMERSIVE_DISCOVERY_EXECUTION_PLAN.md) | Separate Roblox-like discovery vertical, synthetic-data strategy, multi-stage ranking, and Luna-ready task graph |
+| [Immersive Discovery Task Packets](docs/execution/immersive-discovery/README.md) | Bounded IMD assignments, dispatch waves, acceptance evidence, and local-only execution rules |
 
 ## Make Commands
 
@@ -200,6 +205,9 @@ Split-Plane:
   make test-all              Run all tests (198 tests across 3 suites)
 
 Cloud:
+  make azure-dev-up          Provision remote Azure Docker development host
+  make azure-dev-tunnel      Forward remote app/API/search ports locally
+  make azure-dev-stop        Deallocate remote development compute
   make infra                 Provision AWS prod infrastructure (Terraform)
   make infra-staging         Provision AWS staging infrastructure
   make bootstrap             Bootstrap prod EKS cluster

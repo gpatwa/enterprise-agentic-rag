@@ -1,0 +1,44 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: support-api
+    metrics_path: /health/metrics
+    static_configs:
+      - targets: ["support-api:8080"]
+
+  - job_name: analytics-api
+    static_configs:
+      - targets: ["analytics-api:8090"]
+
+  - job_name: control-plane
+    metrics_path: /health/metrics
+    static_configs:
+      - targets: ["control-plane:8001"]
+
+  - job_name: data-plane
+    metrics_path: /health/metrics
+    static_configs:
+      - targets: ["data-plane:8080"]
+
+  - job_name: qdrant
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["qdrant:6333"]
+
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
+  - job_name: redis
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+
+  - job_name: opensearch
+    static_configs:
+      - targets: ["opensearch-exporter:9114"]

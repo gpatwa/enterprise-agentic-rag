@@ -1,0 +1,35 @@
+name: Deploy Public Landing to Azure
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and publish landing page
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://red-pond-0fa9a940f.7.azurestaticapps.net' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/support-web/package-lock.json
+      - name: Build landing bundle
+        working-directory: apps/support-web
+        run: |
+          npm ci --no-audit --no-fund
+          VITE_SITE_URL="$SITE_URL" npm run build
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: apps/support-web/dist
+          skip_app_build: true

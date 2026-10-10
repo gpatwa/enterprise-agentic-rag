@@ -1,0 +1,58 @@
+{{- if .Values.searchWorker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-search-worker
+  labels:
+    app: api-search-worker
+spec:
+  replicas: {{ .Values.searchWorker.replicaCount }}
+  selector:
+    matchLabels:
+      app: api-search-worker
+  template:
+    metadata:
+      labels:
+        app: api-search-worker
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      {{- if .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: search-worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.searchWorker.command | nindent 12 }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.secretRef | default "app-env-secret" }}
+          {{- $env := mergeOverwrite (dict) (.Values.env | default dict) (.Values.searchWorker.env | default dict) }}
+          {{- with $env }}
+          env:
+            {{- range $key, $value := . }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            {{- toYaml .Values.searchWorker.resources | nindent 12 }}
+{{- end }}

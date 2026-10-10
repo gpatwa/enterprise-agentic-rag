@@ -1,0 +1,22 @@
+[
+  {"relationship_id":"rel-001","tenant_id":"tenant-orbit","subject_user_id":"user-001","object_user_id":"user-004","relationship_type":"friend","status":"active","consent_state":"mutual","synthetic":true},
+  {"relationship_id":"rel-002","tenant_id":"tenant-orbit","subject_user_id":"user-004","object_user_id":"user-001","relationship_type":"friend","status":"active","consent_state":"mutual","synthetic":true},
+  {"relationship_id":"rel-003","tenant_id":"tenant-orbit","subject_user_id":"user-002","object_user_id":"user-005","relationship_type":"friend","status":"active","consent_state":"mutual","synthetic":true},
+  {"relationship_id":"rel-004","tenant_id":"tenant-orbit","subject_user_id":"user-003","object_user_id":"user-014","relationship_type":"friend","status":"active","consent_state":"mutual","synthetic":true},
+  {"relationship_id":"rel-005","tenant_id":"tenant-orbit","subject_user_id":"user-006","object_user_id":"user-012","relationship_type":"friend","status":"active","consent_state":"mutual","synthetic":true},
+  {"relationship_id":"rel-006","tenant_id":"tenant-orbit","subject_user_id":"user-009","object_user_id":"user-015","relationship_type":"friend","status":"active","consent_state":"mutual","synthetic":true},
+  {"relationship_id":"rel-007","tenant_id":"tenant-orbit","subject_user_id":"user-010","object_user_id":"user-011","relationship_type":"friend","status":"active","consent_state":"mutual","synthetic":true},
+  {"relationship_id":"rel-008","tenant_id":"tenant-orbit","subject_user_id":"user-013","object_user_id":"user-016","relationship_type":"friend","status":"active","consent_state":"mutual","synthetic":true},
+  {"relationship_id":"rel-009","tenant_id":"tenant-orbit","subject_user_id":"user-001","object_user_id":"user-004","relationship_type":"group_member","status":"active","consent_state":"group-consented","group_id":"group-aurora","synthetic":true},
+  {"relationship_id":"rel-010","tenant_id":"tenant-orbit","subject_user_id":"user-003","object_user_id":"user-014","relationship_type":"group_member","status":"active","consent_state":"group-consented","group_id":"group-sprint","synthetic":true},
+  {"relationship_id":"rel-011","tenant_id":"tenant-orbit","subject_user_id":"user-006","object_user_id":"user-012","relationship_type":"group_member","status":"active","consent_state":"group-consented","group_id":"group-puzzle","synthetic":true},
+  {"relationship_id":"rel-012","tenant_id":"tenant-lumen","subject_user_id":"user-017","object_user_id":"user-019","relationship_type":"friend","status":"active","consent_state":"mutual","synthetic":true},
+  {"relationship_id":"rel-013","tenant_id":"tenant-lumen","subject_user_id":"user-019","object_user_id":"user-017","relationship_type":"friend","status":"active","consent_state":"mutual","synthetic":true},
+  {"relationship_id":"rel-014","tenant_id":"tenant-lumen","subject_user_id":"user-018","object_user_id":"user-020","relationship_type":"friend","status":"active","consent_state":"mutual","synthetic":true},
+  {"relationship_id":"rel-015","tenant_id":"tenant-lumen","subject_user_id":"user-021","object_user_id":"user-023","relationship_type":"friend","status":"active","consent_state":"mutual","synthetic":true},
+  {"relationship_id":"rel-016","tenant_id":"tenant-lumen","subject_user_id":"user-022","object_user_id":"user-024","relationship_type":"friend","status":"active","consent_state":"mutual","synthetic":true},
+  {"relationship_id":"rel-017","tenant_id":"tenant-lumen","subject_user_id":"user-017","object_user_id":"user-019","relationship_type":"group_member","status":"active","consent_state":"group-consented","group_id":"group-lagoon","synthetic":true},
+  {"relationship_id":"rel-018","tenant_id":"tenant-lumen","subject_user_id":"user-018","object_user_id":"user-020","relationship_type":"group_member","status":"active","consent_state":"group-consented","group_id":"group-maker","synthetic":true},
+  {"relationship_id":"rel-019","tenant_id":"tenant-lumen","subject_user_id":"user-021","object_user_id":"user-023","relationship_type":"group_member","status":"active","consent_state":"group-consented","group_id":"group-race","synthetic":true},
+  {"relationship_id":"rel-020","tenant_id":"tenant-lumen","subject_user_id":"user-022","object_user_id":"user-024","relationship_type":"group_member","status":"active","consent_state":"group-consented","group_id":"group-welcome","synthetic":true}
+]

@@ -1,0 +1,9 @@
+[
+  {"order_id": "o-1", "order_item_id": 1, "product_id": "p-health", "price": "60.00"},
+  {"order_id": "o-1", "order_item_id": 2, "product_id": "p-home", "price": "40.00"},
+  {"order_id": "o-2", "order_item_id": 1, "product_id": "p-health", "price": "80.00"},
+  {"order_id": "o-3", "order_item_id": 1, "product_id": "p-sports", "price": "50.00"},
+  {"order_id": "o-4", "order_item_id": 1, "product_id": "p-home", "price": "25.00"},
+  {"order_id": "o-5", "order_item_id": 1, "product_id": "p-home", "price": "20.00"},
+  {"order_id": "o-6", "order_item_id": 1, "product_id": "p-health", "price": "120.00"}
+]

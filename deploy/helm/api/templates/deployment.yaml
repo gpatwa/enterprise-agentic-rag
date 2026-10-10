@@ -43,12 +43,32 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ .Values.secretRef | default "app-env-secret" }}
+          {{- if .Values.enterpriseSearch.enabled }}
+          env:
+            - name: OPENSEARCH_ENABLED
+              value: "true"
+            - name: OPENSEARCH_INDEX_ALIAS
+              value: {{ .Values.enterpriseSearch.indexAlias | quote }}
+            - name: OPENSEARCH_VECTOR_DIMENSIONS
+              value: {{ .Values.enterpriseSearch.vectorDimensions | quote }}
+            {{- if .Values.enterpriseSearch.url }}
+            - name: OPENSEARCH_URL
+              value: {{ .Values.enterpriseSearch.url | quote }}
+            {{- end }}
+            {{- with .Values.env }}
+            {{- range $key, $value := . }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- end }}
+          {{- else }}
           {{- with .Values.env }}
           env:
             {{- range $key, $value := . }}
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+          {{- end }}
           {{- end }}
           # Startup Probe: Allows slow startup (e.g., loading models)
           # Checks every 5s, up to 30 attempts = 150s max startup time

@@ -1,0 +1,62 @@
+name: Agentic Data Stack Evaluation
+
+on:
+  pull_request:
+    paths:
+      - "packages/platform_contracts/**"
+      - "services/analytics-api/app/harness/**"
+      - "services/analytics-api/tests/test_ads02*.py"
+      - "services/analytics-api/tests/fixtures/ads-m2-baseline.json"
+      - "docs/execution/enterprise-analytics/ADS-02*.md"
+      - ".github/workflows/ci-agentic-eval.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packages/platform_contracts/**"
+      - "services/analytics-api/app/harness/**"
+      - "services/analytics-api/tests/test_ads02*.py"
+      - "services/analytics-api/tests/fixtures/ads-m2-baseline.json"
+      - "docs/execution/enterprise-analytics/ADS-02*.md"
+      - ".github/workflows/ci-agentic-eval.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evaluate:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: Platform contracts
+            command: PYTHONPATH=. pytest -q packages/platform_contracts/tests
+          - name: Harness contracts and replay
+            command: cd services/analytics-api && PYTHONPATH=.:../.. pytest -q tests/test_harness_m2.py tests/test_ads023_graph_harness.py tests/test_ads024_node_contracts.py tests/test_ads025_faults.py tests/test_ads026_trace_replay.py
+          - name: Graders reports and baseline
+            command: cd services/analytics-api && PYTHONPATH=.:../.. pytest -q tests/test_ads027_graders.py tests/test_ads028_reports.py tests/test_ads029_baseline.py
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/analytics-api/requirements.txt
+      - name: Install analytics dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r services/analytics-api/requirements.txt pytest pytest-asyncio ruff
+      - name: Run matrix slice
+        run: ${{ matrix.command }}
+      - name: Generate CI evaluation artifacts
+        if: matrix.name == 'Graders reports and baseline'
+        run: PYTHONPATH=.:services/analytics-api python scripts/run_agentic_eval.py
+      - name: Upload evaluation artifacts
+        if: always() && matrix.name == 'Graders reports and baseline'
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentic-evaluation-${{ github.sha }}
+          path: |
+            artifacts/agentic-evaluation/*

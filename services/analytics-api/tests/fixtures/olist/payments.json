@@ -1,0 +1,10 @@
+[
+  {"order_id": "o-1", "payment_sequential": 1, "payment_type": "credit_card", "payment_value": "70.00"},
+  {"order_id": "o-1", "payment_sequential": 2, "payment_type": "voucher", "payment_value": "30.00"},
+  {"order_id": "o-2", "payment_sequential": 1, "payment_type": "boleto", "payment_value": "80.00"},
+  {"order_id": "o-3", "payment_sequential": 1, "payment_type": "credit_card", "payment_value": "50.00"},
+  {"order_id": "o-4", "payment_sequential": 1, "payment_type": "voucher", "payment_value": "25.00"},
+  {"order_id": "o-5", "payment_sequential": 1, "payment_type": "debit_card", "payment_value": "20.00"},
+  {"order_id": "o-6", "payment_sequential": 1, "payment_type": "credit_card", "payment_value": "50.00"},
+  {"order_id": "o-6", "payment_sequential": 2, "payment_type": "voucher", "payment_value": "70.00"}
+]

@@ -1,0 +1,43 @@
+{
+  "lifecycle": "certified",
+  "contract": {
+    "id": "olist-commerce",
+    "tenant_id": "local-demo",
+    "domain": "commerce",
+    "version": "2026-08-20",
+    "owners": [
+      {"id": "team.analytics", "display_name": "Analytics Team", "owner_type": "team"}
+    ],
+    "datasets": [
+      {"id": "orders", "display_name": "Orders", "source_asset_id": "olist.orders", "physical_name": "olist_orders", "description": "One row per order", "owner_ids": ["team.analytics"]},
+      {"id": "order_items", "display_name": "Order items", "source_asset_id": "olist.order_items", "physical_name": "olist_order_items", "description": "One row per item", "owner_ids": ["team.analytics"]}
+    ],
+    "fields": [
+      {"id": "orders.order_id", "dataset_id": "orders", "physical_name": "order_id", "data_type": "string"},
+      {"id": "orders.order_status", "dataset_id": "orders", "physical_name": "order_status", "data_type": "string"},
+      {"id": "orders.purchase_timestamp", "dataset_id": "orders", "physical_name": "order_purchase_timestamp", "data_type": "timestamp"},
+      {"id": "orders.payment_total", "dataset_id": "orders", "physical_name": "payment_total", "data_type": "decimal"},
+      {"id": "order_items.order_id", "dataset_id": "order_items", "physical_name": "order_id", "data_type": "string"},
+      {"id": "order_items.price", "dataset_id": "order_items", "physical_name": "price", "data_type": "decimal"}
+    ],
+    "entities": [
+      {"id": "order", "dataset_id": "orders", "grain": {"kind": "order", "key_field_ids": ["orders.order_id"]}, "owner_ids": ["team.analytics"]}
+    ],
+    "dimensions": [
+      {"id": "order_status", "dataset_id": "orders", "field_id": "orders.order_status", "entity_id": "order", "dimension_type": "categorical", "owner_ids": ["team.analytics"]},
+      {"id": "purchase_time", "dataset_id": "orders", "field_id": "orders.purchase_timestamp", "entity_id": "order", "dimension_type": "temporal", "owner_ids": ["team.analytics"]}
+    ],
+    "filters": [
+      {"id": "delivered_orders", "dataset_id": "orders", "field_id": "orders.order_status", "operator": "equals", "value_source": "literal", "literal_value": "delivered"}
+    ],
+    "metrics": [
+      {"id": "delivered_revenue", "dataset_id": "orders", "aggregation": "sum", "measure_field_id": "orders.payment_total", "grain": {"kind": "order", "key_field_ids": ["orders.order_id"]}, "required_filter_ids": ["delivered_orders"], "certification": "certified", "owner_ids": ["team.analytics"]}
+    ],
+    "joins": [
+      {"id": "order_items_to_orders", "from_dataset_id": "order_items", "to_dataset_id": "orders", "from_field_ids": ["order_items.order_id"], "to_field_ids": ["orders.order_id"], "cardinality": "many_to_one", "approved": true}
+    ],
+    "policies": [
+      {"id": "analytics_internal", "target_ids": ["delivered_revenue"], "classification": "internal", "allowed_purposes": ["analytics"], "required_filter_ids": ["delivered_orders"], "owner_ids": ["team.analytics"]}
+    ]
+  }
+}
