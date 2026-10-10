@@ -56,8 +56,8 @@ promotions, critical/high security defects (reasons in the thresholds file).
   approved thresholds; **a wrong expected result is detected** (P0 equivalence falls below its
   gate); executing SQL the compiler did not produce is counted; a changed corpus is rejected by
   the digest lock; the approval record and its limited scope are checked, the report states them, an unapproved
-  file would be labelled "PROPOSED and NOT APPROVED", and the manifest still records no M4
-  human-gate approval; expected rows match an independent Python oracle.
+  file would be labelled "PROPOSED and NOT APPROVED", and the manifest records the gate approval and
+  the threshold approval as separate entries; expected rows match an independent Python oracle.
 - Real defect found and fixed in ADS-045: when no usable context snapshot existed for the
   caller's tenant, `analyze` raised an unhandled `SnapshotSelectionError` (HTTP 500). It now maps
   to 403 (tenant/purpose) or 503 (stale/unavailable); regression test added to the ADS-045 suite.
@@ -89,6 +89,6 @@ produces, so the month-bucket representation is DuckDB-version dependent.
 
 ## Decisions still with the user
 
-1. The M4 `local_demo_review` gate.
+1. (Done 2026-10-09: the user approved the M4 `local_demo_review` gate; see the manifest.)
 2. Independent review of ADS-040 to ADS-049, M1 semantic certification, and any live validation.
-3. Whether and where to open a PR (the branch is based on `codex/ea-001-canonical-fixtures`).
+3. (Done: PR #15 was merged into `main`.)
