@@ -1,0 +1,62 @@
+{
+  "suite_version": "prompt-registry-corpus-v1",
+  "rules_version": "prompt-registry-rules-v1",
+  "corpus_sha256": "b048a2c371aa947041b7e8ce9dffcebf348e84a314c703b1e4952cdf1a6e3102",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "scope_note": "The registry is deterministic, so exact agreement with hand-written expectations is expected. These gates check the immutability and isolation properties of ADS-054 on the reference stack; they say nothing about whether a candidate prompt is better.",
+  "gates": {
+    "outcome_agreement": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "cases whose outcome (accepted, idempotent, rejected, visible, invisible) equals the hand-written expectation"
+    },
+    "overwrite_rejection": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "attempts to change or imitate a released version that are rejected"
+    },
+    "released_mutations": {
+      "op": "<=",
+      "value": 0,
+      "measure": "released rows whose stored content changed during the run"
+    },
+    "candidate_namespace_violations": {
+      "op": "<=",
+      "value": 0,
+      "measure": "registered candidates whose version is not content-derived or looks like a release"
+    },
+    "example_text_leakage": {
+      "op": "<=",
+      "value": 0,
+      "measure": "stored examples containing the request text or the feedback note"
+    },
+    "tenant_isolation": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "tenant reads that match the visibility rule (own tenant and system only)"
+    },
+    "determinism": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "re-registered entries that return the identical stored entry"
+    },
+    "runtime_prompt_drift": {
+      "op": "<=",
+      "value": 0,
+      "measure": "samples where the latest released baseline does not render exactly the runtime prompt"
+    },
+    "protected_file_writes": {
+      "op": "<=",
+      "value": 0,
+      "measure": "changes to the runtime prompt, registry contracts, goldens, thresholds, or manifest during the run"
+    }
+  },
+  "not_measured": {
+    "prompt_quality": "whether a candidate prompt improves answers needs evaluation against real data; that is ADS-056"
+  }
+}
