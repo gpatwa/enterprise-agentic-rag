@@ -115,9 +115,15 @@ Canonical task status is in
     pass and every approved gate is met, and the M4 `local_demo_review` gate was separately approved by the user on 2026-10-09 (limits recorded in the manifest); the
     suite is a pipeline-integrity check (scripted model, emulated PostgreSQL). Also fixed an
     ADS-045 bug (unusable snapshot caused HTTP 500). Packet: `ADS-049-m4-golden-report.md`.
-  - **Next:** M5 is no longer blocked by the M4 human gate, but ADS-040..049 are still `review`
-    (no independent review), M1 certification is pending, and nothing was validated live. Confirm
-    scope with the user before starting M5.
+  - **M5 started.** The user confirmed the first-packet proposal ("Go with your recommendations").
+  - **ADS-050** structured feedback capture (`packages/platform_contracts/feedback.py`,
+    `app/runtime/feedback_*.py`, `evidence_sealer.py`, migration `0005`,
+    `POST /api/v2/analytics/runs/{id}/feedback`): append-only, bound to the sealed evidence envelope,
+    corrections name certified semantic IDs only, recording only (no effect on goldens/policy/prompts).
+    The v2 service now seals evidence at terminal. Backend/API only. Packet: `ADS-050-feedback-capture.md`.
+    Suite: **365 passed**.
+  - **Next:** ADS-051 (root-cause taxonomy and deterministic triage) once the user approves scope.
+    ADS-040..050 are still `review`, M1 certification is pending, nothing was validated live.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls
     `new_governed_run_state`, `record_terminal_evidence`, or the control-total
     builder in a production path yet (ADS-045 owns API/worker wiring; the control

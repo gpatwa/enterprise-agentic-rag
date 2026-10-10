@@ -81,6 +81,7 @@ def run_journey(engine: Engine) -> JourneyReport:
             and replay["outcome"]["evidence"]["result_fingerprint"] == answer["evidence"]["result_fingerprint"],
         )
         _seal(stack, first["run_id"], check)
+        _feedback_step(stack, client, first["run_id"], check)
 
     by_status = client.post(
         f"{URL}/analyze",
@@ -143,6 +144,23 @@ def seal_run(stack: ReferenceStack, run_id: str) -> bool:
 
 def _seal(stack: ReferenceStack, run_id: str, check) -> None:
     check("terminal run is sealed in a verified evidence chain", seal_run(stack, run_id))
+
+
+def _feedback_step(stack: ReferenceStack, client: TestClient, run_id: str, check) -> None:
+    body = {"purpose": PURPOSE, "verdict": "incorrect", "reason_code": "wrong_time_range"}
+    headers = _headers(stack, "analyst", "fb-smoke-0001")
+    first = client.post(f"{URL}/runs/{run_id}/feedback", json=body, headers=headers)
+    envelope = stack.evidence.get(run_id, tenant_id="tenant-a", purpose=PURPOSE)
+    check(
+        "feedback binds to the run's sealed evidence",
+        first.status_code == 201 and first.json()["evidence_fingerprint"] == envelope.content_fingerprint,
+        first.text[:160],
+    )
+    again = client.post(f"{URL}/runs/{run_id}/feedback", json=body, headers=headers)
+    check(
+        "feedback replay is idempotent",
+        again.status_code == 200 and again.json()["feedback_id"] == first.json().get("feedback_id"),
+    )
 
 
 def _review_journey(engine: Engine, expected_rows: str | None, check) -> None:

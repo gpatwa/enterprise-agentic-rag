@@ -25,7 +25,7 @@ PostgreSQL server is. This is not live PostgreSQL validation.
   `explain`), the ADS-045 service, and a locally signed OIDC verifier into a FastAPI app via
   `ReferenceStack.app()`. Tokens are HS256 with a per-stack random secret, so they work only
   against the stack that minted them.
-- `smoke.py`: one 13-step journey per dialect, plus a cross-dialect check: auth (401), purpose
+- `smoke.py`: one 15-step journey per dialect (13 at ADS-048; ADS-050 added two feedback steps), plus a cross-dialect check: auth (401), purpose
   (403), grounded answer, three-row result with a line spec, idempotent replay, evidence sealing
   and chain verification, revenue by status, ungrouped stat, unsupported question failing
   safely, review pause, self-approval refused, reviewer approval, and the approved answer

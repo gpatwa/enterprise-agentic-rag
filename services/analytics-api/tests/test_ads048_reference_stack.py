@@ -33,7 +33,7 @@ def test_both_smoke_journeys_pass_without_any_network_connection(no_network):
     assert no_network == []
     assert [j["engine"] for j in report["journeys"]] == ["duckdb", "postgres"]
     names = [[s["name"] for s in j["steps"]] for j in report["journeys"]]
-    assert names[0] == names[1] and len(names[0]) == 13  # same journey on both dialects
+    assert names[0] == names[1] and len(names[0]) == 15  # same journey on both dialects
     assert report["cross_dialect_rows_identical"] is True
 
 
