@@ -8,7 +8,7 @@ from typing import Any
 
 from app.agents.json_utils import extract_json
 from app.clients.base import LLMClient
-from app.resolution.ranking import RerankCandidate, RerankItem, RerankRequest, RerankResult
+from app.resolution.ranking import RerankItem, RerankRequest, RerankResult
 from app.resolution.safety import bound_untrusted_text
 
 DEFAULT_TIMEOUT_SECONDS = 2.0

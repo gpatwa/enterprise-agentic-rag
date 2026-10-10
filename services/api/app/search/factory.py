@@ -5,7 +5,6 @@ from typing import Any
 
 from app.config import Settings, settings
 
-
 SUPPORTED_SEARCH_PROVIDERS = ("opensearch",)
 
 

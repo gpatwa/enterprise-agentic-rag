@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import re
 
-from pydantic import ConfigDict, Field
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.resolution.evidence import EvidencePacket
 from app.resolution.models import GroundedResolutionOutcome
-
 
 _WORD = re.compile(r"[a-z0-9][a-z0-9_-]{2,}")
 _STOP = {"the", "and", "for", "with", "from", "this", "that", "may", "should", "after", "before"}

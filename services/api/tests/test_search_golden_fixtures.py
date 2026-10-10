@@ -4,7 +4,6 @@ import json
 import re
 from pathlib import Path
 
-
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "search"
 UTC_TIMESTAMP = re.compile(r"^2026-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 

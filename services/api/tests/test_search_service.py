@@ -70,8 +70,8 @@ async def test_search_service_preserves_cancellation():
 
 @pytest.mark.asyncio
 async def test_support_indexer_maps_enterprise_results(monkeypatch):
-    from app.search.models import RetrievalSource, SearchResult
     import app.support.indexer as indexer
+    from app.search.models import RetrievalSource, SearchResult
 
     class Embedder:
         async def embed_query(self, query):

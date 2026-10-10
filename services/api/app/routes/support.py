@@ -16,13 +16,13 @@ from app.auth.tenant import TenantContext, get_tenant_context
 from app.config import settings
 from app.search.events import InteractionKind, SearchInteractionEvent, pseudonymize_principal
 from app.search.persistence import persist_interaction_event
+from app.support.command_policy import PolicyOutcome, evaluate_support_command
+from app.support.commands import SupportCommand
 from app.support.demo import DEMO_PROVIDER, seed_demo_data
 from app.support.indexer import SupportIndexError, support_indexer
 from app.support.insights import repeat_ticket_insights
 from app.support.jobs import support_job_manager, support_job_worker
 from app.support.models import SupportAction, SupportSyncRun, SupportTicket
-from app.support.commands import SupportCommand
-from app.support.command_policy import PolicyOutcome, evaluate_support_command
 from app.support.resolver import SupportResolveError, support_resolver
 from app.support.store import support_data_store
 from app.support.sync import SupportSyncError, support_sync_runner

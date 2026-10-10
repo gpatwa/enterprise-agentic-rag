@@ -2,15 +2,15 @@ import pytest
 from pydantic import ValidationError
 
 from app.resolution.models import (
-    ConfidenceLevel,
     ActionProposal,
+    ConfidenceLevel,
     GroundedResolutionOutcome,
     IntentConstraint,
     IntentEntity,
     QueryMode,
     QueryVariant,
-    ResolutionClaim,
     ResolutionCitation,
+    ResolutionClaim,
     ResolutionStep,
     SearchPlan,
     SupportIntent,

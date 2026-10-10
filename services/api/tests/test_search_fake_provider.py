@@ -34,8 +34,9 @@ def _document(document_id: str, *, tenant_id: str = "tenant-acme", acl_tokens=No
 
 @pytest.mark.asyncio
 async def test_fake_provider_is_deterministic_and_enforces_tenant_acl_and_filters():
-    from app.search.models import SearchIndexSpec, SearchRequest
     from tests.fakes.search_provider import InMemorySearchProvider
+
+    from app.search.models import SearchIndexSpec, SearchRequest
 
     provider = InMemorySearchProvider()
     await provider.connect()
@@ -76,9 +77,9 @@ async def test_fake_provider_is_deterministic_and_enforces_tenant_acl_and_filter
 
 @pytest.mark.asyncio
 async def test_fake_provider_delete_is_tenant_scoped_and_idempotent():
-    from app.search.models import SearchIndexSpec, SearchScope
     from tests.fakes.search_provider import InMemorySearchProvider
-    from app.search.models import SearchRequest
+
+    from app.search.models import SearchIndexSpec, SearchRequest, SearchScope
 
     provider = InMemorySearchProvider()
     await provider.ensure_index(

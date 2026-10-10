@@ -9,8 +9,8 @@ from typing import Mapping
 from app.clients.base import LLMClient
 from app.resolution.llm_reranker import rerank_with_llm
 from app.resolution.ranking import (
-    RerankRequest,
     RerankItem,
+    RerankRequest,
     RerankResult,
     pre_rank_authorized,
 )

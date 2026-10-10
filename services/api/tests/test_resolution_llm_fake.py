@@ -1,7 +1,6 @@
 import asyncio
 
 import pytest
-
 from tests.fakes.llm import ScriptedLLM
 
 

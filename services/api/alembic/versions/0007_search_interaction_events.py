@@ -7,7 +7,6 @@ Create Date: 2026-08-23 00:00:00
 import sqlalchemy as sa
 from alembic import op
 
-
 revision = "0007_search_interaction_events"
 down_revision = "0006_support_search_outbox"
 branch_labels = None

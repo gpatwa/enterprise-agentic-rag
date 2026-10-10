@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-
 FIXTURE = Path(__file__).parent / "fixtures" / "llm_resolution" / "cases.json"
 SEARCH_FIXTURE = Path(__file__).parent / "fixtures" / "search" / "documents.json"
 REQUIRED_EXPECTED = {

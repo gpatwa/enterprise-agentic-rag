@@ -11,7 +11,6 @@ from app.resolution.retrieval import RetrievalProvenance
 from app.resolution.safety import bound_untrusted_text
 from app.search.models import SearchResult
 
-
 DEFAULT_MAX_ITEMS = 20
 DEFAULT_MAX_FIELD_CHARS = 2_000
 DEFAULT_MAX_PACKET_CHARS = 8_000

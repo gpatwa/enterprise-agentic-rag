@@ -8,12 +8,13 @@ import time
 from pathlib import Path
 from typing import Any
 
+from tests.fakes.llm import ScriptedLLM
+
 from app.resolution.evaluation import evaluate_resolution
 from app.resolution.evidence import EvidenceItem, EvidencePacket
 from app.resolution.models import GroundedResolutionOutcome
 from app.resolution.synthesis import synthesize_resolution
 from app.resolution.telemetry import estimated_cost_usd
-from tests.fakes.llm import ScriptedLLM
 
 DEFAULT_CORPUS = Path(__file__).resolve().parents[2] / "tests/fixtures/llm_resolution/cases.json"
 
@@ -73,7 +74,13 @@ def run_evaluation(corpus_path: str | Path = DEFAULT_CORPUS, *, input_rate: floa
     cases = _load(Path(corpus_path))
     paths: dict[str, dict[str, Any]] = {}
     for name, scripted in (("deterministic", False), ("scripted_model", True)):
-        started = time.perf_counter(); cited = []; supported = []; predicted = []; expected = []; actions = []; allowed = []
+        started = time.perf_counter()
+        cited = []
+        supported = []
+        predicted = []
+        expected = []
+        actions = []
+        allowed = []
         input_tokens = output_tokens = 0
         for case in cases:
             packet = _packet(case)
@@ -95,9 +102,12 @@ def run_evaluation(corpus_path: str | Path = DEFAULT_CORPUS, *, input_rate: floa
                     confidence="low", abstention=True, next_action="route_to_human", action_proposal=None,
                 )
             _ = before
-            cited.extend(c.label for c in outcome.citations); supported.extend(bool(outcome.citations) for _ in outcome.claims)
-            predicted.append(outcome.abstention); expected.append(bool(exp["abstain"]))
-            actions.append(outcome.next_action); allowed.append(exp["allowed_action_types"])
+            cited.extend(c.label for c in outcome.citations)
+            supported.extend(bool(outcome.citations) for _ in outcome.claims)
+            predicted.append(outcome.abstention)
+            expected.append(bool(exp["abstain"]))
+            actions.append(outcome.next_action)
+            allowed.append(exp["allowed_action_types"])
         elapsed = (time.perf_counter() - started) * 1000
         report = evaluate_resolution(cited_labels=cited, authorized_labels=["[E1]", "[E2]"], supported=supported,
             predicted_abstentions=predicted, expected_abstentions=expected, action_types=actions,

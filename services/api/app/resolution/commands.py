@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any
 
 from app.resolution.evidence import EvidencePacket
 from app.resolution.models import GroundedResolutionOutcome
@@ -16,7 +15,6 @@ from app.support.commands import (
     SupportCommandType,
     SupportTenantPrincipalContext,
 )
-
 
 _CONTRACT_VERSION = "support-command.v1"
 _DRAFT_RESPONSE_ACTION = "draft_agent_response"

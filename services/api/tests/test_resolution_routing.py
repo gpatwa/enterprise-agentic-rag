@@ -2,7 +2,12 @@ import pytest
 
 from app.resolution.models import ConfidenceLevel, SupportIntent, SupportIntentType
 from app.resolution.routing import (
-    ModelRoute, QueryPlanCache, ResolutionBudget, RoutingPolicy, choose_route, make_cache_key,
+    ModelRoute,
+    QueryPlanCache,
+    ResolutionBudget,
+    RoutingPolicy,
+    choose_route,
+    make_cache_key,
     route_query_plan,
 )
 
@@ -21,7 +26,9 @@ def test_cache_key_is_tenant_isolated_and_opaque():
 def test_cache_expires_and_evicts_oldest_deterministically():
     now = [0.0]
     cache = QueryPlanCache(ttl_seconds=5, max_entries=2, clock=lambda: now[0])
-    cache.put("a", 1); cache.put("b", 2); cache.put("c", 3)
+    cache.put("a", 1)
+    cache.put("b", 2)
+    cache.put("c", 3)
     assert cache.get("a") is None and cache.get("b") == 2
     now[0] = 5
     assert len(cache) == 0

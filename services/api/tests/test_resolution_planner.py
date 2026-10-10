@@ -1,9 +1,9 @@
 import pytest
+from tests.fakes.llm import ScriptedLLM
 
 from app.resolution.models import SupportIntent
 from app.resolution.planner import plan_queries
 from app.search.models import SearchScope
-from tests.fakes.llm import ScriptedLLM
 
 
 def scope():

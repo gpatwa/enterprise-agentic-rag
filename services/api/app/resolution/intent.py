@@ -10,7 +10,6 @@ from typing import Any
 from app.resolution.models import ConfidenceLevel, SupportIntent, SupportIntentType
 from app.resolution.query import normalize_ticket_query
 
-
 DEFAULT_TIMEOUT_SECONDS = 2.0
 MAX_RESPONSE_LENGTH = 12_000
 

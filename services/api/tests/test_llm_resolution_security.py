@@ -10,6 +10,8 @@ from __future__ import annotations
 import asyncio
 
 import pytest
+from tests.fakes.llm import ScriptedLLM
+from tests.fakes.search_provider import InMemorySearchProvider
 
 from app.resolution.commands import generate_support_command
 from app.resolution.evidence import EvidenceItem, EvidencePacket
@@ -29,8 +31,6 @@ from app.support.commands import (
     SupportCommandType,
     SupportTenantPrincipalContext,
 )
-from tests.fakes.llm import ScriptedLLM
-from tests.fakes.search_provider import InMemorySearchProvider
 
 
 def _scope(tenant_id: str = "tenant-a", *, group: str = "support") -> SearchScope:

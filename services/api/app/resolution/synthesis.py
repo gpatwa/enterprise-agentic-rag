@@ -11,7 +11,6 @@ from app.resolution.evidence import EvidencePacket
 from app.resolution.models import GroundedResolutionOutcome
 from app.resolution.safety import bound_untrusted_text, format_evidence_text
 
-
 DEFAULT_TIMEOUT_SECONDS = 5.0
 DEFAULT_ISSUE_LIMIT = 2_000
 DEFAULT_PROMPT_LIMIT = 12_000
