@@ -64,6 +64,20 @@ class TriageStore:
                 continue
         raise TriageError("could not append triage after repeated contention")
 
+    def get(self, triage_id: str, *, tenant_id: str) -> TriageRecord:
+        with self.engine.connect() as connection:
+            row = (
+                connection.execute(
+                    text("SELECT payload FROM analytics_feedback_triage WHERE tenant_id=:t AND triage_id=:i"),
+                    {"t": tenant_id, "i": triage_id},
+                )
+                .mappings()
+                .first()
+            )
+        if row is None:
+            raise TriageError("no such triage record in this tenant")
+        return TriageRecord.model_validate(_load(row["payload"]))
+
     def for_feedback(self, feedback_id: str, *, tenant_id: str) -> tuple[TriageRecord, ...]:
         with self.engine.connect() as connection:
             rows = (

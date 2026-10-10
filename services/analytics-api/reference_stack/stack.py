@@ -29,6 +29,7 @@ from app.execution import (
     PostgresGateway,
     run_control_totals,
 )
+from app.proposals import ProposalService, ProposalStore
 from app.runtime import (
     AgentGraphRunner,
     BootstrapRequest,
@@ -230,6 +231,17 @@ class ReferenceStack:
             state_factory=self.new_state,
             answers=self,
             sealer=EvidenceSealer(self.control, self.evidence, self.reports),
+        )
+
+    def proposal_service(self) -> ProposalService:
+        engine = self.control.engine
+        return ProposalService(
+            self.control,
+            self.evidence,
+            FeedbackStore(engine),
+            TriageStore(engine),
+            ProposalStore(engine),
+            self.contracts,
         )
 
     def triage_service(self) -> TriageService:

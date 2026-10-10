@@ -128,7 +128,14 @@ Canonical task status is in
     `reference_stack/triage/triage-thresholds.json` were **approved by the user 2026-10-09** (scope: those
     thresholds only; `M5.m5_triage_threshold_approval`; the M5 human gate is still open). Packet:
     `ADS-051-feedback-triage.md`. Suite: **415 passed**.
-  - **Next:** ADS-052..054 (change proposals; wave 5B,
+  - **ADS-052** change proposals (`packages/platform_contracts/proposals.py`, `app/proposals/`, migration `0007`):
+    closed operation list (flag a definition in a *draft* contract, request a context edge, flag a label
+    collision), inert `proposed` data, append-only, the contract itself blocks anything but drafts. Corpus
+    thresholds in `reference_stack/proposals/proposal-thresholds.proposed.json` are **PROPOSED, NOT APPROVED**.
+    Packet: `ADS-052-semantic-context-proposals.md`. Suite: **451 passed**. The user confirmed the wave-5B plan
+    ("go with your recommendations"): 053 next (fixture dbt project, approved-files allowlist, validation command
+    never run), then 054 (immutable prompt/example candidate registry, references and fingerprints only).
+  - **Next:** ADS-053, ADS-054 (then the user's call on the 052 thresholds) (change proposals; wave 5B,
     parallel). ADS-040..051 are still `review`, M1 certification is pending, nothing was validated live.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls
     `new_governed_run_state`, `record_terminal_evidence`, or the control-total

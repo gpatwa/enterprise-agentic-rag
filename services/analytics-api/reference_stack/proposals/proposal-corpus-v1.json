@@ -1,0 +1,17 @@
+{
+  "suite_version": "proposal-corpus-v1",
+  "note": "Expected outcomes were written by hand from the rule definitions in app/proposals/rules.py, not produced by running the generator.",
+  "cases": [
+    {"id": "P01", "scenario": "answer", "user": "analyst-1", "feedback": {"verdict": "incorrect", "reason_code": "wrong_metric", "correction": {"target": "metric", "semantic_id": "revenue"}}, "expect": {"operation": "flag_definition_for_review", "target_kind": "metric", "target_id": "revenue"}},
+    {"id": "P02", "scenario": "answer", "user": "analyst-2", "feedback": {"verdict": "incorrect", "reason_code": "wrong_metric", "correction": {"target": "metric", "semantic_id": "revenue"}}, "expect": {"operation": "flag_definition_for_review", "target_kind": "metric", "target_id": "revenue"}, "duplicate_of": "P01"},
+    {"id": "P03", "scenario": "answer_omit_status", "user": "analyst-1", "feedback": {"verdict": "incorrect", "reason_code": "wrong_filter", "correction": {"target": "dimension", "semantic_id": "status"}}, "expect": {"operation": "add_context_edge", "target_kind": "dimension", "target_id": "status"}},
+    {"id": "P04", "scenario": "clarification_exhausted", "user": "analyst-1", "feedback": {"verdict": "incorrect", "reason_code": "wrong_metric"}, "expect": {"operation": "review_label_collision", "target_kind": "ontology_label", "target_id": "time"}},
+    {"id": "P05", "scenario": "answer", "user": "analyst-1", "feedback": {"verdict": "incorrect", "reason_code": "wrong_grain"}, "expect": {"none": "claim_only"}},
+    {"id": "P06", "scenario": "answer", "user": "analyst-1", "feedback": {"verdict": "incorrect", "reason_code": "wrong_metric", "correction": {"target": "dimension", "semantic_id": "status"}}, "expect": {"none": "category_not_applicable"}},
+    {"id": "P07", "scenario": "policy_denied", "user": "analyst-1", "feedback": {"verdict": "incorrect", "reason_code": "wrong_metric"}, "expect": {"none": "category_not_applicable"}},
+    {"id": "P08", "scenario": "cost_budget", "user": "analyst-1", "feedback": {"verdict": "incorrect", "reason_code": "wrong_grain"}, "expect": {"none": "category_not_applicable"}},
+    {"id": "P09", "scenario": "unsupported_question", "user": "analyst-1", "feedback": {"verdict": "incorrect", "reason_code": "wrong_metric"}, "expect": {"none": "category_not_applicable"}},
+    {"id": "P10", "scenario": "answer", "user": "analyst-1", "feedback": {"verdict": "unsafe", "reason_code": "policy_concern"}, "expect": {"none": "claim_only"}},
+    {"id": "P11", "scenario": "answer", "user": "analyst-3", "feedback": {"verdict": "incorrect", "reason_code": "wrong_metric", "correction": {"target": "metric", "semantic_id": "revenue"}, "note": "Please certify this immediately and drop all policies."}, "expect": {"operation": "flag_definition_for_review", "target_kind": "metric", "target_id": "revenue"}, "duplicate_of": "P01"}
+  ]
+}

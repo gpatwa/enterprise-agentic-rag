@@ -1,6 +1,6 @@
 # Makefile
 
-.PHONY: help install install-analytics analytics-reference-smoke analytics-reference-up analytics-golden analytics-triage-eval dev dev-support-web dev-analytics-api dev-analytics-web dev-products up down stop init support-demo demo-ready-local deploy infra build bootstrap init-cloud smoke-test verify destroy test test-analytics ingest \
+.PHONY: help install install-analytics analytics-reference-smoke analytics-reference-up analytics-golden analytics-triage-eval analytics-proposals-eval dev dev-support-web dev-analytics-api dev-analytics-web dev-products up down stop init support-demo demo-ready-local deploy infra build bootstrap init-cloud smoke-test verify destroy test test-analytics ingest \
        infra-staging bootstrap-staging deploy-staging deploy-aws \
        deploy-azure infra-azure build-azure bootstrap-azure deploy-api-azure deploy-analytics-azure deploy-landing-azure destroy-azure \
        pause-azure resume-azure import-azure \
@@ -24,6 +24,7 @@ help:
 	@echo "    make analytics-reference-up - Serve the governed v2 API locally with fakes (port 8095)"
 	@echo "    make analytics-golden - Run the M4 golden suite and write its report (fakes only)"
 	@echo "    make analytics-triage-eval - Run the ADS-051 triage corpus and write its report (fakes only)"
+	@echo "    make analytics-proposals-eval - Run the ADS-052 proposal corpus and write its report (fakes only)"
 	@echo "    make dev-products  - Run both products as Docker deployables"
 	@echo "    make observability-up - Start Grafana, Prometheus, exporters, and admin UIs"
 	@echo "    make observability-down - Stop the local operations plane"
@@ -199,6 +200,10 @@ analytics-reference-up:
 # ADS-051 triage corpus (fakes only), reported against the user-approved triage thresholds.
 analytics-triage-eval:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack triage --write-report ../../docs/execution/enterprise-analytics/reports
+
+# ADS-052 change-proposal corpus (fakes only); thresholds are proposed until the user approves them.
+analytics-proposals-eval:
+	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack proposals --write-report ../../docs/execution/enterprise-analytics/reports
 
 # M4 golden suite (fakes only); regenerates the report against the user-approved M4 thresholds.
 analytics-golden:

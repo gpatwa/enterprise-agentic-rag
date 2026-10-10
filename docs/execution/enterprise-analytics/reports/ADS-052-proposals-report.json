@@ -1,0 +1,333 @@
+{
+  "suite_version": "proposal-corpus-v1",
+  "rules_version": "proposal-rules-v1",
+  "corpus_sha256": "3d609f357cc8cefc302c316feed576c12fbb4fcb6902dda4df295627ee10079e",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "meets_thresholds": true,
+  "gates": {
+    "proposal_agreement": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "cases whose proposal (or reason for none) equals the hand-written expectation"
+    },
+    "provenance_completeness": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "proposals carrying origin triage, feedback, and run IDs, rationale codes, rules version, and a base-contract fingerprint"
+    },
+    "never_certified_violations": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "proposals whose status is not proposed, whose patch sets a lifecycle other than draft, or touches a path outside the allowlist"
+    },
+    "draft_validity": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "patched documents that validate as a registry document in the draft lifecycle with definitions and policies unchanged"
+    },
+    "protected_file_writes": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "changes to the registry contracts, goldens, thresholds, runtime prompt, or manifest during generation"
+    },
+    "determinism": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "cases whose regeneration yields the same proposal with no new rows"
+    },
+    "dedupe_agreement": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "duplicate requests (including one with an injected note) that map to the original proposal and add support only"
+    }
+  },
+  "not_measured": {
+    "proposal_usefulness": "needs reviewers and real feedback; reviewing proposals is ADS-055"
+  },
+  "cases": [
+    {
+      "case_id": "P01",
+      "scenario": "answer",
+      "expected": {
+        "operation": "flag_definition_for_review",
+        "target_kind": "metric",
+        "target_id": "revenue"
+      },
+      "got": {
+        "operation": "flag_definition_for_review",
+        "target_kind": "metric",
+        "target_id": "revenue"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "P02",
+      "scenario": "answer",
+      "expected": {
+        "operation": "flag_definition_for_review",
+        "target_kind": "metric",
+        "target_id": "revenue"
+      },
+      "got": {
+        "operation": "flag_definition_for_review",
+        "target_kind": "metric",
+        "target_id": "revenue"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "P03",
+      "scenario": "answer_omit_status",
+      "expected": {
+        "operation": "add_context_edge",
+        "target_kind": "dimension",
+        "target_id": "status"
+      },
+      "got": {
+        "operation": "add_context_edge",
+        "target_kind": "dimension",
+        "target_id": "status"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "P04",
+      "scenario": "clarification_exhausted",
+      "expected": {
+        "operation": "review_label_collision",
+        "target_kind": "ontology_label",
+        "target_id": "time"
+      },
+      "got": {
+        "operation": "review_label_collision",
+        "target_kind": "ontology_label",
+        "target_id": "time"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "P05",
+      "scenario": "answer",
+      "expected": {
+        "none": "claim_only"
+      },
+      "got": {
+        "none": "claim_only"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "P06",
+      "scenario": "answer",
+      "expected": {
+        "none": "category_not_applicable"
+      },
+      "got": {
+        "none": "category_not_applicable"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "P07",
+      "scenario": "policy_denied",
+      "expected": {
+        "none": "category_not_applicable"
+      },
+      "got": {
+        "none": "category_not_applicable"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "P08",
+      "scenario": "cost_budget",
+      "expected": {
+        "none": "category_not_applicable"
+      },
+      "got": {
+        "none": "category_not_applicable"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "P09",
+      "scenario": "unsupported_question",
+      "expected": {
+        "none": "category_not_applicable"
+      },
+      "got": {
+        "none": "category_not_applicable"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "P10",
+      "scenario": "answer",
+      "expected": {
+        "none": "claim_only"
+      },
+      "got": {
+        "none": "claim_only"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "P11",
+      "scenario": "answer",
+      "expected": {
+        "operation": "flag_definition_for_review",
+        "target_kind": "metric",
+        "target_id": "revenue"
+      },
+      "got": {
+        "operation": "flag_definition_for_review",
+        "target_kind": "metric",
+        "target_id": "revenue"
+      },
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "proposals": [
+    {
+      "proposal_version": "v1",
+      "proposal_id": "7019a70567b613d8238e573d896cfd07",
+      "tenant_id": "tenant-a",
+      "kind": "semantic_context",
+      "operation": "flag_definition_for_review",
+      "target_kind": "metric",
+      "target_id": "revenue",
+      "parameters": {
+        "reason": "definition_disputed"
+      },
+      "base_contract": "sales-core@v1",
+      "base_contract_fingerprint": "bd632c3ce59ba276393ff545ef1d885bd602dcf45fa37b32298599a81c00b533",
+      "draft_version": "v1-proposal-7019a705",
+      "draft_patch": [
+        {
+          "op": "replace",
+          "path": "/lifecycle",
+          "value": "draft"
+        },
+        {
+          "op": "replace",
+          "path": "/contract/version",
+          "value": "v1-proposal-7019a705"
+        },
+        {
+          "op": "add",
+          "path": "/contract/metadata",
+          "value": {
+            "review_flags": {
+              "revenue": "definition_disputed"
+            }
+          }
+        }
+      ],
+      "patch_note": null,
+      "rationale_codes": [
+        "triage:T-91",
+        "correction:used_by_intent",
+        "rule:P-10"
+      ],
+      "origin_triage_id": "1981f4cc22d42a9f8522fe70717443b2",
+      "origin_feedback_id": "733220f4d278734da861e83f3376f3a9",
+      "origin_run_id": "c36cf88a125f54a786a804da4bf586de",
+      "rules_version": "proposal-rules-v1",
+      "status": "proposed",
+      "created_by": "system:proposal-generator",
+      "created_at": "2026-10-10T05:08:21.199051Z",
+      "content_fingerprint": "90eb7f930d5625a3f94c5c7f19858305f99882b8c4836ac9a7ded110e43f215f"
+    },
+    {
+      "proposal_version": "v1",
+      "proposal_id": "f1c743c565c1cad25a8dd7217ccf361e",
+      "tenant_id": "tenant-a",
+      "kind": "semantic_context",
+      "operation": "add_context_edge",
+      "target_kind": "dimension",
+      "target_id": "status",
+      "parameters": {
+        "dataset_id": "orders",
+        "edge_type": "contains"
+      },
+      "base_contract": "sales-core@v1",
+      "base_contract_fingerprint": "bd632c3ce59ba276393ff545ef1d885bd602dcf45fa37b32298599a81c00b533",
+      "draft_version": null,
+      "draft_patch": [],
+      "patch_note": "No registry representation: this change belongs to the generated ontology/context, not a contract file.",
+      "rationale_codes": [
+        "triage:T-90",
+        "correction:not_in_context",
+        "rule:P-20"
+      ],
+      "origin_triage_id": "d4fb999708da6dcd7f6cca540bb170e9",
+      "origin_feedback_id": "3066f747a6095a9b822f5fc6f1bc9523",
+      "origin_run_id": "c36cf88a125f54a786a804da4bf586de",
+      "rules_version": "proposal-rules-v1",
+      "status": "proposed",
+      "created_by": "system:proposal-generator",
+      "created_at": "2026-10-10T05:08:21.329811Z",
+      "content_fingerprint": "b2cc5ab5af7873ff70b017681e0f3e9e1e4d0a69d468914eff3d38e10c55e2fd"
+    },
+    {
+      "proposal_version": "v1",
+      "proposal_id": "dac62a737bb9dafaea67fdf121b29bdf",
+      "tenant_id": "tenant-a",
+      "kind": "semantic_context",
+      "operation": "review_label_collision",
+      "target_kind": "ontology_label",
+      "target_id": "time",
+      "parameters": {
+        "candidates": "created_at,status"
+      },
+      "base_contract": "sales-core@v1",
+      "base_contract_fingerprint": "bd632c3ce59ba276393ff545ef1d885bd602dcf45fa37b32298599a81c00b533",
+      "draft_version": null,
+      "draft_patch": [],
+      "patch_note": "No registry representation: this change belongs to the generated ontology/context, not a contract file.",
+      "rationale_codes": [
+        "triage:T-30",
+        "clarification:exhausted",
+        "rule:P-30"
+      ],
+      "origin_triage_id": "1a22c01440e084bf78c2e817ad30a3e3",
+      "origin_feedback_id": "dea08fabbf0a9c913451d70dc179cf4a",
+      "origin_run_id": "c36cf88a125f54a786a804da4bf586de",
+      "rules_version": "proposal-rules-v1",
+      "status": "proposed",
+      "created_by": "system:proposal-generator",
+      "created_at": "2026-10-10T05:08:21.397317Z",
+      "content_fingerprint": "af2e00f3bf1ee01cf8c67df08773159556230d53a7b53e156634b6b7618948c1"
+    }
+  ]
+}
