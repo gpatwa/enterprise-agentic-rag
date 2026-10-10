@@ -15,7 +15,7 @@ class StructuredIntentClient(Protocol):
     def complete_json(self, *, prompt: str, schema: dict[str, Any], max_tokens: int) -> dict[str, Any] | str: ...
 
 
-def structured_intent_node(client: StructuredIntentClient):
+def structured_intent_node(client: StructuredIntentClient, prompt_builder=None):
     def handle(node_input: NodeInput) -> NodeOutput:
         if not node_input.request_text or not node_input.request_id:
             return _failure(node_input, "missing_request_identity")
@@ -23,7 +23,7 @@ def structured_intent_node(client: StructuredIntentClient):
             context = ContextPack.model_validate(node_input.payload.get("context_pack"))
             if context.tenant_id != node_input.tenant_id or context.snapshot_id != node_input.context_snapshot_id:
                 return _failure(node_input, "context_scope_mismatch")
-            prompt = _prompt(node_input.request_text, context)
+            prompt = (prompt_builder or _prompt)(node_input.request_text, context)
             raw = client.complete_json(
                 prompt=prompt,
                 schema=AnalyticalIntent.model_json_schema(),

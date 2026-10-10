@@ -1,0 +1,20 @@
+{
+  "index_version": "case-index-v1",
+  "note": "Areas and semantic IDs per golden case, written by hand from the corpus questions and scripted intents. Areas: intent, ontology, retrieval, policy, execution, prose.",
+  "cases": {
+    "G01": {"areas": ["intent", "ontology", "retrieval", "execution", "prose"], "semantic_ids": ["revenue", "created_at", "orders.status"]},
+    "G02": {"areas": ["intent", "ontology", "retrieval", "execution", "prose"], "semantic_ids": ["revenue", "status"]},
+    "G03": {"areas": ["intent", "ontology", "retrieval", "execution", "prose"], "semantic_ids": ["revenue"]},
+    "G04": {"areas": ["intent", "ontology", "retrieval", "execution", "prose"], "semantic_ids": ["revenue", "status", "orders.status"]},
+    "G05": {"areas": ["intent", "ontology", "retrieval", "execution", "prose"], "semantic_ids": ["revenue", "created_at"]},
+    "G06": {"areas": ["intent", "ontology", "retrieval", "execution", "prose"], "semantic_ids": ["revenue", "status"]},
+    "R01": {"areas": ["intent"], "semantic_ids": []},
+    "R02": {"areas": ["intent"], "semantic_ids": []},
+    "R03": {"areas": ["intent"], "semantic_ids": []},
+    "R04": {"areas": ["intent"], "semantic_ids": []},
+    "P01": {"areas": ["policy", "intent", "execution"], "semantic_ids": ["revenue"]},
+    "T01": {"areas": ["policy"], "semantic_ids": []},
+    "A01": {"areas": ["ontology", "intent", "retrieval"], "semantic_ids": ["created_at", "status"]},
+    "V01": {"areas": ["execution", "policy", "intent"], "semantic_ids": ["revenue", "created_at", "orders.status"]}
+  }
+}

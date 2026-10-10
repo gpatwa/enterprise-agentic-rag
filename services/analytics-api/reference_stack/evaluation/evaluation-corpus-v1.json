@@ -1,0 +1,20 @@
+{
+  "suite_version": "evaluation-corpus-v1",
+  "note": "Expected outcomes were written by hand from the evaluation rules, not produced by running the evaluator. Evaluated cases run the four approved suites; selection cases check the affected-case mapping without running anything.",
+  "cases": [
+    {"id": "E01", "op": "harmless_prompt", "expect": "passed", "group": "evaluate"},
+    {"id": "E02", "op": "harmful_prompt", "expect": "failed:suite_failed:golden", "group": "harmful"},
+    {"id": "E03", "op": "flag_proposal", "expect": "passed", "group": "evaluate"},
+    {"id": "E04", "op": "context_edge_proposal", "expect": "passed", "group": "evaluate"},
+    {"id": "E05", "op": "dbt_description_proposal", "expect": "passed", "group": "evaluate"},
+    {"id": "E06", "op": "unreviewed_prompt", "expect": "refused:review_not_approved", "group": "unreviewed"},
+    {"id": "E07", "op": "rejected_prompt", "expect": "refused:review_not_approved", "group": "unreviewed"},
+    {"id": "E08", "op": "tampered_protected_file", "expect": "failed:protected_file_changed", "group": "fail_closed"},
+    {"id": "E09", "op": "unapproved_thresholds", "expect": "failed:unapproved_thresholds", "group": "fail_closed"},
+    {"id": "S01", "op": "select", "facts": {"kind": "prompt_candidate"}, "expect": ["A01", "G01", "G02", "G03", "G04", "G05", "G06", "P01", "R01", "R02", "R03", "R04", "V01"], "group": "selection"},
+    {"id": "S02", "op": "select", "facts": {"kind": "change_proposal", "operation": "flag_definition_for_review", "target_ids": ["revenue"]}, "expect": ["G01", "G02", "G03", "G04", "G05", "G06", "P01", "V01"], "group": "selection"},
+    {"id": "S03", "op": "select", "facts": {"kind": "change_proposal", "operation": "add_context_edge", "target_ids": ["status"]}, "expect": ["A01", "G02", "G04", "G06"], "group": "selection"},
+    {"id": "S04", "op": "select", "facts": {"kind": "change_proposal", "operation": "review_label_collision", "target_ids": ["created_at", "status"]}, "expect": ["A01", "G01", "G02", "G04", "G05", "G06", "V01"], "group": "selection"},
+    {"id": "S05", "op": "select", "facts": {"kind": "change_proposal", "operation": "add_column_test"}, "expect": ["G01", "G02", "G03", "G04", "G05", "G06", "P01", "V01"], "group": "selection"}
+  ]
+}

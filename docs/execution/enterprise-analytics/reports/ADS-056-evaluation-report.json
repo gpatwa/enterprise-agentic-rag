@@ -1,0 +1,299 @@
+{
+  "suite_version": "evaluation-corpus-v1",
+  "rules_version": "evaluation-rules-v1",
+  "corpus_sha256": "b440fcd8a4ae9c1ffe12fb80f7b0efaf569f34cfcfe9ceeeeda98671b95ad0d3",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "meets_thresholds": true,
+  "gates": {
+    "verdict_agreement": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "cases whose outcome (passed, failed with a reason, refused with a code, or the selected case list) equals the hand-written expectation"
+    },
+    "harmful_candidate_detection": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "approved candidates that change behaviour and are evaluated as failed"
+    },
+    "unreviewed_evaluation_refusal": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "pending, rejected, or never-reviewed subjects that are refused evaluation"
+    },
+    "selection_agreement": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "affected-case selections equal to the hand-written case lists"
+    },
+    "full_suite_coverage": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "evaluations that ran the golden, triage, proposal, and dbt full suites plus a targeted run"
+    },
+    "approved_threshold_only": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "passing verdicts whose every suite rests on approved thresholds"
+    },
+    "fail_closed": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "protected-file changes and unapproved-threshold suites that produce a failed verdict"
+    },
+    "protected_file_writes": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "changes to goldens, thresholds, the case index, the runtime prompt, registry contracts, or the manifest during the run"
+    },
+    "determinism": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "re-evaluations that return the identical recorded evaluation without a new row"
+    }
+  },
+  "not_measured": {
+    "candidate_quality": "the scripted model ignores instruction text before the request, so a prompt's real effect on answers is not measured",
+    "live_traffic": "shadow and canary behaviour belongs to ADS-057"
+  },
+  "cases": [
+    {
+      "case_id": "E01",
+      "op": "harmless_prompt",
+      "group": "evaluate",
+      "expected": "passed",
+      "got": "passed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "E02",
+      "op": "harmful_prompt",
+      "group": "harmful",
+      "expected": "failed:suite_failed:golden",
+      "got": "failed:suite_failed:golden",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "E03",
+      "op": "flag_proposal",
+      "group": "evaluate",
+      "expected": "passed",
+      "got": "passed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "E04",
+      "op": "context_edge_proposal",
+      "group": "evaluate",
+      "expected": "passed",
+      "got": "passed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "E05",
+      "op": "dbt_description_proposal",
+      "group": "evaluate",
+      "expected": "passed",
+      "got": "passed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "E06",
+      "op": "unreviewed_prompt",
+      "group": "unreviewed",
+      "expected": "refused:review_not_approved",
+      "got": "refused:review_not_approved",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "E07",
+      "op": "rejected_prompt",
+      "group": "unreviewed",
+      "expected": "refused:review_not_approved",
+      "got": "refused:review_not_approved",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "E08",
+      "op": "tampered_protected_file",
+      "group": "fail_closed",
+      "expected": "failed:protected_file_changed",
+      "got": "failed:protected_file_changed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "E09",
+      "op": "unapproved_thresholds",
+      "group": "fail_closed",
+      "expected": "failed:unapproved_thresholds",
+      "got": "failed:unapproved_thresholds",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "S01",
+      "op": "select",
+      "group": "selection",
+      "expected": [
+        "A01",
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "P01",
+        "R01",
+        "R02",
+        "R03",
+        "R04",
+        "V01"
+      ],
+      "got": [
+        "A01",
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "P01",
+        "R01",
+        "R02",
+        "R03",
+        "R04",
+        "V01"
+      ],
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "S02",
+      "op": "select",
+      "group": "selection",
+      "expected": [
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "P01",
+        "V01"
+      ],
+      "got": [
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "P01",
+        "V01"
+      ],
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "S03",
+      "op": "select",
+      "group": "selection",
+      "expected": [
+        "A01",
+        "G02",
+        "G04",
+        "G06"
+      ],
+      "got": [
+        "A01",
+        "G02",
+        "G04",
+        "G06"
+      ],
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "S04",
+      "op": "select",
+      "group": "selection",
+      "expected": [
+        "A01",
+        "G01",
+        "G02",
+        "G04",
+        "G05",
+        "G06",
+        "V01"
+      ],
+      "got": [
+        "A01",
+        "G01",
+        "G02",
+        "G04",
+        "G05",
+        "G06",
+        "V01"
+      ],
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "S05",
+      "op": "select",
+      "group": "selection",
+      "expected": [
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "P01",
+        "V01"
+      ],
+      "got": [
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "P01",
+        "V01"
+      ],
+      "passed": true,
+      "detail": ""
+    }
+  ]
+}
