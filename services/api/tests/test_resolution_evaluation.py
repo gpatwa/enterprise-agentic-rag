@@ -3,11 +3,11 @@ from __future__ import annotations
 import pytest
 
 from app.resolution.evaluation import (
-    action_validity,
     abstention_accuracy,
+    action_validity,
     citation_precision,
-    evaluate_resolution,
     compare_ranking_stages,
+    evaluate_resolution,
     supported_claim_rate,
 )
 

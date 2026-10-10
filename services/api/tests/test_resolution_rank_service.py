@@ -1,8 +1,9 @@
 import asyncio
 
+from tests.fakes.llm import ScriptedLLM
+
 from app.resolution.rank_service import RankingPolicy, RankingStage, rank_authorized
 from app.resolution.ranking import RerankCandidate, RerankRequest
-from tests.fakes.llm import ScriptedLLM
 
 
 def request():

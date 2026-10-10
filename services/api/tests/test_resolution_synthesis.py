@@ -1,10 +1,10 @@
 import pytest
+from tests.fakes.llm import ScriptedLLM
 
 from app.resolution.evidence import build_evidence_packet
-from app.resolution.synthesis import synthesize_resolution
 from app.resolution.retrieval import RetrievalProvenance
+from app.resolution.synthesis import synthesize_resolution
 from app.search.models import RetrievalSource, SearchMode, SearchResult
-from tests.fakes.llm import ScriptedLLM
 
 
 def packet():

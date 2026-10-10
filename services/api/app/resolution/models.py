@@ -8,7 +8,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.search.models import SearchScope
 
-
 _WHITESPACE = re.compile(r"\s+")
 
 

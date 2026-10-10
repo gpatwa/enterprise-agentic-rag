@@ -8,7 +8,6 @@ from pydantic import Field, field_validator, model_validator
 
 from app.search.models import SearchDocument, SearchModel
 
-
 SUPPORT_SEARCH_SCHEMA_VERSION = "support-search-v1"
 _CONTENT_HASH = re.compile(r"^[a-f0-9]{64}$")
 

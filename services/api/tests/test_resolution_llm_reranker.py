@@ -1,8 +1,9 @@
 import asyncio
 
+from tests.fakes.llm import ScriptedLLM
+
 from app.resolution.llm_reranker import MAX_REASON_CODE_LENGTH, MAX_REASON_CODES, MAX_RESPONSE_LENGTH, rerank_with_llm
 from app.resolution.ranking import RerankCandidate, RerankRequest
-from tests.fakes.llm import ScriptedLLM
 
 
 def make_request():

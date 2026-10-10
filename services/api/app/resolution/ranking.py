@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from app.search.features import RankingFeatures, default_features
-
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from app.search.features import RankingFeatures, default_features
 
 
 class _FrozenModel(BaseModel):

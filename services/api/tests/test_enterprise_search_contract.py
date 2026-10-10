@@ -5,11 +5,10 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from tests.fakes.search_provider import InMemorySearchProvider
 
 from app.search.evaluation import evaluate_run
 from app.search.models import SearchDocument, SearchFilter, SearchIndexSpec, SearchRequest, SearchScope
-from tests.fakes.search_provider import InMemorySearchProvider
-
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "search"
 

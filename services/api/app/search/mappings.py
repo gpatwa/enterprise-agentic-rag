@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 SUPPORT_SEARCH_MAPPING_VERSION = "support-search-mapping-v1"
 SUPPORT_SEARCH_TEXT_ANALYZER = "support_text_v1"
 

@@ -75,9 +75,9 @@ def test_recommendation_metrics_and_kill_switch_are_reproducible():
 
 @pytest.mark.asyncio
 async def test_support_feedback_event_is_redacted_and_best_effort(monkeypatch):
+    import app.support.workflow as workflow
     from app.auth.tenant import TenantContext
     from app.search.events import InteractionKind
-    import app.support.workflow as workflow
 
     captured = []
 

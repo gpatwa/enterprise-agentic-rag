@@ -8,7 +8,6 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-
 _FIELD_NAME = re.compile(r"^[a-zA-Z][a-zA-Z0-9_.-]{0,127}$")
 
 

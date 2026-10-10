@@ -1,8 +1,8 @@
 import pytest
+from tests.fakes.llm import ScriptedLLM
 
 from app.resolution.intent import extract_support_intent
 from app.resolution.models import ConfidenceLevel, SupportIntentType
-from tests.fakes.llm import ScriptedLLM
 
 
 @pytest.mark.asyncio

@@ -9,7 +9,6 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Mapping
 
-
 DEFAULT_FIELD_LIMIT = 2_000
 DEFAULT_TOTAL_LIMIT = 8_000
 _DISALLOWED_CONTROLS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")

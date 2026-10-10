@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.search.models import FilterOperator, RetrievalSource, SearchFilter, SearchMode, SearchRequest, SearchScope
 from app.support.documents import (
     SupportIndexDocument,
     article_to_document,
@@ -21,7 +22,6 @@ from app.support.lexical import support_lexical_search
 from app.support.models import SupportIndexRecord
 from app.support.store import support_data_store
 from app.tracing import record_span_error, set_span_attributes, start_span
-from app.search.models import FilterOperator, RetrievalSource, SearchFilter, SearchMode, SearchRequest, SearchScope
 
 logger = logging.getLogger(__name__)
 

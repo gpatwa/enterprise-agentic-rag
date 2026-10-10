@@ -10,7 +10,6 @@ from app.config import settings
 from app.privacy.pii import redact
 from app.search.schema import SupportSearchAttributes, SupportSearchDocument
 
-
 _HTML_TAG = re.compile(r"<[^>]+>")
 
 

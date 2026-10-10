@@ -7,7 +7,6 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-
 MAX_QUERY_LENGTH = 4000
 
 _WHITESPACE = re.compile(r"\s+")

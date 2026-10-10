@@ -1,7 +1,9 @@
 import pytest
 
 from app.resolution.telemetry import (
-    build_telemetry, estimated_cost_usd, try_build_telemetry,
+    build_telemetry,
+    estimated_cost_usd,
+    try_build_telemetry,
 )
 
 
