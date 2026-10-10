@@ -14,7 +14,7 @@ import sqlglot
 from packages.platform_contracts.analytics_intent import AnalyticalIntent
 from packages.platform_contracts.context_snapshot import ContextPackItem, ContextSnapshot
 from packages.platform_contracts.metadata import MetadataAsset, MetadataColumn
-from packages.platform_contracts.ontology import OntologyNode, OntologyProvenance, OntologySnapshot
+from packages.platform_contracts.ontology import OntologyEdge, OntologyNode, OntologyProvenance, OntologySnapshot
 from packages.platform_contracts.semantic import SemanticRegistryDocument
 
 TENANT = "tenant-a"
@@ -132,6 +132,8 @@ class SnapshotProvider:
 
 
 class SearchProvider:
+    """Returns the certified dataset; metrics and dimensions reach the pack through graph closure."""
+
     def search(self, query: str, *, tenant_id: str, snapshot_id: str, certified_only=True, limit=10):
         return (
             ContextPackItem(
@@ -167,7 +169,7 @@ class ContractsProvider:
 
 
 def build_context(
-    document: SemanticRegistryDocument, *, ambiguous: bool = False
+    document: SemanticRegistryDocument, *, ambiguous: bool = False, omit: tuple[str, ...] = ()
 ) -> tuple[ContextSnapshot, OntologySnapshot]:
     """Context and ontology snapshots derived from the certified contract (nothing is promoted)."""
     contract = document.contract
@@ -197,8 +199,24 @@ def build_context(
         for assets, kind in kinds
         for asset in assets
     ]
+    # The dataset "contains" its metrics and dimensions, so graph closure puts them in the context
+    # pack; ids in `omit` get no edge, which simulates a retrieval miss.
+    edges = tuple(
+        OntologyEdge(
+            edge_id=f"{dataset.id}-contains-{asset.id}",
+            tenant_id=contract.tenant_id,
+            edge_type="contains",
+            from_node_id=dataset.id,
+            to_node_id=asset.id,
+            valid_from=FIXED_TIME - timedelta(days=1),
+            provenance=(provenance.model_copy(update={"source_id": f"{dataset.id}-{asset.id}"}),),
+        )
+        for dataset in contract.datasets
+        for asset in (*contract.metrics, *contract.dimensions)
+        if asset.dataset_id == dataset.id and asset.id not in omit
+    )
     ontology = OntologySnapshot(
-        snapshot_id=SNAPSHOT_ID, tenant_id=contract.tenant_id, captured_at=FIXED_TIME, nodes=tuple(nodes)
+        snapshot_id=SNAPSHOT_ID, tenant_id=contract.tenant_id, captured_at=FIXED_TIME, nodes=tuple(nodes), edges=edges
     )
     datasets = tuple(
         MetadataAsset(

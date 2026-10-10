@@ -1,0 +1,52 @@
+{
+  "suite_version": "triage-corpus-v1",
+  "rules_version": "triage-rules-v1",
+  "corpus_sha256": "8445a9fa86c7f5fc00bf17d1dce6c96e387cc80ff00785e80ccd09500a26f550",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "scope_note": "Triage is deterministic, so agreement with hand-written labels is expected to be exact. These gates check rule behaviour and safety properties on the reference stack; they say nothing about triage quality on real user feedback.",
+  "gates": {
+    "category_agreement": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "cases whose category equals the hand-written label"
+    },
+    "rule_agreement": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "cases decided by the labelled rule, basis kind, and conflict flag"
+    },
+    "determinism": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "cases whose repeated triage yields an identical decision fingerprint"
+    },
+    "undetermined_lists_candidates": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "undetermined results that name their candidate causes"
+    },
+    "note_independence": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "twin cases that differ only in an injected note and receive the same decision"
+    },
+    "claim_only_over_failed_runs": {
+      "op": "<=",
+      "value": 0,
+      "measure": "records on non-succeeded runs decided by the reporter's claim alone"
+    },
+    "record_mutations": {
+      "op": "<=",
+      "value": 0,
+      "measure": "stored triage records changed by re-triage"
+    }
+  },
+  "not_measured": {
+    "real_feedback_quality": "needs real user feedback and independent labelling; not available at M5 start"
+  }
+}
