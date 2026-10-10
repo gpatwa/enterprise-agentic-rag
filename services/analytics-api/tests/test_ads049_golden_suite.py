@@ -94,8 +94,11 @@ def test_threshold_approval_is_recorded_with_its_limited_scope_and_the_report_sa
     assert "PROPOSED and NOT APPROVED" in render_markdown(pending)
     manifest = (REPO / "docs/execution/enterprise-analytics/agentic-data-stack-program.yaml").read_text()
     m4 = manifest.split("  M4:")[1].split("  M5:")[0]
-    assert "human_gate_status: approved" not in m4  # the local_demo_review gate is never inferred
+    # The gate approval is recorded separately, only because the user stated it, with its limits.
     assert "m4_threshold_approval" in m4
+    gate = m4.split("human_gate_status:")[1].split("m4_threshold_approval:")[0]
+    assert gate.strip().startswith("approved") and "Approved the gate M4" in gate
+    assert "Not covered: independent review" in gate and "tasks stay in review" in gate
 
 
 def test_expected_rows_match_an_independent_python_oracle():

@@ -80,6 +80,9 @@ milestones:
       - [ADS-045, ADS-046, ADS-047]
       - [ADS-048, ADS-049]
     human_gate: local_demo_review
+    human_gate_status: approved
+    human_gate_approved_at: 2026-10-09
+    human_gate_approval_record: "User wrote \"Approved the gate M4\" in conversation. Evidence reviewed: the fakes-only local reference stack, smoke journeys, ADS-049 golden report, and web view. Not covered: independent review of ADS-040..049 (tasks stay in review), M1 semantic certification, live PostgreSQL/OpenSearch/OpenMetadata/dbt validation, deployment. M4 stays in_progress until those packets are independently reviewed."
     m4_threshold_approval:
       status: approved
       approved_by: user

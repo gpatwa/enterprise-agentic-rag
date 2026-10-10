@@ -112,12 +112,12 @@ Canonical task status is in
     in `reference_stack/golden/m4-thresholds.json` (**approved by the user 2026-10-08**, scope: these
     local thresholds only; recorded in the manifest as `M4.m4_threshold_approval`); `make
     analytics-golden` writes `docs/execution/enterprise-analytics/reports/`). 28/28 executions
-    pass and every approved gate is met, but that is not the M4 `local_demo_review` approval and the
+    pass and every approved gate is met, and the M4 `local_demo_review` gate was separately approved by the user on 2026-10-09 (limits recorded in the manifest); the
     suite is a pipeline-integrity check (scripted model, emulated PostgreSQL). Also fixed an
     ADS-045 bug (unusable snapshot caused HTTP 500). Packet: `ADS-049-m4-golden-report.md`.
-  - **Next:** the user's decisions: the M4
-    `local_demo_review` human gate, independent review of ADS-040..049. Do not start M5 before
-    the M4 gate.
+  - **Next:** M5 is no longer blocked by the M4 human gate, but ADS-040..049 are still `review`
+    (no independent review), M1 certification is pending, and nothing was validated live. Confirm
+    scope with the user before starting M5.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls
     `new_governed_run_state`, `record_terminal_evidence`, or the control-total
     builder in a production path yet (ADS-045 owns API/worker wiring; the control
@@ -198,7 +198,7 @@ for later work.
 - Live validation of PostgreSQL, OpenSearch, and catalog providers.
 - Whether to open a PR from this branch and against which base (`main` lacks the
   ADS history).
-- Later human gates: M4 `local_demo_review`, then M5-M7 gates per the manifest.
+- M4 `local_demo_review` is approved (2026-10-09). Later human gates: M5-M7 per the manifest.
 
 ## Canonical Roadmaps and Product Docs
 
