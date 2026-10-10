@@ -184,7 +184,7 @@ tasks:
   ADS-052: {milestone: M5, status: review, depends_on: [ADS-051]}
   ADS-053: {milestone: M5, status: review, depends_on: [ADS-051]}
   ADS-054: {milestone: M5, status: review, depends_on: [ADS-051]}
-  ADS-055: {milestone: M5, status: planned, depends_on: [ADS-052, ADS-053, ADS-054]}
+  ADS-055: {milestone: M5, status: review, depends_on: [ADS-052, ADS-053, ADS-054]}
   ADS-056: {milestone: M5, status: planned, depends_on: [ADS-055]}
   ADS-057: {milestone: M5, status: planned, depends_on: [ADS-056]}
   ADS-058: {milestone: M5, status: planned, depends_on: [ADS-049, ADS-057]}

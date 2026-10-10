@@ -1,0 +1,263 @@
+{
+  "suite_version": "review-corpus-v1",
+  "rules_version": "review-rules-v1",
+  "corpus_sha256": "ad45335a620faeee8208054dd90748c4b83bd241864ddc86729103e7fc8cdda8",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "meets_thresholds": true,
+  "gates": {
+    "outcome_agreement": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "cases whose outcome (approved, pending, or refused with a stable code) equals the hand-written expectation"
+    },
+    "forbidden_decision_rejection": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "decisions by authors, requesters, feedback submitters, automated identities, non-reviewers, other tenants, and unauthorized purposes that are refused"
+    },
+    "stale_decision_rejection": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "decisions naming the wrong content or made after the subject changed that are refused"
+    },
+    "expiry_enforcement": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "expired reviews that refuse decisions and record exactly one expiry event"
+    },
+    "audit_completeness": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "reviews whose events are contiguous from 1, start with the request, and carry actor and time"
+    },
+    "approvals_without_independent_review": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "subjects reported approved without an independent approval of the exact content"
+    },
+    "subject_mutations": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "reviewed proposals or candidates whose stored content changed"
+    },
+    "determinism": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "reviews whose derived status is identical when re-read"
+    },
+    "protected_file_writes": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "changes to the runtime prompt, registry contracts, goldens, thresholds, or manifest during the run"
+    }
+  },
+  "not_measured": {
+    "identity_management": "reviewers are reference-stack tokens with a group claim; a real identity provider and group sync are later work",
+    "M5_gate": "approving a subject is not the M5 separation_of_duties_review human gate"
+  },
+  "cases": [
+    {
+      "case_id": "W01",
+      "op": "approve_independent",
+      "group": "approve",
+      "expected": "approved",
+      "got": "approved",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W02",
+      "op": "generator_decides",
+      "group": "separation",
+      "expected": "refused:automated_identity",
+      "got": "refused:automated_identity",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W03",
+      "op": "model_decides",
+      "group": "separation",
+      "expected": "refused:automated_identity",
+      "got": "refused:automated_identity",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W04",
+      "op": "feedback_submitter_decides",
+      "group": "separation",
+      "expected": "refused:is_contributor",
+      "got": "refused:is_contributor",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W05",
+      "op": "requester_decides",
+      "group": "separation",
+      "expected": "refused:is_requester",
+      "got": "refused:is_requester",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W06",
+      "op": "non_reviewer_decides",
+      "group": "separation",
+      "expected": "refused:not_a_reviewer",
+      "got": "refused:not_a_reviewer",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W07",
+      "op": "other_tenant_decides",
+      "group": "separation",
+      "expected": "refused:review_not_found",
+      "got": "refused:review_not_found",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W08",
+      "op": "purpose_not_authorized",
+      "group": "separation",
+      "expected": "refused:purpose_not_authorized",
+      "got": "refused:purpose_not_authorized",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W09",
+      "op": "wrong_fingerprint",
+      "group": "stale",
+      "expected": "refused:fingerprint_mismatch",
+      "got": "refused:fingerprint_mismatch",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W10",
+      "op": "subject_changed",
+      "group": "stale",
+      "expected": "refused:subject_changed",
+      "got": "refused:subject_changed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W11",
+      "op": "decide_after_expiry",
+      "group": "expiry",
+      "expected": "refused:expired",
+      "got": "refused:expired",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W12",
+      "op": "reject_then_approve",
+      "group": "approve",
+      "expected": "refused:review_closed",
+      "got": "refused:review_closed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W13",
+      "op": "double_decision",
+      "group": "separation",
+      "expected": "refused:already_decided_by_reviewer",
+      "got": "refused:already_decided_by_reviewer",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W14",
+      "op": "two_approvals_required",
+      "group": "approve",
+      "expected": "approved",
+      "got": "approved",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W15",
+      "op": "prompt_candidate_independent",
+      "group": "approve",
+      "expected": "approved",
+      "got": "approved",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W16",
+      "op": "prompt_candidate_creator",
+      "group": "separation",
+      "expected": "refused:automated_identity",
+      "got": "refused:automated_identity",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W17",
+      "op": "example_submitter_decides",
+      "group": "separation",
+      "expected": "refused:is_contributor",
+      "got": "refused:is_contributor",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W18",
+      "op": "released_baseline",
+      "group": "approve",
+      "expected": "refused:not_reviewable",
+      "got": "refused:not_reviewable",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W19",
+      "op": "pending_is_not_approved",
+      "group": "approve",
+      "expected": "pending",
+      "got": "pending",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "W20",
+      "op": "unknown_subject",
+      "group": "approve",
+      "expected": "refused:subject_not_found",
+      "got": "refused:subject_not_found",
+      "passed": true,
+      "detail": ""
+    }
+  ]
+}
