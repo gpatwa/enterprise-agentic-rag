@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -226,10 +227,10 @@ def test_triage_changes_nothing_else_and_has_no_endpoint(tmp_path):
     assert isinstance(stack.triage_service(), TriageService)
 
 
-# ---- pinned corpus evaluation (thresholds are proposed, not approved) ----
+# ---- pinned corpus evaluation (thresholds approved by the user; the M5 gate is separate) ----
 
 
-def test_the_triage_corpus_meets_its_proposed_thresholds_and_stays_unapproved(tmp_path):
+def test_the_triage_corpus_meets_its_approved_thresholds_without_approving_the_m5_gate(tmp_path):
     from reference_stack import triage_eval
 
     report = triage_eval.run_corpus(tmp_path)
@@ -237,9 +238,22 @@ def test_the_triage_corpus_meets_its_proposed_thresholds_and_stays_unapproved(tm
     assert not failed, failed
     unmet = {name: gate for name, gate in report["gates"].items() if not gate["meets"]}
     assert report["meets_thresholds"] and not unmet and len(report["cases"]) == 18
-    assert report["approval"]["status"] == "proposed" and report["approval"]["approved_by"] is None
+    approval = report["approval"]
+    assert (
+        approval["status"] == "approved"
+        and approval["approved_by"] == "user"
+        and approval["approved_at"] == "2026-10-09"
+    )
+    assert "Not the M5 separation_of_duties_review approval" in approval["scope"]
     markdown = triage_eval.render_markdown(report)
-    assert "PROPOSED and NOT APPROVED" in markdown and "not a gate pass" in markdown
+    assert "approved by user on 2026-10-09" in markdown and "not a gate pass for any human gate" in markdown
+    pending = {**report, "approval": {"status": "proposed", "approved_by": None, "approved_at": None}}
+    assert "PROPOSED and NOT APPROVED" in triage_eval.render_markdown(pending)
+    manifest = (
+        Path(__file__).resolve().parents[3] / "docs/execution/enterprise-analytics/agentic-data-stack-program.yaml"
+    ).read_text()
+    m5 = manifest.split("  M5:")[1].split("  M6:")[0]
+    assert "m5_triage_threshold_approval" in m5 and "human_gate_status: approved" not in m5  # the M5 gate stays open
 
 
 def test_the_corpus_evaluation_detects_a_wrong_label_and_a_changed_corpus(tmp_path, monkeypatch):

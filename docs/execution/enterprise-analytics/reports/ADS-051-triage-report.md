@@ -1,15 +1,15 @@
 # ADS-051: Triage Corpus Report
 
-Generated 2026-10-10 04:11 UTC by `make analytics-triage-eval`. Corpus `triage-corpus-v1` (`8445a9fa86c7`), rules `triage-rules-v1`.
+Generated 2026-10-10 04:55 UTC by `make analytics-triage-eval`. Corpus `triage-corpus-v1` (`8445a9fa86c7`), rules `triage-rules-v1`.
 
-**Result: MEETS the proposed thresholds.** The thresholds are PROPOSED and NOT APPROVED. This is not a gate pass for any human gate.
+**Result: MEETS the approved thresholds.** The thresholds were approved by user on 2026-10-09 (scope: these triage-corpus thresholds only). This is not a gate pass for any human gate.
 
 ## Scope and limits
 
 - Deterministic rules checked against labels written by hand from the rule definitions, on runs from the fakes-only reference stack.
 - It shows the rules behave as specified and that notes cannot steer them. It says nothing about triage quality on real feedback.
 
-## Metrics against proposed thresholds
+## Metrics against approved thresholds
 
 | Metric | Measured | Gate | Meets |
 |---|---:|---:|:---:|

@@ -3,10 +3,12 @@
   "rules_version": "triage-rules-v1",
   "corpus_sha256": "8445a9fa86c7f5fc00bf17d1dce6c96e387cc80ff00785e80ccd09500a26f550",
   "approval": {
-    "status": "proposed",
-    "approved_by": null,
-    "approved_at": null,
-    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+    "status": "approved",
+    "approved_by": "user",
+    "approved_at": "2026-10-09",
+    "record": "User wrote \"Approve the triage thresholds\" in conversation on 2026-10-09, after the thresholds were drafted by the implementing agent and presented with the ADS-051 report.",
+    "scope": "These ADS-051 triage-corpus thresholds on the reference stack only. Not the M5 separation_of_duties_review approval, not independent review of any packet, and not an approval of any other threshold.",
+    "change_rule": "Changing a threshold or the corpus digest needs a new explicit approval with a reviewed rationale and must not be bundled with a change that regresses it."
   },
   "scope_note": "Triage is deterministic, so agreement with hand-written labels is expected to be exact. These gates check rule behaviour and safety properties on the reference stack; they say nothing about triage quality on real user feedback.",
   "gates": {
