@@ -97,6 +97,11 @@ milestones:
       - [ADS-055, ADS-056, ADS-057]
       - [ADS-058, ADS-059]
     human_gate: separation_of_duties_review
+    m5_triage_threshold_approval:
+      status: approved
+      approved_by: user
+      approved_at: 2026-10-09
+      record: "User wrote \"Approve the triage thresholds\" in conversation. Applies only to services/analytics-api/reference_stack/triage/triage-thresholds.json (ADS-051 triage corpus on the reference stack). It is not the separation_of_duties_review approval and not independent packet review."
   M6:
     name: Agent-operable and enterprise runtime
     status: planned

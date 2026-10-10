@@ -10,7 +10,7 @@ The proposal listed five decisions and the user replied "go with your recommenda
 confirmed: (1) triage runs on demand, not automatically when feedback arrives; (2) no public endpoint
 (no reviewer role exists yet); (3) triage may read the sealed envelope and the run's stored state;
 (4) the plan's seven categories plus `none` and `undetermined`, nothing else; (5) corpus thresholds are
-drafted for the user's approval rather than treated as approved.
+drafted for the user's approval rather than treated as approved (approved later; see below).
 
 ## Deliverable
 
@@ -48,16 +48,19 @@ drafted for the user's approval rather than treated as approved.
   and conflict; append-only triggers; tenant scoping; feedback, goldens, thresholds, and contracts
   unchanged; no triage endpoint in the OpenAPI document; and the pinned corpus evaluation, including a
   check that a wrong label and a changed corpus are detected. Full suite: 415 passed.
-- `make analytics-triage-eval`: 18/18 hand-labelled cases pass; all seven proposed gates are met. The
+- `make analytics-triage-eval`: 18/18 hand-labelled cases pass; all seven approved gates are met. The
   report is `reports/ADS-051-triage-report.md`.
 
-## Proposed thresholds (NOT APPROVED)
+## Approved thresholds
 
-`reference_stack/triage/triage-thresholds.proposed.json`, approval status `proposed`:
-category agreement and rule agreement 100%, determinism 100%, undetermined results naming candidates
-100%, note independence 100%, claim-only decisions on failed runs 0, record mutations 0. The labels
-were written by hand from the rule definitions and the corpus digest is pinned. **Only you can approve
-or change these;** the report says "proposed" until the file records an approval.
+`reference_stack/triage/triage-thresholds.json` (renamed from `.proposed.json`). The implementing agent
+drafted them and the user then wrote "Approve the triage thresholds" (2026-10-09). The approval is
+recorded in that file and as `M5.m5_triage_threshold_approval` in the manifest, and covers only these
+triage-corpus thresholds: it is not the M5 `separation_of_duties_review` approval and not independent
+review of any packet. The gates: category agreement and rule agreement 100%, determinism 100%,
+undetermined results naming candidates 100%, note independence 100%, claim-only decisions on failed runs
+0, record mutations 0. The labels were written by hand from the rule definitions and the corpus digest is
+pinned. Changing a threshold or the corpus digest needs a new explicit approval with a reviewed rationale.
 
 ## Boundary
 

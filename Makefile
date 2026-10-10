@@ -196,7 +196,7 @@ analytics-reference-smoke:
 analytics-reference-up:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack up
 
-# ADS-051 triage corpus (fakes only); thresholds are proposed until the user approves them.
+# ADS-051 triage corpus (fakes only), reported against the user-approved triage thresholds.
 analytics-triage-eval:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack triage --write-report ../../docs/execution/enterprise-analytics/reports
 

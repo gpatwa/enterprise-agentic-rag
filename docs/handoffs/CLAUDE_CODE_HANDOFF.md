@@ -125,9 +125,10 @@ Canonical task status is in
   - **ADS-051** deterministic feedback triage (`packages/platform_contracts/triage.py`,
     `app/triage/`, migration `0006`): nine-category taxonomy, 19 versioned rules, evidence outranks the
     reporter, notes never an input, append-only records, on demand, no endpoint. Corpus thresholds in
-    `reference_stack/triage/triage-thresholds.proposed.json` are **PROPOSED, NOT APPROVED**. Packet:
+    `reference_stack/triage/triage-thresholds.json` were **approved by the user 2026-10-09** (scope: those
+    thresholds only; `M5.m5_triage_threshold_approval`; the M5 human gate is still open). Packet:
     `ADS-051-feedback-triage.md`. Suite: **415 passed**.
-  - **Next:** the user's call on the triage thresholds, then ADS-052..054 (change proposals; wave 5B,
+  - **Next:** ADS-052..054 (change proposals; wave 5B,
     parallel). ADS-040..051 are still `review`, M1 certification is pending, nothing was validated live.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls
     `new_governed_run_state`, `record_terminal_evidence`, or the control-total

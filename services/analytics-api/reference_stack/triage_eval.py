@@ -15,7 +15,7 @@ from reference_stack.stack import ReferenceStack, build_stack
 
 HERE = Path(__file__).parent / "triage"
 CORPUS = HERE / "triage-corpus-v1.json"
-THRESHOLDS = HERE / "triage-thresholds.proposed.json"
+THRESHOLDS = HERE / "triage-thresholds.json"
 URL = "/api/v2/analytics"
 _OPS = {">=": operator.ge, "<=": operator.le}
 _CLARIFY_ROUNDS = 3
@@ -184,7 +184,8 @@ def render_markdown(report: dict[str, Any], *, generated_at: datetime | None = N
     label = "approved" if approved else "proposed"
     verdict = f"MEETS the {label} thresholds" if report["meets_thresholds"] else f"DOES NOT MEET the {label} thresholds"
     status = (
-        f"The thresholds were approved by {approval['approved_by']} on {approval['approved_at']}. "
+        f"The thresholds were approved by {approval['approved_by']} on {approval['approved_at']} "
+        "(scope: these triage-corpus thresholds only). "
         if approved
         else "The thresholds are PROPOSED and NOT APPROVED. "
     )
