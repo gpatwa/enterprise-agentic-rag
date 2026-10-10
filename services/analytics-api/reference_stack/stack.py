@@ -29,7 +29,7 @@ from app.execution import (
     PostgresGateway,
     run_control_totals,
 )
-from app.proposals import ProposalService, ProposalStore
+from app.proposals import DbtProject, DbtProposalService, ProposalService, ProposalStore
 from app.runtime import (
     AgentGraphRunner,
     BootstrapRequest,
@@ -79,6 +79,7 @@ from reference_stack.fakes import (
 )
 
 SERVICE_ROOT = Path(__file__).resolve().parent.parent
+DBT_FIXTURE = Path(__file__).resolve().parent / "dbt_fixture"
 Engine = Literal["duckdb", "postgres"]
 REFERENCE_MAX_COST_UNITS = 10_000.0
 ISSUER, AUDIENCE, KEY_ID = "https://reference.local", "analytics", "reference"
@@ -242,6 +243,19 @@ class ReferenceStack:
             TriageStore(engine),
             ProposalStore(engine),
             self.contracts,
+        )
+
+    def dbt_proposal_service(self, approved_patterns: tuple[str, ...] | None = None) -> DbtProposalService:
+        engine = self.control.engine
+        project = DbtProject(DBT_FIXTURE, approved_patterns) if approved_patterns else DbtProject(DBT_FIXTURE)
+        return DbtProposalService(
+            self.control,
+            self.evidence,
+            FeedbackStore(engine),
+            TriageStore(engine),
+            ProposalStore(engine),
+            self.contracts,
+            project=project,
         )
 
     def triage_service(self) -> TriageService:

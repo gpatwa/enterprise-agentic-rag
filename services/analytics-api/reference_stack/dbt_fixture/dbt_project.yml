@@ -1,0 +1,9 @@
+name: reference_sales
+version: 1.0.0
+profile: reference
+model-paths:
+- models
+macro-paths:
+- macros
+test-paths:
+- tests

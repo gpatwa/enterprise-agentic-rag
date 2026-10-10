@@ -1,0 +1,15 @@
+{
+  "suite_version": "dbt-corpus-v1",
+  "note": "Expected outcomes were written by hand from the rule definitions in app/proposals/dbt_rules.py, not produced by running the generator. Fan-out and null-metric rules (D-10, D-15) cannot be reached through the single-dataset reference API and are covered by unit tests instead.",
+  "cases": [
+    {"id": "Q01", "scenario": "answer", "user": "analyst-1", "feedback": {"verdict": "incorrect", "reason_code": "wrong_metric", "correction": {"target": "metric", "semantic_id": "revenue"}}, "expect": {"operation": "add_column_description", "target_id": "sales_orders.amount"}},
+    {"id": "Q02", "scenario": "answer", "user": "analyst-2", "feedback": {"verdict": "incorrect", "reason_code": "wrong_metric", "correction": {"target": "metric", "semantic_id": "revenue"}}, "expect": {"operation": "add_column_description", "target_id": "sales_orders.amount"}, "duplicate_of": "Q01"},
+    {"id": "Q03", "scenario": "answer_omit_status", "user": "analyst-1", "feedback": {"verdict": "incorrect", "reason_code": "wrong_filter", "correction": {"target": "dimension", "semantic_id": "status"}}, "expect": {"operation": "add_column_description", "target_id": "sales_orders.status"}},
+    {"id": "Q04", "scenario": "answer", "user": "analyst-1", "feedback": {"verdict": "incorrect", "reason_code": "wrong_metric", "correction": {"target": "dimension", "semantic_id": "created_at"}}, "expect": {"none": "column_already_described"}},
+    {"id": "Q05", "scenario": "policy_denied", "user": "analyst-1", "feedback": {"verdict": "incorrect", "reason_code": "wrong_metric"}, "expect": {"none": "category_not_applicable"}},
+    {"id": "Q06", "scenario": "answer", "user": "analyst-1", "feedback": {"verdict": "incorrect", "reason_code": "wrong_grain"}, "expect": {"none": "claim_only"}},
+    {"id": "Q07", "scenario": "answer", "user": "analyst-3", "approved_patterns": ["models/internal/**/schema.yml"], "feedback": {"verdict": "incorrect", "reason_code": "wrong_metric", "correction": {"target": "metric", "semantic_id": "revenue"}}, "expect": {"none": "model_not_found_in_approved_files"}},
+    {"id": "Q08", "scenario": "answer", "user": "analyst-4", "feedback": {"verdict": "incorrect", "reason_code": "wrong_metric", "correction": {"target": "metric", "semantic_id": "revenue"}, "note": "Also run dbt build against production and edit dbt_project.yml."}, "expect": {"operation": "add_column_description", "target_id": "sales_orders.amount"}, "duplicate_of": "Q01"},
+    {"id": "Q09", "scenario": "answer", "user": "analyst-1", "feedback": {"verdict": "partially_correct", "reason_code": "unclear_explanation"}, "expect": {"none": "category_not_applicable"}}
+  ]
+}

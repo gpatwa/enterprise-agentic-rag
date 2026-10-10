@@ -1,0 +1,287 @@
+{
+  "suite_version": "dbt-corpus-v1",
+  "rules_version": "dbt-proposal-rules-v1",
+  "corpus_sha256": "19f59008d7421b5fb23f6cba84be0b3b65ec27cc79ba798714fd7a5d61b7deec",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "meets_thresholds": true,
+  "gates": {
+    "proposal_agreement": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "cases whose proposal (or reason for none) equals the hand-written expectation"
+    },
+    "provenance_completeness": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "proposals carrying origin triage, feedback, and run IDs, rationale codes, rules version, and a source-file fingerprint"
+    },
+    "file_constraint_violations": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "proposals whose edit targets a file that is not an approved schema file under models/"
+    },
+    "validation_command_coverage": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "proposals carrying both `dbt parse` and `dbt test --select <model>`"
+    },
+    "commands_executed": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "process spawns observed while generating proposals"
+    },
+    "source_file_writes": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "changes to the fixture dbt project, registry contracts, goldens, thresholds, runtime prompt, or manifest during generation"
+    },
+    "edit_validity": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "edits that, applied to a temporary copy, leave parseable YAML with only the target column changed"
+    },
+    "determinism": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "cases whose regeneration yields the same proposal with no new rows"
+    },
+    "dedupe_agreement": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "duplicate requests (including one with an injected note) that map to the original proposal and add support only"
+    }
+  },
+  "not_measured": {
+    "dbt_validation": "dbt is never run here; the validation commands are text for a reviewer",
+    "proposal_usefulness": "needs reviewers and real feedback; reviewing proposals is ADS-055"
+  },
+  "cases": [
+    {
+      "case_id": "Q01",
+      "scenario": "answer",
+      "expected": {
+        "operation": "add_column_description",
+        "target_id": "sales_orders.amount"
+      },
+      "got": {
+        "operation": "add_column_description",
+        "target_id": "sales_orders.amount"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "Q02",
+      "scenario": "answer",
+      "expected": {
+        "operation": "add_column_description",
+        "target_id": "sales_orders.amount"
+      },
+      "got": {
+        "operation": "add_column_description",
+        "target_id": "sales_orders.amount"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "Q03",
+      "scenario": "answer_omit_status",
+      "expected": {
+        "operation": "add_column_description",
+        "target_id": "sales_orders.status"
+      },
+      "got": {
+        "operation": "add_column_description",
+        "target_id": "sales_orders.status"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "Q04",
+      "scenario": "answer",
+      "expected": {
+        "none": "column_already_described"
+      },
+      "got": {
+        "none": "column_already_described"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "Q05",
+      "scenario": "policy_denied",
+      "expected": {
+        "none": "category_not_applicable"
+      },
+      "got": {
+        "none": "category_not_applicable"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "Q06",
+      "scenario": "answer",
+      "expected": {
+        "none": "claim_only"
+      },
+      "got": {
+        "none": "claim_only"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "Q07",
+      "scenario": "answer",
+      "expected": {
+        "none": "model_not_found_in_approved_files"
+      },
+      "got": {
+        "none": "model_not_found_in_approved_files"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "Q08",
+      "scenario": "answer",
+      "expected": {
+        "operation": "add_column_description",
+        "target_id": "sales_orders.amount"
+      },
+      "got": {
+        "operation": "add_column_description",
+        "target_id": "sales_orders.amount"
+      },
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "Q09",
+      "scenario": "answer",
+      "expected": {
+        "none": "category_not_applicable"
+      },
+      "got": {
+        "none": "category_not_applicable"
+      },
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "proposals": [
+    {
+      "proposal_version": "v1",
+      "proposal_id": "9029c3c79870fa4dcaf53a8307a23f97",
+      "tenant_id": "tenant-a",
+      "kind": "dbt",
+      "operation": "add_column_description",
+      "target_kind": "dbt_column",
+      "target_id": "sales_orders.amount",
+      "parameters": {
+        "edit": "description"
+      },
+      "base_contract": "dbt:models/sales/schema.yml",
+      "base_contract_fingerprint": "d826e8d76f619db99c8c6f5286f4b9f8bd88a6df49e18e89bbc402f0e4fc56fe",
+      "draft_version": null,
+      "draft_patch": [],
+      "patch_note": "Review and apply with dbt tooling; the diff is against the PyYAML-canonical form of the file.",
+      "dbt_edit": {
+        "file_path": "models/sales/schema.yml",
+        "model": "sales_orders",
+        "column": "amount",
+        "edit": "description",
+        "description": "Metric 'revenue' (sum); defined in semantic contract sales-core@v1.",
+        "test_name": null
+      },
+      "validation_commands": [
+        "dbt parse",
+        "dbt test --select sales_orders"
+      ],
+      "unified_diff": "--- a/models/sales/schema.yml\n+++ b/models/sales/schema.yml\n@@ -6,6 +6,7 @@\n   - name: id\n     description: Order identifier.\n   - name: amount\n+    description: Metric 'revenue' (sum); defined in semantic contract sales-core@v1.\n   - name: status\n   - name: created_at\n     description: When the order was created.",
+      "rationale_codes": [
+        "triage:T-91",
+        "rule:D-20",
+        "contract:sales-core@v1"
+      ],
+      "origin_triage_id": "d8855f8703603977d14a985b984b1343",
+      "origin_feedback_id": "e0698790ae0e8519063dc96b71e831d3",
+      "origin_run_id": "c36cf88a125f54a786a804da4bf586de",
+      "rules_version": "dbt-proposal-rules-v1",
+      "status": "proposed",
+      "created_by": "system:proposal-generator",
+      "created_at": "2026-10-10T05:29:17.882414Z",
+      "content_fingerprint": "bd9ddb6eb6dbcd43aba8a8c413a37ae2b292f6b0c46ff0abc8c71042d8566846"
+    },
+    {
+      "proposal_version": "v1",
+      "proposal_id": "0e8ccab01fabe9ed76c6ecd002899e2f",
+      "tenant_id": "tenant-a",
+      "kind": "dbt",
+      "operation": "add_column_description",
+      "target_kind": "dbt_column",
+      "target_id": "sales_orders.status",
+      "parameters": {
+        "edit": "description"
+      },
+      "base_contract": "dbt:models/sales/schema.yml",
+      "base_contract_fingerprint": "d826e8d76f619db99c8c6f5286f4b9f8bd88a6df49e18e89bbc402f0e4fc56fe",
+      "draft_version": null,
+      "draft_patch": [],
+      "patch_note": "Review and apply with dbt tooling; the diff is against the PyYAML-canonical form of the file.",
+      "dbt_edit": {
+        "file_path": "models/sales/schema.yml",
+        "model": "sales_orders",
+        "column": "status",
+        "edit": "description",
+        "description": "Dimension 'status' (categorical); defined in semantic contract sales-core@v1.",
+        "test_name": null
+      },
+      "validation_commands": [
+        "dbt parse",
+        "dbt test --select sales_orders"
+      ],
+      "unified_diff": "--- a/models/sales/schema.yml\n+++ b/models/sales/schema.yml\n@@ -7,5 +7,6 @@\n     description: Order identifier.\n   - name: amount\n   - name: status\n+    description: Dimension 'status' (categorical); defined in semantic contract sales-core@v1.\n   - name: created_at\n     description: When the order was created.",
+      "rationale_codes": [
+        "triage:T-90",
+        "rule:D-30",
+        "contract:sales-core@v1"
+      ],
+      "origin_triage_id": "94550f38db6810d6e68c599daaa654f7",
+      "origin_feedback_id": "5228e47296b0c57c52894407fa67cf49",
+      "origin_run_id": "c36cf88a125f54a786a804da4bf586de",
+      "rules_version": "dbt-proposal-rules-v1",
+      "status": "proposed",
+      "created_by": "system:proposal-generator",
+      "created_at": "2026-10-10T05:29:18.025390Z",
+      "content_fingerprint": "cb009a4466c577e70ef2fbbddb442ed33a7c2608633d7d391a7cb476887ddccc"
+    }
+  ]
+}
