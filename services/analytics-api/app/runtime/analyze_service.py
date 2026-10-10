@@ -79,6 +79,7 @@ class GovernedAnalyzeService:
         runner_factory: RunnerFactory,
         state_factory: StateFactory,
         answers: AnswerSource,
+        sealer: Any = None,
         now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     ) -> None:
         self.store, self.runner_factory, self.state_factory, self.answers, self.now = (
@@ -88,6 +89,7 @@ class GovernedAnalyzeService:
             answers,
             now,
         )
+        self.sealer = sealer
 
     # ---- operations ----
 
@@ -258,6 +260,8 @@ class GovernedAnalyzeService:
             return AnalyzeRunResponse(run_id=state.run_id, state="waiting_clarification", outcome=outcome)
         if state.status != "terminal" or state.terminal_outcome is None:
             return AnalyzeRunResponse(run_id=state.run_id, state="running")
+        if self.sealer is not None:
+            self.sealer.seal(state)  # idempotent; feedback binds to this sealed evidence
         return AnalyzeRunResponse(run_id=state.run_id, state="terminal", outcome=self._terminal(state, base))
 
     def _terminal(self, state: AgentRunState, base: dict[str, Any]):

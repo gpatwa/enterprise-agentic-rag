@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from fastapi import APIRouter, Depends, Header, HTTPException, Response
 
 from app.runtime.analyze_service import GovernedAnalyzeService, ServiceError
+from app.runtime.feedback_service import FeedbackService
 from app.security import AuthenticationError, OIDCVerifier
 from packages.platform_contracts.analytics_v2_api import (
     AnalyzeRequest,
@@ -18,6 +19,7 @@ from packages.platform_contracts.analytics_v2_api import (
     ClarifyRequest,
     ReviewDecisionRequest,
 )
+from packages.platform_contracts.feedback import FeedbackReceipt, FeedbackSubmission
 from packages.platform_contracts.security import AnalyticsIdentity
 
 
@@ -25,6 +27,7 @@ from packages.platform_contracts.security import AnalyticsIdentity
 class V2Runtime:
     service: GovernedAnalyzeService | None = None
     verifier: OIDCVerifier | None = None
+    feedback: FeedbackService | None = None
 
 
 def build_v2_router(runtime: V2Runtime, api_key_dependency) -> APIRouter:
@@ -95,5 +98,24 @@ def build_v2_router(runtime: V2Runtime, api_key_dependency) -> APIRouter:
             ),
             response,
         )
+
+    @router.post("/runs/{run_id}/feedback", response_model=FeedbackReceipt, status_code=201)
+    def feedback(
+        run_id: str,
+        body: FeedbackSubmission,
+        response: Response,
+        who: AnalyticsIdentity = Depends(identity),
+        idempotency_key: str | None = Header(default=None),
+    ):
+        if runtime.feedback is None:
+            raise HTTPException(503, "feedback_not_configured")
+        try:
+            receipt, _ = runtime.feedback.submit(
+                who, run_id=run_id, idempotency_key=idempotency_key or "", submission=body
+            )
+        except ServiceError as exc:
+            raise HTTPException(exc.status, exc.code) from exc
+        response.status_code = 201 if receipt.created else 200
+        return receipt
 
     return router

@@ -33,7 +33,9 @@ from app.runtime import (
     AgentGraphRunner,
     BootstrapRequest,
     ControlStore,
+    EvidenceSealer,
     ExplanationStore,
+    ValidationReportStore,
     certified_intent_node,
     clarification_node,
     compile_node,
@@ -51,6 +53,8 @@ from app.runtime import (
 )
 from app.runtime.analyze_service import AnswerMaterial, GovernedAnalyzeService
 from app.runtime.evidence_store import EvidenceStore
+from app.runtime.feedback_service import FeedbackService
+from app.runtime.feedback_store import FeedbackStore
 from app.runtime.governed_stages import CompiledPlanStore, PolicyValueStore, analytics_plan_node
 from app.runtime.run_start import new_governed_run_state
 from app.security import OIDCVerifier
@@ -104,6 +108,7 @@ class ReferenceStack:
     plans: CompiledPlanStore = field(default_factory=CompiledPlanStore)
     results: ExecutionResultStore = field(default_factory=ExecutionResultStore)
     explanations: ExplanationStore = field(default_factory=ExplanationStore)
+    reports: ValidationReportStore = field(default_factory=ValidationReportStore)
     policy_values: PolicyValueStore = field(default_factory=PolicyValueStore)
     review_threshold: float = 1e9
     ambiguous: bool = False
@@ -161,7 +166,13 @@ class ReferenceStack:
             ),
             "approve": review_decision_node(self.control),
             "execute": fake_execution_node(GatewayExecutor(self.plans, gateways, self.results, ExecutionLimits())),
-            "result_validate": result_validation_node(self.plans, self.results, self.contracts, self.control_totals),
+            "result_validate": result_validation_node(
+                self.plans,
+                self.results,
+                self.contracts,
+                self.control_totals,
+                report_sink=lambda ni, report: self.reports.put(ni.tenant_id, ni.run_id, report),
+            ),
             "explain": explain_node(self.results, self.contracts, self.plans, scripted_explainer, self.explanations),
         }
         for name in ("policy", "compile"):
@@ -211,8 +222,16 @@ class ReferenceStack:
 
     def service(self) -> GovernedAnalyzeService:
         return GovernedAnalyzeService(
-            self.control, runner_factory=self.runner, state_factory=self.new_state, answers=self
+            self.control,
+            runner_factory=self.runner,
+            state_factory=self.new_state,
+            answers=self,
+            sealer=EvidenceSealer(self.control, self.evidence, self.reports),
         )
+
+    def feedback_service(self) -> FeedbackService:
+        store = FeedbackStore(self.control.engine)
+        return FeedbackService(self.control, self.evidence, store, self.contracts)
 
     def app(self) -> FastAPI:
         """The v2 API with this stack as its runtime. Not used by `app.main`."""
@@ -221,7 +240,7 @@ class ReferenceStack:
         async def no_api_key() -> None:
             return None
 
-        runtime = V2Runtime(service=self.service(), verifier=self.verifier())
+        runtime = V2Runtime(service=self.service(), verifier=self.verifier(), feedback=self.feedback_service())
         application.include_router(build_v2_router(runtime, no_api_key))
         return application
 

@@ -8,6 +8,7 @@ from app.runtime.context_node import context_retrieval_node
 from app.runtime.control import CancellationRegistry, GatewayRegistration, GatewayRegistry, UsageMeter
 from app.runtime.control_store import ControlStore, ControlStoreError, Lease, LeaseUnavailable, StaleWorkerError
 from app.runtime.evidence import EvidenceBuildError, build_evidence_envelope
+from app.runtime.evidence_sealer import EvidenceSealer, ValidationReportStore
 from app.runtime.evidence_store import (
     EvidenceChainError,
     EvidenceConflictError,
@@ -49,6 +50,8 @@ from app.runtime.run_start import (
 )
 
 __all__ = [
+    "EvidenceSealer",
+    "ValidationReportStore",
     "ExplanationStore",
     "explain_node",
     "BudgetExceeded",

@@ -14,7 +14,13 @@ from packages.platform_contracts.semantic import SemanticContract
 ControlTotals = Callable[[NodeInput, AnalyticalIntent, SemanticContract], Mapping[str, Any]]
 
 
-def result_validation_node(plans, results, contracts, control_totals: ControlTotals):
+def result_validation_node(
+    plans,
+    results,
+    contracts,
+    control_totals: ControlTotals,
+    report_sink: Callable[[NodeInput, Any], None] | None = None,
+):
     """Validate the stored result against the run's intent, plan, and a control query.
 
     Any blocking issue (truncation, fanout, missing groups, bad totals, shape or grain
@@ -37,6 +43,8 @@ def result_validation_node(plans, results, contracts, control_totals: ControlTot
         except Exception as exc:  # noqa: BLE001 - an unverifiable result is not a valid one.
             return _fail(node_input, "control_query_failed", type(exc).__name__)
         report = validate_result(result, plan, intent, contract, control_totals=totals)
+        if report_sink is not None:
+            report_sink(node_input, report)  # lets the run be sealed into an evidence envelope later
         evidence = (
             EvidenceReference(
                 evidence_id=f"result-validation:{node_input.run_id}:{report.fingerprint[:16]}",
