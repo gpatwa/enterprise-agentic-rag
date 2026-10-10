@@ -31,6 +31,7 @@ from app.execution import (
 )
 from app.prompt_registry import ExampleCandidateService, PromptRegistry
 from app.proposals import DbtProject, DbtProposalService, ProposalService, ProposalStore
+from app.review import ReviewService, ReviewStore, SubjectResolver
 from app.runtime import (
     AgentGraphRunner,
     BootstrapRequest,
@@ -125,13 +126,15 @@ class ReferenceStack:
 
     # ---- identity (locally signed; never accepted by any other service) ----
 
-    def token(self, user: str, *, purposes=(PURPOSE,), ttl_minutes: int = 60, tenant: str = TENANT) -> str:
+    def token(
+        self, user: str, *, purposes=(PURPOSE,), ttl_minutes: int = 60, tenant: str = TENANT, groups=("analyst",)
+    ) -> str:
         claims = {
             "iss": ISSUER,
             "aud": AUDIENCE,
             "sub": user,
             "tid": tenant,
-            "groups": ["analyst"],
+            "groups": list(groups),
             "purposes": list(purposes),
             "exp": datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes),
         }
@@ -258,6 +261,14 @@ class ReferenceStack:
             self.contracts,
             project=project,
         )
+
+    def review_service(self, *, ttl=None, now=None) -> ReviewService:
+        engine = self.control.engine
+        resolver = SubjectResolver(
+            ProposalStore(engine), PromptRegistry(engine), TriageStore(engine), FeedbackStore(engine)
+        )
+        kwargs = {key: value for key, value in (("ttl", ttl), ("now", now)) if value is not None}
+        return ReviewService(ReviewStore(engine), resolver, **kwargs)
 
     def prompt_registry(self) -> PromptRegistry:
         return PromptRegistry(self.control.engine)

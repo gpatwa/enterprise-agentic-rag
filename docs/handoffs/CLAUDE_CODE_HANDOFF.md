@@ -148,12 +148,18 @@ Canonical task status is in
     is pinned to the runtime prompt by a drift test; **the runtime does not read the registry**. Corpus thresholds
     in `reference_stack/prompt_registry/prompt-thresholds.proposed.json` are **PROPOSED, NOT APPROVED**. Packet:
     `ADS-054-prompt-registry.md`. Suite: **520 passed**. This completes wave 5B.
-  - **Next (user asked for it after ADS-054):** wave 5C, ADS-055 (independent review and certification workflow,
-    separation of duties), ADS-056 (candidate evaluation and affected-case selection), ADS-057 (shadow, canary,
-    promotion, automatic rollback). These are consequential (review, promotion, rollback), so bring the scope to
-    the user for approval before building. All of ADS-040..054 are still `review` (no independent review), M1
-    certification is pending, nothing was validated live, and the M5 human gate (`separation_of_duties_review`)
-    is still open.
+  - **ADS-055** independent review workflow (`packages/platform_contracts/review.py`, `app/review/`, migration `0009`):
+    append-only reviews and audit events; separation of duties enforced (automated identities, non-reviewers, the
+    generator/creator, every feedback submitter, the requester, and repeat deciders cannot approve); a decision must name
+    the exact content and the subject must be unchanged; 72h expiry (injectable clock) audited once; approving records a
+    fact and applies/certifies/promotes nothing; no endpoint. Reviewer = `analytics-reviewer` group in the token. Corpus
+    thresholds in `reference_stack/review/review-thresholds.proposed.json` are **PROPOSED, NOT APPROVED**. Packet:
+    `ADS-055-independent-review.md`. Suite: **551 passed**. (Built on the ADS-054 branch; PR #24 must merge first.)
+  - **Next:** ADS-056 (candidate evaluation and affected-case selection), then ADS-057 (shadow, canary, promotion with
+    automatic rollback; promotion only creates a new released registry version and never wires the runtime). The user
+    confirmed this plan ("go with your recommendations"). ADS-040..055 are still `review` (no independent review of the
+    code), M1 certification is pending, nothing was validated live, and the M5 human gate
+    (`separation_of_duties_review`) is still open.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls
     `new_governed_run_state`, `record_terminal_evidence`, or the control-total
     builder in a production path yet (ADS-045 owns API/worker wiring; the control
