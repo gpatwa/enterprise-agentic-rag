@@ -21,12 +21,26 @@ _HEX64 = r"^[0-9a-f]{64}$"
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:,-]{0,254}$")
 
 ProposalKind = Literal["semantic_context", "dbt", "prompt_candidate"]
-ProposalOperation = Literal["flag_definition_for_review", "add_context_edge", "review_label_collision"]
-TargetKind = Literal["metric", "dimension", "field", "dataset", "ontology_label"]
+ProposalOperation = Literal[
+    "flag_definition_for_review",
+    "add_context_edge",
+    "review_label_collision",
+    "add_column_description",
+    "add_column_test",
+]
+TargetKind = Literal["metric", "dimension", "field", "dataset", "ontology_label", "dbt_column"]
 
 # A semantic-context patch may only touch these paths of a registry document, and may only produce a
 # draft: it can never change a definition, a policy, or a lifecycle other than "draft".
 ALLOWED_PATCH_PATHS = ("/lifecycle", "/contract/version", "/contract/metadata")
+
+
+# A dbt proposal may only edit a schema file under models/, add a missing description, or add one of
+# these standard tests, and carries the exact commands a reviewer runs. The generator never runs them.
+DBT_PATH = re.compile(r"^models/(?:[A-Za-z0-9_-]+/)*schema\.yml$")
+DBT_TESTS = ("unique", "not_null")
+DBT_COMMAND = re.compile(r"^dbt (?:parse|test --select [A-Za-z0-9_]+)$")
+_DBT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,127}$")
 
 
 class _Frozen(BaseModel):
@@ -47,6 +61,30 @@ class PatchOperation(_Frozen):
         return self
 
 
+class DbtEdit(_Frozen):
+    """One constrained edit to a dbt schema file: a missing description or a standard test."""
+
+    file_path: str = Field(min_length=1, max_length=255)
+    model: str = Field(min_length=1, max_length=128)
+    column: str = Field(min_length=1, max_length=128)
+    edit: Literal["description", "test"]
+    description: str | None = Field(default=None, max_length=300)
+    test_name: Literal["unique", "not_null"] | None = None
+
+    @model_validator(mode="after")
+    def constrained(self) -> "DbtEdit":
+        if not DBT_PATH.match(self.file_path):
+            raise ValueError("a dbt proposal may only edit a schema.yml under models/")
+        if not _DBT_NAME.match(self.model) or not _DBT_NAME.match(self.column):
+            raise ValueError("dbt model and column names must be identifiers")
+        if self.edit == "description":
+            if not self.description or self.test_name or any(c in self.description for c in "\n\r"):
+                raise ValueError("a description edit carries one single-line description and no test")
+        elif not self.test_name or self.description:
+            raise ValueError("a test edit carries one standard test and no description")
+        return self
+
+
 class ChangeProposal(_Frozen):
     proposal_version: Literal["v1"] = PROPOSAL_VERSION
     proposal_id: str = Field(min_length=1, max_length=255)
@@ -61,6 +99,9 @@ class ChangeProposal(_Frozen):
     draft_version: str | None = Field(default=None, max_length=255)
     draft_patch: tuple[PatchOperation, ...] = ()
     patch_note: str | None = Field(default=None, max_length=500)
+    dbt_edit: DbtEdit | None = None
+    validation_commands: tuple[str, ...] = ()
+    unified_diff: str | None = Field(default=None, max_length=20_000)
     rationale_codes: tuple[str, ...] = Field(min_length=1)
     origin_triage_id: str = Field(min_length=1, max_length=255)
     origin_feedback_id: str = Field(min_length=1, max_length=255)
@@ -86,6 +127,13 @@ class ChangeProposal(_Frozen):
             raise ValueError("a patch needs the draft version it creates")
         if self.draft_patch and not any(op.path == "/lifecycle" for op in self.draft_patch):
             raise ValueError("a patch must explicitly set the lifecycle to draft")
+        if self.kind == "dbt":
+            if self.dbt_edit is None or not self.validation_commands or self.draft_patch:
+                raise ValueError("a dbt proposal needs a dbt edit and validation commands, and no registry patch")
+            if not all(DBT_COMMAND.match(command) for command in self.validation_commands):
+                raise ValueError("validation commands must be plain `dbt parse` or `dbt test --select <model>`")
+        elif self.dbt_edit is not None or self.validation_commands:
+            raise ValueError("only a dbt proposal carries a dbt edit or validation commands")
         return self
 
 

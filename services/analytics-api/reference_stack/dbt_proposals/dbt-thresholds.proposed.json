@@ -1,0 +1,63 @@
+{
+  "suite_version": "dbt-corpus-v1",
+  "rules_version": "dbt-proposal-rules-v1",
+  "corpus_sha256": "19f59008d7421b5fb23f6cba84be0b3b65ec27cc79ba798714fd7a5d61b7deec",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "scope_note": "Proposal generation is deterministic, so exact agreement with hand-written expectations is expected. These gates check rule behaviour and the safety properties of ADS-053 on the fixture dbt project; they say nothing about whether the proposed edits are good fixes, and dbt is never run.",
+  "gates": {
+    "proposal_agreement": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "cases whose proposal (or reason for none) equals the hand-written expectation"
+    },
+    "provenance_completeness": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "proposals carrying origin triage, feedback, and run IDs, rationale codes, rules version, and a source-file fingerprint"
+    },
+    "file_constraint_violations": {
+      "op": "<=",
+      "value": 0,
+      "measure": "proposals whose edit targets a file that is not an approved schema file under models/"
+    },
+    "validation_command_coverage": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "proposals carrying both `dbt parse` and `dbt test --select <model>`"
+    },
+    "commands_executed": {
+      "op": "<=",
+      "value": 0,
+      "measure": "process spawns observed while generating proposals"
+    },
+    "source_file_writes": {
+      "op": "<=",
+      "value": 0,
+      "measure": "changes to the fixture dbt project, registry contracts, goldens, thresholds, runtime prompt, or manifest during generation"
+    },
+    "edit_validity": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "edits that, applied to a temporary copy, leave parseable YAML with only the target column changed"
+    },
+    "determinism": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "cases whose regeneration yields the same proposal with no new rows"
+    },
+    "dedupe_agreement": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "duplicate requests (including one with an injected note) that map to the original proposal and add support only"
+    }
+  },
+  "not_measured": {
+    "dbt_validation": "dbt is never run here; the validation commands are text for a reviewer",
+    "proposal_usefulness": "needs reviewers and real feedback; reviewing proposals is ADS-055"
+  }
+}

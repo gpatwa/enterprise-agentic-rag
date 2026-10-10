@@ -163,8 +163,8 @@ class ProposalService:
             now,
         )
 
-    def generate(self, triage_id: str, *, tenant_id: str) -> GenerationResult:
-        """Turn one triage record into a proposal, or say why not. Idempotent; applies nothing."""
+    def _inputs(self, triage_id: str, tenant_id: str) -> tuple[Any, Any, Any, Any]:
+        """Triage record, feedback, sealed envelope, and run state, or ProposalError."""
         try:
             record = self.triage.get(triage_id, tenant_id=tenant_id)
             feedback = self.feedback.get(record.feedback_id, tenant_id=tenant_id)
@@ -172,23 +172,27 @@ class ProposalService:
             state = self.control.load_latest_checkpoint(
                 run_id=record.run_id, tenant_id=tenant_id, purpose=record.purpose
             )
-            # A run that never resolved a contract, or a fault that is not ours to propose a fix for, ends
-            # here with a reason; the contract is only needed once a proposal is actually warranted.
-            early = decide(ProposalFacts(record.category, record.rule_id, record.basis_kind))
-            if isinstance(early, NoProposal) and early.reason in {"claim_only", "category_not_applicable"}:
-                return GenerationResult(None, early.reason)
-            contract_ref = envelope.semantic_contract or ""
-            contract_id, _, version = contract_ref.rpartition("@")
-            document = self.contracts.get_certified(contract_id, version)
-        except (
-            FeedbackNotFoundError,
-            EvidenceNotFoundError,
-            ControlStoreError,
-            LookupError,
-            ProposalError,
-            TriageError,
-        ) as exc:
-            raise ProposalError("triage, feedback, evidence, run, or contract is not available") from exc
+        except (FeedbackNotFoundError, EvidenceNotFoundError, ControlStoreError, TriageError) as exc:
+            raise ProposalError("triage, feedback, evidence, or run is not available") from exc
+        return record, feedback, envelope, state
+
+    def _certified(self, envelope: Any) -> Any:
+        contract_id, _, version = (envelope.semantic_contract or "").rpartition("@")
+        try:
+            return self.contracts.get_certified(contract_id, version)
+        except LookupError as exc:
+            raise ProposalError("the certified contract is not available") from exc
+
+    def generate(self, triage_id: str, *, tenant_id: str) -> GenerationResult:
+        """Turn one triage record into a proposal, or say why not. Idempotent; applies nothing."""
+        record, feedback, envelope, state = self._inputs(triage_id, tenant_id)
+        # A run that never resolved a contract, or a fault that is not ours to propose a fix for, ends
+        # here with a reason; the contract is only needed once a proposal is actually warranted.
+        early = decide(ProposalFacts(record.category, record.rule_id, record.basis_kind))
+        if isinstance(early, NoProposal) and early.reason in {"claim_only", "category_not_applicable"}:
+            return GenerationResult(None, early.reason)
+        contract_ref = envelope.semantic_contract or ""
+        document = self._certified(envelope)
         contract = document.contract
         target_kind, dataset_id = _locate(contract, feedback.correction.semantic_id if feedback.correction else None)
         clarification = (state.clarification_state or {}).get("ambiguities") or []

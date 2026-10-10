@@ -135,7 +135,14 @@ Canonical task status is in
     Packet: `ADS-052-semantic-context-proposals.md`. Suite: **451 passed**. The user confirmed the wave-5B plan
     ("go with your recommendations"): 053 next (fixture dbt project, approved-files allowlist, validation command
     never run), then 054 (immutable prompt/example candidate registry, references and fingerprints only).
-  - **Next:** ADS-053, ADS-054 (then the user's call on the 052 thresholds) (change proposals; wave 5B,
+  - **ADS-053** dbt docs/test proposals (`app/proposals/dbt_*.py`, fixture project
+    `reference_stack/dbt_fixture/`): missing column descriptions (templated from the certified contract) and
+    `unique`/`not_null` tests only, in approved `schema.yml` files; the contract rejects any other file or edit;
+    validation commands are text and dbt is never run (tests patch process spawning to raise). Corpus
+    thresholds in `reference_stack/dbt_proposals/dbt-thresholds.proposed.json` are **PROPOSED, NOT APPROVED**.
+    Packet: `ADS-053-dbt-proposals.md`. Suite: **498 passed**.
+  - **Next:** ADS-054 (immutable prompt/example candidate registry), then the user's call on the 052 and 053
+    thresholds (change proposals; wave 5B,
     parallel). ADS-040..051 are still `review`, M1 certification is pending, nothing was validated live.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls
     `new_governed_run_state`, `record_terminal_evidence`, or the control-total

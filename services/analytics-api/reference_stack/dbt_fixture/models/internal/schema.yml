@@ -1,0 +1,5 @@
+version: 2
+models:
+- name: audit_log
+  columns:
+  - name: event_id
