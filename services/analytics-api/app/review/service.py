@@ -121,6 +121,15 @@ class ReviewService:
                 return True
         return False
 
+    def approval_time(self, kind: str, subject_id: str, fingerprint: str, *, tenant_id: str) -> datetime | None:
+        """When the approval that completed a review of exactly this content was recorded, or None."""
+        times = []
+        for record in self.store.for_subject(kind, subject_id, fingerprint, tenant_id=tenant_id):
+            status = self.status(record.review_id, tenant_id=tenant_id)
+            if status.state == "approved":
+                times.append(max(e.created_at for e in status.events if e.event_type == "approved"))
+        return max(times) if times else None
+
     # ---- internals ----
 
     @staticmethod

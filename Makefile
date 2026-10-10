@@ -1,6 +1,6 @@
 # Makefile
 
-.PHONY: help install install-analytics analytics-reference-smoke analytics-reference-up analytics-golden analytics-triage-eval analytics-proposals-eval analytics-dbt-eval analytics-prompts-eval analytics-review-eval analytics-evaluation-eval dev dev-support-web dev-analytics-api dev-analytics-web dev-products up down stop init support-demo demo-ready-local deploy infra build bootstrap init-cloud smoke-test verify destroy test test-analytics ingest \
+.PHONY: help install install-analytics analytics-reference-smoke analytics-reference-up analytics-golden analytics-triage-eval analytics-proposals-eval analytics-dbt-eval analytics-prompts-eval analytics-review-eval analytics-evaluation-eval analytics-rollout-eval dev dev-support-web dev-analytics-api dev-analytics-web dev-products up down stop init support-demo demo-ready-local deploy infra build bootstrap init-cloud smoke-test verify destroy test test-analytics ingest \
        infra-staging bootstrap-staging deploy-staging deploy-aws \
        deploy-azure infra-azure build-azure bootstrap-azure deploy-api-azure deploy-analytics-azure deploy-landing-azure destroy-azure \
        pause-azure resume-azure import-azure \
@@ -29,6 +29,7 @@ help:
 	@echo "    make analytics-prompts-eval - Run the ADS-054 prompt registry corpus and write its report (fakes only)"
 	@echo "    make analytics-review-eval - Run the ADS-055 review workflow corpus and write its report (fakes only)"
 	@echo "    make analytics-evaluation-eval - Run the ADS-056 candidate evaluation corpus and write its report (fakes only)"
+	@echo "    make analytics-rollout-eval - Run the ADS-057 rollout corpus and write its report (fakes only)"
 	@echo "    make dev-products  - Run both products as Docker deployables"
 	@echo "    make observability-up - Start Grafana, Prometheus, exporters, and admin UIs"
 	@echo "    make observability-down - Stop the local operations plane"
@@ -224,6 +225,10 @@ analytics-review-eval:
 # ADS-056 candidate evaluation corpus (fakes only); thresholds are proposed until the user approves them.
 analytics-evaluation-eval:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack evaluation --write-report ../../docs/execution/enterprise-analytics/reports
+
+# ADS-057 rollout corpus (fakes only; simulated observers); thresholds are proposed until the user approves them.
+analytics-rollout-eval:
+	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack rollout --write-report ../../docs/execution/enterprise-analytics/reports
 
 # M4 golden suite (fakes only); regenerates the report against the user-approved M4 thresholds.
 analytics-golden:

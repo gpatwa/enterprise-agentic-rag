@@ -181,6 +181,21 @@ class EvaluationService:
             r.verdict == "passed" for r in self.store.for_subject(kind, subject_id, fingerprint, tenant_id=tenant_id)
         )
 
+    def passing_record(
+        self, kind: str, subject_id: str, fingerprint: str, *, tenant_id: str
+    ) -> EvaluationRecord | None:
+        """The evaluation that passed for exactly this content (and whose review approved it), or None."""
+        if not self.reviews.is_approved(kind, subject_id, fingerprint, tenant_id=tenant_id):
+            return None
+        return next(
+            (
+                r
+                for r in self.store.for_subject(kind, subject_id, fingerprint, tenant_id=tenant_id)
+                if r.verdict == "passed"
+            ),
+            None,
+        )
+
     # ---- internals ----
 
     def _digest(self) -> str:

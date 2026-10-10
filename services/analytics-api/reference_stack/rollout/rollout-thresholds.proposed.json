@@ -1,0 +1,63 @@
+{
+  "suite_version": "rollout-corpus-v1",
+  "rules_version": "rollout-rules-v1",
+  "corpus_sha256": "530321c05dad56b157a9d94ea54b26fb3bc5db5061b1c8132d5cdff0cc7798f0",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "scope_note": "The controller is deterministic and its observers are simulated (no live traffic). These gates check the controller's gating, rollback, and immutability on the reference stack; they say nothing about production behaviour.",
+  "gates": {
+    "outcome_agreement": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "cases whose outcome (promoted version, rolled back with a reason, or refused with a code) equals the hand-written expectation"
+    },
+    "ungated_start_refusal": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "starts without approved review, passing evaluation, approved policy, a human starter, or an active parent that are refused"
+    },
+    "bad_candidate_rollback": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "shadow, canary, monitor, and lost-gate failures that end rolled back automatically"
+    },
+    "pointer_integrity": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "rollouts whose pointer history only names released versions and ends at the expected version"
+    },
+    "release_immutability": {
+      "op": "<=",
+      "value": 0,
+      "measure": "released registry rows whose stored content changed during a rollout or rollback"
+    },
+    "evidence_preserved": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "rollbacks that delete or alter no run, evidence, feedback, review, or evaluation row"
+    },
+    "idempotency": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "repeated promote calls that create one release and one pointer move"
+    },
+    "runtime_unwired": {
+      "op": "<=",
+      "value": 0,
+      "measure": "runtime modules that read the rollout controller, the release pointer, or the prompt registry"
+    },
+    "protected_file_writes": {
+      "op": "<=",
+      "value": 0,
+      "measure": "changes to goldens, thresholds, the case index, the runtime prompt, registry contracts, or the manifest during the run"
+    }
+  },
+  "not_measured": {
+    "live_traffic": "shadow, canary, and monitor use a pinned request set served through sandbox stacks, not production traffic",
+    "runtime_wiring": "nothing reads the promoted version or the active pointer; wiring the runtime to the registry needs its own separately approved step"
+  }
+}

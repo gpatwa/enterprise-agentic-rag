@@ -91,6 +91,45 @@ class PromptRegistry:
         stored, created = self._append(entry)
         return stored, created  # type: ignore[return-value]
 
+    def next_release_version(self, name: str) -> str:
+        with self.engine.connect() as connection:
+            rows = connection.execute(
+                text(
+                    "SELECT version FROM analytics_prompt_registry WHERE kind='prompt' AND name=:n AND status='released'"
+                ),
+                {"n": name},
+            ).all()
+        numbers = [int(v[1:]) for (v,) in rows if v[1:].isdigit()]
+        return f"v{max(numbers, default=0) + 1}"
+
+    def release_promoted(self, candidate: PromptTemplate, *, promotion_id: str) -> PromptTemplate:
+        """Create the next released system version from a candidate. Only the promotion controller calls this.
+
+        Idempotent per promotion: the same candidate promoted under the same promotion ID returns the entry it made.
+        """
+        if candidate.status != "candidate":
+            raise RegistryError("only a candidate can be promoted")
+        for version, status, _ in self.versions("prompt", candidate.name, status="released"):
+            existing = self.get("prompt", candidate.name, version)
+            if getattr(existing, "promotion_id", None) == promotion_id:
+                return existing  # type: ignore[return-value]
+        entry = self._prompt(
+            candidate.name,
+            self.next_release_version(candidate.name),
+            "released",
+            "system",
+            None,
+            candidate.template_text,
+            candidate.placeholders,
+            candidate.parent_version,
+            candidate.origin_triage_ids,
+            "system:promotion",
+            promoted_from=candidate.version,
+            promotion_id=promotion_id,
+        )
+        stored, _ = self._append(entry)
+        return stored  # type: ignore[return-value]
+
     def register_example(self, example: ExampleCandidate) -> tuple[ExampleCandidate, bool]:
         stored, created = self._append(example)
         return stored, created  # type: ignore[return-value]
@@ -129,7 +168,20 @@ class PromptRegistry:
     # ---- internals ----
 
     def _prompt(
-        self, name, version, status, scope, tenant_id, template_text, placeholders, parent, triage_ids, created_by
+        self,
+        name,
+        version,
+        status,
+        scope,
+        tenant_id,
+        template_text,
+        placeholders,
+        parent,
+        triage_ids,
+        created_by,
+        *,
+        promoted_from=None,
+        promotion_id=None,
     ) -> PromptTemplate:
         fields = dict(
             name=name,
@@ -143,6 +195,8 @@ class PromptRegistry:
             parent_version=parent,
             origin_triage_ids=tuple(triage_ids),
             created_by=created_by,
+            promoted_from=promoted_from,
+            promotion_id=promotion_id,
             created_at=self.now(),
         )
         draft = PromptTemplate(**fields, content_fingerprint="0" * 64)

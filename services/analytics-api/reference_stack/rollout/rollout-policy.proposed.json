@@ -1,0 +1,14 @@
+{
+  "policy_version": "rollout-policy-v1",
+  "shadow_min_agreement": 1.0,
+  "canary_fractions": [0.1, 0.5],
+  "canary_max_error_rate": 0.0,
+  "monitor_max_error_rate": 0.0,
+  "approval_max_age_hours": 168,
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. A rollout refuses to run until the user approves this policy; only the user may approve or change it."
+  }
+}

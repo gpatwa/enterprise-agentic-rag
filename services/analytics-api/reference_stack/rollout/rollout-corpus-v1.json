@@ -1,0 +1,18 @@
+{
+  "suite_version": "rollout-corpus-v1",
+  "note": "Expected outcomes were written by hand from the rollout rules, not produced by running the controller. Each case runs in a fresh reference stack under a policy copy marked approved by the test harness; the repository's policy stays proposed (case K05 uses it).",
+  "cases": [
+    {"id": "K01", "op": "happy_path", "expect": "promoted:v2", "group": "promote"},
+    {"id": "K02", "op": "no_review", "expect": "refused:review_not_approved", "group": "gate"},
+    {"id": "K03", "op": "no_evaluation", "expect": "refused:evaluation_not_passed", "group": "gate"},
+    {"id": "K04", "op": "harmful_candidate", "expect": "refused:evaluation_not_passed", "group": "gate"},
+    {"id": "K05", "op": "repository_policy_not_approved", "expect": "refused:rollout_policy_not_approved", "group": "policy"},
+    {"id": "K06", "op": "automated_starter", "expect": "refused:automated_identity", "group": "gate"},
+    {"id": "K07", "op": "shadow_fault", "expect": "rolled_back:shadow_disagreement", "group": "rollback"},
+    {"id": "K08", "op": "canary_fault", "expect": "rolled_back:canary_regression:0.5", "group": "rollback"},
+    {"id": "K09", "op": "monitor_fault", "expect": "rolled_back:monitor_regression", "group": "rollback"},
+    {"id": "K10", "op": "stale_approval", "expect": "rolled_back:gate_lost:approval_stale", "group": "rollback"},
+    {"id": "K11", "op": "skip_canary", "expect": "refused:canary_incomplete", "group": "gate"},
+    {"id": "K12", "op": "double_promote", "expect": "promoted:v2", "group": "promote"}
+  ]
+}
