@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import secrets
 import tempfile
 import time
@@ -20,6 +21,7 @@ from sqlalchemy import create_engine
 from app.api_v2 import V2Runtime, build_v2_router
 from app.compiler import DuckDBCompilerAdapter, PostgreSQLCompilerAdapter
 from app.compiler.service import CertifiedIntentCompiler
+from app.evaluation_gate import EvaluationService, EvaluationStore
 from app.execution import (
     DuckDBGateway,
     ExecutionLimits,
@@ -64,6 +66,7 @@ from app.security import OIDCVerifier
 from app.semantic_registry import SemanticRegistry
 from app.triage import TriageService, TriageStore
 from packages.platform_contracts.agent_runtime import NodeOutput, RunBudget
+from packages.platform_contracts.prompt_registry import render as render_prompt
 from packages.platform_contracts.security import AnalyticsIdentity
 from packages.platform_contracts.semantic import SemanticPolicy, SemanticRegistryDocument
 from reference_stack.fakes import (
@@ -119,6 +122,7 @@ class ReferenceStack:
     ambiguous: bool = False
     omit_context_ids: tuple = ()
     max_cost_units: float = REFERENCE_MAX_COST_UNITS
+    prompt_template: str | None = None
     executed_sql: list = field(default_factory=list)
     compiled_sql: set = field(default_factory=set)
     timings: list = field(default_factory=list)  # (node_id, seconds) for policy/compile
@@ -158,7 +162,7 @@ class ReferenceStack:
             "bootstrap": identity_bootstrap_node(request),
             "retrieve": context_retrieval_node(SnapshotProvider(context), SearchProvider()),
             "extract_intent": structured_intent_node(
-                ScriptedIntentClient(request.request_id, ambiguous=self.ambiguous)
+                ScriptedIntentClient(request.request_id, ambiguous=self.ambiguous), self._prompt_builder()
             ),
             "resolve": ontology_resolution_node(self.contracts, OntologyProvider(ontology)),
             "clarify": clarification_node(),
@@ -187,6 +191,23 @@ class ReferenceStack:
         for name in ("policy", "compile"):
             handlers[name] = self._timed(name, handlers[name])
         return handlers
+
+    def _prompt_builder(self):
+        """A sandbox prompt for evaluating a candidate; None keeps the runtime's own prompt."""
+        if self.prompt_template is None:
+            return None
+        template = self.prompt_template
+
+        def build(request_text, context):
+            assets = [{"asset_id": i.asset_id, "citation": i.citation, "text": i.text} for i in context.items]
+            return render_prompt(
+                template,
+                tenant_id=context.tenant_id,
+                context_json=json.dumps(assets, separators=(",", ":")),
+                request_json=json.dumps(request_text),
+            )
+
+        return build
 
     def _timed(self, name, handler):
         def run(node_input):
@@ -262,6 +283,17 @@ class ReferenceStack:
             project=project,
         )
 
+    def evaluation_service(self, runners, index, protected_paths, *, review=None, now=None) -> EvaluationService:
+        kwargs = {"now": now} if now is not None else {}
+        return EvaluationService(
+            EvaluationStore(self.control.engine),
+            review or self.review_service(),
+            index,
+            runners,
+            protected_paths,
+            **kwargs,
+        )
+
     def review_service(self, *, ttl=None, now=None) -> ReviewService:
         engine = self.control.engine
         resolver = SubjectResolver(
@@ -307,6 +339,8 @@ def build_stack(
     ambiguous: bool = False,
     omit_context_ids: tuple = (),
     max_cost_units: float = REFERENCE_MAX_COST_UNITS,
+    prompt_template: str | None = None,
+    contract_metadata: dict | None = None,
 ) -> ReferenceStack:
     """Create the seeded data, migrated control store, gateway, and compiler for one dialect."""
     workdir = Path(workdir or tempfile.mkdtemp(prefix="analytics-reference-"))
@@ -335,6 +369,11 @@ def build_stack(
         document = SemanticRegistryDocument(
             lifecycle="certified", contract=document.contract.model_copy(update={"policies": [policy]})
         )
+    if contract_metadata:  # evaluation sandbox only: same certified contract plus review flags; nothing is written
+        merged = {**(document.contract.metadata or {}), **contract_metadata}
+        document = SemanticRegistryDocument(
+            lifecycle=document.lifecycle, contract=document.contract.model_copy(update={"metadata": merged})
+        )
     compiler = CertifiedIntentCompiler(SERVICE_ROOT / "semantic_registry", adapter=adapter)
     original = compiler.compile
     compiled_sql: set = set()
@@ -357,6 +396,7 @@ def build_stack(
         ambiguous=ambiguous,
         omit_context_ids=omit_context_ids,
         max_cost_units=max_cost_units,
+        prompt_template=prompt_template,
         compiled_sql=compiled_sql,
     )
 

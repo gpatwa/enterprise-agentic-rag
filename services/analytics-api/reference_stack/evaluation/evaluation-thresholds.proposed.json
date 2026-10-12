@@ -1,0 +1,63 @@
+{
+  "suite_version": "evaluation-corpus-v1",
+  "rules_version": "evaluation-rules-v1",
+  "corpus_sha256": "b440fcd8a4ae9c1ffe12fb80f7b0efaf569f34cfcfe9ceeeeda98671b95ad0d3",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "scope_note": "The evaluator is deterministic. These gates check the evaluation gate itself on the reference stack with a scripted, keyword-driven model; they say nothing about whether a real prompt or change is better.",
+  "gates": {
+    "verdict_agreement": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "cases whose outcome (passed, failed with a reason, refused with a code, or the selected case list) equals the hand-written expectation"
+    },
+    "harmful_candidate_detection": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "approved candidates that change behaviour and are evaluated as failed"
+    },
+    "unreviewed_evaluation_refusal": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "pending, rejected, or never-reviewed subjects that are refused evaluation"
+    },
+    "selection_agreement": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "affected-case selections equal to the hand-written case lists"
+    },
+    "full_suite_coverage": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "evaluations that ran the golden, triage, proposal, and dbt full suites plus a targeted run"
+    },
+    "approved_threshold_only": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "passing verdicts whose every suite rests on approved thresholds"
+    },
+    "fail_closed": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "protected-file changes and unapproved-threshold suites that produce a failed verdict"
+    },
+    "protected_file_writes": {
+      "op": "<=",
+      "value": 0,
+      "measure": "changes to goldens, thresholds, the case index, the runtime prompt, registry contracts, or the manifest during the run"
+    },
+    "determinism": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "re-evaluations that return the identical recorded evaluation without a new row"
+    }
+  },
+  "not_measured": {
+    "candidate_quality": "the scripted model ignores instruction text before the request, so a prompt's real effect on answers is not measured",
+    "live_traffic": "shadow and canary behaviour belongs to ADS-057"
+  }
+}

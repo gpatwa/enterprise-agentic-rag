@@ -193,18 +193,33 @@ def _pause_case(stack, client, case, engine, obs: Observations, expect_state: st
     obs.cases.append(CaseResult(case["id"], engine, case["kind"], passed, "" if passed else str(response)[:160]))
 
 
-def run_engine(engine: Engine, suite: dict, obs: Observations) -> None:
+def run_engine(
+    engine: Engine,
+    suite: dict,
+    obs: Observations,
+    *,
+    stack_kwargs: dict | None = None,
+    only: set[str] | None = None,
+) -> None:
+    extra = stack_kwargs or {}
     stacks = {
-        "main": build_stack(engine),
-        "denied": build_stack(engine, denied=True),
-        "ambiguous": build_stack(engine, ambiguous=True),
-        "review": build_stack(engine, review_threshold=1e-9),
+        "main": build_stack(engine, **extra),
+        "denied": build_stack(engine, denied=True, **extra),
+        "ambiguous": build_stack(engine, ambiguous=True, **extra),
+        "review": build_stack(engine, review_threshold=1e-9, **extra),
     }
     clients = {name: TestClient(stack.app()) for name, stack in stacks.items()}
     main, client = stacks["main"], clients["main"]
     known_run: str | None = None
     for case in suite["cases"]:
         kind = case["kind"]
+        if only is not None and case["id"] not in only and kind != "answer":
+            continue  # answer cases still run: the tenant case needs a known run
+        if only is not None and case["id"] not in only:
+            known_run = known_run or _post(client, main, case["question"], f"golden-{case['id']}-0").json().get(
+                "run_id"
+            )
+            continue
         if kind == "answer":
             _answer_case(main, client, case, engine, obs)
             known_run = known_run or _post(client, main, case["question"], f"golden-{case['id']}-0").json().get(
@@ -279,11 +294,13 @@ def evaluate(metrics: dict[str, float], thresholds: dict) -> dict[str, dict[str,
     return out
 
 
-def run_golden(engines: tuple[Engine, ...] = ("duckdb", "postgres")) -> dict[str, Any]:
+def run_golden(
+    engines: tuple[Engine, ...] = ("duckdb", "postgres"), *, stack_kwargs: dict | None = None
+) -> dict[str, Any]:
     suite, thresholds = load_suite()
     obs = Observations()
     for engine in engines:
-        run_engine(engine, suite, obs)
+        run_engine(engine, suite, obs, stack_kwargs=stack_kwargs)
     metrics = compute_metrics(suite, obs, engines)
     gates = evaluate(metrics, thresholds)
     return {
@@ -356,3 +373,14 @@ def render_markdown(report: dict[str, Any], *, generated_at: datetime | None = N
         "",
     ]
     return "\n".join(lines)
+
+
+def run_golden_cases(
+    case_ids: set[str], engines: tuple[Engine, ...] = ("duckdb", "postgres"), *, stack_kwargs: dict | None = None
+) -> list[CaseResult]:
+    """Run only the selected golden cases (targeted evaluation). Pass or fail per case, no thresholds."""
+    suite, _ = load_suite()
+    obs = Observations()
+    for engine in engines:
+        run_engine(engine, suite, obs, stack_kwargs=stack_kwargs, only=case_ids)
+    return [r for r in obs.cases if r.case_id in case_ids]
