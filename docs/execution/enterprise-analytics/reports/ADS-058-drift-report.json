@@ -1,0 +1,273 @@
+{
+  "suite_version": "drift-corpus-v1",
+  "rules_version": "drift-rules-v1",
+  "corpus_sha256": "3fc910dadfafd94ff878cdfb2c08b82079d167f827e1b4756c072e7e98d5ac42",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "policy_version": "drift-policy-v1",
+  "policy_status": "proposed",
+  "meets_thresholds": true,
+  "gates": {
+    "case_agreement": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "cases whose raised alert set equals the hand-written expectation"
+    },
+    "drift_recall": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "expected alerts that were raised"
+    },
+    "false_alerts": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "alerts raised that no case expected"
+    },
+    "runbook_coverage": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "1 when every raised alert and every policy rule points at an existing runbook with all required sections"
+    },
+    "insufficient_data_silence": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "silence cases (too little data, zero baseline) that raise no alert and report the rule as skipped"
+    },
+    "quiet_window_silence": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "cases with no expected alert (noise, just-below, improvement) that raise none"
+    },
+    "real_run_extraction": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "1 when a real reference-stack run yields one complete observation (outcome, latency, cost, retrieval count)"
+    },
+    "monitor_writes": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "control-store tables whose row count changed while the monitors ran"
+    },
+    "runtime_unwired": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "runtime or API modules that import the drift monitors"
+    },
+    "protected_file_writes": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "changes to goldens, thresholds, the case index, the runtime prompt, registry contracts, or the manifest during the run"
+    }
+  },
+  "not_measured": {
+    "production_traffic": "windows are synthetic; real alert precision, recall, and the right thresholds need production data",
+    "alert_delivery": "alerts go to an in-memory sink; paging, dashboards, and on-call routing are not built",
+    "automatic_response": "an alert never triggers a rollback or any action; a person follows the runbook"
+  },
+  "cases": [
+    {
+      "case_id": "D01",
+      "name": "stable_with_noise",
+      "group": "quiet",
+      "expected": "none",
+      "got": "none",
+      "skipped": "0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D02",
+      "name": "stale_context",
+      "group": "drift",
+      "expected": "C-01",
+      "got": "C-01",
+      "skipped": "0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D03",
+      "name": "context_age",
+      "group": "drift",
+      "expected": "C-02",
+      "got": "C-02",
+      "skipped": "0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D04",
+      "name": "empty_retrieval",
+      "group": "drift",
+      "expected": "R-01",
+      "got": "R-01",
+      "skipped": "0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D05",
+      "name": "retrieval_items_drop",
+      "group": "drift",
+      "expected": "R-02",
+      "got": "R-02",
+      "skipped": "0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D06",
+      "name": "malformed_intent",
+      "group": "drift",
+      "expected": "I-01",
+      "got": "I-01",
+      "skipped": "0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D07",
+      "name": "clarification_surge",
+      "group": "drift",
+      "expected": "I-02",
+      "got": "I-02",
+      "skipped": "0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D08",
+      "name": "outcome_mix_shift",
+      "group": "drift",
+      "expected": "O-01",
+      "got": "O-01",
+      "skipped": "0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D09",
+      "name": "success_rate_drop",
+      "group": "drift",
+      "expected": "O-02",
+      "got": "O-02",
+      "skipped": "0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D10",
+      "name": "latency_regression",
+      "group": "drift",
+      "expected": "L-01",
+      "got": "L-01",
+      "skipped": "0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D11",
+      "name": "cost_regression",
+      "group": "drift",
+      "expected": "K-01",
+      "got": "K-01",
+      "skipped": "0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D12",
+      "name": "latency_and_cost",
+      "group": "drift",
+      "expected": "K-01,L-01",
+      "got": "K-01,L-01",
+      "skipped": "0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D13",
+      "name": "insufficient_data",
+      "group": "silence",
+      "expected": "none",
+      "got": "none",
+      "skipped": "10",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D14",
+      "name": "just_below_thresholds",
+      "group": "quiet",
+      "expected": "none",
+      "got": "none",
+      "skipped": "0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D15",
+      "name": "latency_exactly_at_threshold",
+      "group": "drift",
+      "expected": "L-01",
+      "got": "L-01",
+      "skipped": "0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D16",
+      "name": "stale_exactly_at_threshold",
+      "group": "drift",
+      "expected": "C-01",
+      "got": "C-01",
+      "skipped": "0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D17",
+      "name": "improvement_is_not_drift",
+      "group": "quiet",
+      "expected": "none",
+      "got": "none",
+      "skipped": "0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "D18",
+      "name": "zero_baseline_cost",
+      "group": "silence",
+      "expected": "none",
+      "got": "none",
+      "skipped": "1",
+      "passed": true,
+      "detail": ""
+    }
+  ]
+}

@@ -172,6 +172,13 @@ Canonical task status is in
     **PROPOSED, NOT APPROVED**, so the controller refuses to run until the user approves it; corpus thresholds in
     `reference_stack/rollout/rollout-thresholds.proposed.json` are also proposed. Packet: `ADS-057-rollout-controller.md`.
     Suite: **585 passed** (about 4.5 min). Stacked on the ADS-056 branch. **This completes wave 5C.**
+  - **ADS-058** drift monitors (`packages/platform_contracts/drift.py`, `app/drift/`, six runbooks under
+    `docs/execution/enterprise-analytics/runbooks/`): ten rules over six monitors (context, retrieval, intent, outcomes,
+    latency, cost) compare a current window of terminal runs with a baseline; too little data or a zero baseline is
+    skipped and reported, never guessed. Observations hold numbers and codes only. **Advisory and read-only: an alert
+    starts no rollback, and nothing in the runtime or API imports it.** The alert rules
+    (`reference_stack/drift/drift-policy.proposed.json`) and corpus thresholds (`drift-thresholds.proposed.json`) are
+    **PROPOSED, NOT APPROVED**. Packet: `ADS-058-drift-monitors.md`. `make analytics-drift-eval`: 18/18 cases.
   - **Next:** the user's decisions: merge #25, #26, #27 in order; approve (or amend) the proposed thresholds for ADS-054..057
     and the rollout policy; then wave 5D (ADS-058 drift monitors, ADS-059 closed-loop safety and poisoning evaluation) and the
     M5 human gate `separation_of_duties_review` (still open). ADS-040..057 are still `review` (no independent review of the
