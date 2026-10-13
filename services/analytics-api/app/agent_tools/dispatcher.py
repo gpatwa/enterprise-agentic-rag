@@ -11,6 +11,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from app.agent_tools.audit import ToolAudit
 from app.runtime.analyze_service import GovernedAnalyzeService, ServiceError
 from app.runtime.evidence_store import EvidenceNotFoundError, EvidenceStore
 from app.security.identity import caller_kind
@@ -28,15 +29,37 @@ from packages.platform_contracts.security import AnalyticsIdentity
 
 
 class AgentToolSurface:
-    def __init__(self, service: GovernedAnalyzeService, evidence: EvidenceStore | None = None) -> None:
+    def __init__(
+        self,
+        service: GovernedAnalyzeService,
+        evidence: EvidenceStore | None = None,
+        audit: ToolAudit | None = None,
+    ) -> None:
         self.service = service
         self.evidence = evidence
+        self.audit = audit
         self._specs = {spec.name: spec for spec in TOOLS}
 
     def catalog(self) -> list[dict[str, Any]]:
         return catalog()
 
-    def call(self, identity: AnalyticsIdentity, call: ToolCall | dict[str, Any]) -> ToolResult:
+    def call(
+        self, identity: AnalyticsIdentity, call: ToolCall | dict[str, Any], *, transport: str = "direct"
+    ) -> ToolResult:
+        """Run one tool call and, when an audit is configured, append one audit event for it (refusals included)."""
+        result = self._call(identity, call)
+        if self.audit is not None:
+            arguments = (
+                call.arguments
+                if isinstance(call, ToolCall)
+                else (call or {}).get("arguments")
+                if isinstance(call, dict)
+                else None
+            )
+            self.audit.record_call(identity, tool=result.tool, transport=transport, result=result, arguments=arguments)
+        return result
+
+    def _call(self, identity: AnalyticsIdentity, call: ToolCall | dict[str, Any]) -> ToolResult:
         try:
             request = call if isinstance(call, ToolCall) else ToolCall.model_validate(call)
         except ValidationError:

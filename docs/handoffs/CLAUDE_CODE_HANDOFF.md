@@ -204,6 +204,10 @@ Canonical task status is in
     person's and the agent's purposes and groups, requires an **approved** delegation policy (the shipped one is PROPOSED, so delegation
     is off), and is an agent call that can never decide a review (now also enforced on REST). Local issuer only: the "real IdP" suite
     is not run. Packet: `ADS-063-identity-delegation.md`. **This completes wave 6A.**
+  - **ADS-061** MCP adapter (`app/mcp/`, `app/agent_tools/audit.py`): a JSON-RPC 2.0 subset (initialize, ping, tools/list, tools/call) over the
+    ADS-060 surface with **per-message authentication** through the identity resolver and an append-only hash-chained audit of every
+    tool call on every transport (argument digests only). It imports only the tool surface and identity layers (tested). stdio line
+    framing only; no HTTP/SSE transport. Packet: `ADS-061-mcp-adapter.md`.
   - **Next:** PRs #25-#29 (ADS-055..059) are all merged to `main` (the last three on 2026-10-13). M5's packets are implemented
     and in `review`. **Wave 6A (M6) is implemented:** ADS-060, ADS-062, ADS-063 (all `review`); next is wave 6B (ADS-061 MCP adapter,
     ADS-064 customer-data-plane simulator, ADS-065 traces/metrics/redaction). Open user decisions: approve/amend the
