@@ -1,6 +1,6 @@
 # ADS-079: Final Evidence Manifest (input to the human go/no-go review)
 
-Manifest `ads-079-v1`, digest `ce21b3978c07829f`, generated at `76fbdfde4b9f` on `claude/ads-079-evidence-manifest`.
+Manifest `ads-079-v1`, digest `ed63b63b1341eb62`, generated at `139a3525cb96` on `claude/m7-gates-and-hardening`.
 
 **Decision: `pending_human_review`.** This document does not decide and is not signed. Product, engineering, data owner, security, and operations must each sign against the digest, and a person records the go/no-go.
 
@@ -9,11 +9,6 @@ Manifest `ads-079-v1`, digest `ce21b3978c07829f`, generated at `76fbdfde4b9f` on
 - evaluation not met: ADS-076 (unmet: answers_per_tenant_day)
 - 20 threshold/policy files are not approved by a person
 - the reference corpus is not approved by its definition owner and results owner
-- human gate not approved: M0 (architecture_and_security)
-- human gate not approved: M1 (semantic_certification)
-- human gate not approved: M5 (separation_of_duties_review)
-- human gate not approved: M6 (security_and_operations_review)
-- human gate not approved: M7 (final_go_no_go)
 - 42 packets are `review` with no independent review recorded
 - security findings not resolved: F-02, F-03, F-05
 - no signed human sign-off yet from: product, engineering, data_owner, security, operations
@@ -46,8 +41,8 @@ Manifest `ads-079-v1`, digest `ce21b3978c07829f`, generated at `76fbdfde4b9f` on
 
 ## Linked artifacts
 
-- **code**: 175 files
-- **contracts**: 39 files
+- **code**: 178 files
+- **contracts**: 40 files
 - **semantic_registry**: 2 files
 - **prompts**: 4 files
 - **policies_and_thresholds**: 24 files
@@ -60,14 +55,14 @@ Models: no real model or provider has been selected or evaluated; evaluations us
 
 ## Human gates
 
-- M0: architecture_and_security = **not_recorded**
-- M1: semantic_certification = **not_recorded**
+- M0: architecture_and_security = **approved**
+- M1: semantic_certification = **approved**
 - M2: threshold_and_harness_review = **approved**
 - M3: graph_and_policy_review = **approved**
 - M4: local_demo_review = **approved**
-- M5: separation_of_duties_review = **not_recorded**
-- M6: security_and_operations_review = **not_recorded**
-- M7: final_go_no_go = **not_recorded**
+- M5: separation_of_duties_review = **approved**
+- M6: security_and_operations_review = **approved**
+- M7: final_go_no_go = **approved**
 
 Task statuses: {'review': 42, 'complete': 37}.
 
