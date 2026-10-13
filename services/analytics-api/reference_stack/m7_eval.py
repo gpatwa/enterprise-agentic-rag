@@ -126,3 +126,12 @@ def _onboarding():
 
 
 PACKETS["078"] = _onboarding()
+
+
+def _manifest():
+    from reference_stack import release_manifest
+
+    return ("ADS-079-evidence-manifest", release_manifest.run_manifest, release_manifest.render_markdown)
+
+
+PACKETS["079"] = _manifest()

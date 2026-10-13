@@ -286,6 +286,10 @@ analytics-m7-provider:
 analytics-m7-onboarding:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack m7 078 --write-report ../../docs/execution/enterprise-analytics/reports
 
+# ADS-079 final evidence manifest: links artifacts by digest and lists what blocks a release. It never decides or signs; regenerate after any change.
+analytics-m7-manifest:
+	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack m7 079 --write-report ../../docs/execution/enterprise-analytics/reports
+
 # M4 golden suite (fakes only); regenerates the report against the user-approved M4 thresholds.
 analytics-golden:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack golden --write-report ../../docs/execution/enterprise-analytics/reports
