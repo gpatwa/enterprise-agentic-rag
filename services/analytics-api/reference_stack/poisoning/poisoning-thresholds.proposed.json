@@ -1,0 +1,79 @@
+{
+  "suite_version": "poisoning-corpus-v1",
+  "rules_version": "poisoning-rules-v1",
+  "corpus_sha256": "08a7e7e088dd1db3ca5e001bf6a2b1a7415df01e8244ca72eee2c2a5b653e1a6",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "scope_note": "Hand-written hostile cases run against the real feedback, triage, proposal, registry, review, evaluation, and rollout code. The gates check that none of them changes goldens, policy, or production behaviour; they say nothing about attacks the corpus does not contain.",
+  "gates": {
+    "case_agreement": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "cases whose outcome equals the hand-written expectation"
+    },
+    "intake_block_rate": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "malformed, injected, foreign-tenant, and unkeyed feedback submissions that are rejected"
+    },
+    "contract_block_rate": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "weakened prompts, certifying or out-of-scope patches, out-of-scope dbt edits, and examples from unsafe verdicts that are rejected"
+    },
+    "approval_block_rate": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "approvals by contributors, automated identities, requesters, and non-reviewers, and rollouts without review, evaluation, or an approved policy, that are refused"
+    },
+    "barred_approvals": {
+      "op": "<=",
+      "value": 0,
+      "measure": "reviews that end approved after a barred identity tried to approve them"
+    },
+    "free_text_inert": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "1 when a hostile free-text note does not change triage and appears in no downstream table"
+    },
+    "flood_amplification": {
+      "op": "<=",
+      "value": 1,
+      "measure": "proposals created from 25 repeated submissions (they deduplicate and only add support)"
+    },
+    "production_answer_unchanged": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "1 when the same question gives the same answer after the whole campaign"
+    },
+    "golden_thresholds_still_met": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "1 when the golden suite still meets its approved thresholds after the campaign"
+    },
+    "release_mutations": {
+      "op": "<=",
+      "value": 0,
+      "measure": "attacked worlds whose released prompt versions or active pointer changed"
+    },
+    "pipeline_wired_into_runtime": {
+      "op": "<=",
+      "value": 0,
+      "measure": "runtime or API modules that import any learning-pipeline module"
+    },
+    "protected_file_writes": {
+      "op": "<=",
+      "value": 0,
+      "measure": "changes to goldens, thresholds, the case index, the runtime prompt, registry contracts, or the manifest during the run"
+    }
+  },
+  "not_measured": {
+    "unlisted_attacks": "the corpus holds the attacks its author thought of; novel attacks, collusion between two real reviewers, and compromised infrastructure are out of scope",
+    "live_systems": "no live model, warehouse, OpenSearch, or identity provider; tokens come from the reference stack's test issuer",
+    "independent_review": "this evaluation is not an independent review of the pipeline's code or the M5 separation_of_duties_review"
+  }
+}
