@@ -1,6 +1,6 @@
 {
   "manifest_version": "ads-079-v1",
-  "base_commit": "a5e7ea8e976d5156af2c52cae468b640db27b419",
+  "base_commit": "76fbdfde4b9f13431cfe8bbf129f784e52926110",
   "base_branch": "claude/ads-079-evidence-manifest",
   "artifacts": {
     "code": {
@@ -161,7 +161,7 @@
       "services/analytics-api/reference_stack/isolation_eval.py": "520b3fdb6a4e6829947ebd7ea7f2492d997b2d52bbbf97581585bdbbe98353a1",
       "services/analytics-api/reference_stack/m7_corpus.py": "198222fc4e92d89510399d0d145c57a94664a3ea02e05e68a7b8482a3dedc44e",
       "services/analytics-api/reference_stack/m7_eval.py": "30ae44cd4d0c845146a9125b2edbeaed02fd672e03ddb38702ee423555388171",
-      "services/analytics-api/reference_stack/onboarding_eval.py": "19308f724931a22622ca6335129fd27c551e99013c54b36442ef24807575a88d",
+      "services/analytics-api/reference_stack/onboarding_eval.py": "e7bbe5bcb23ca99ee4d679fb3853d3d4121aef2593cb48593bb66ab6d781841d",
       "services/analytics-api/reference_stack/operations_eval.py": "82142ab8d7b28be86f60608b7d811e9f15792601bb5caf35b5ee2482f50e9421",
       "services/analytics-api/reference_stack/performance_eval.py": "561d145948af9b8aee5db9d2996e31ef40669b2c879d7febed061c4ca049b27e",
       "services/analytics-api/reference_stack/poisoning_eval.py": "019c4d9fb98e6d3acfe34afc888b4ef9caba53ea3acf0d87bab48160f4fc2b0d",
@@ -207,7 +207,7 @@
       "packages/platform_contracts/ontology.py": "7b77fb5912b3e123d997027a958401a84bc8db98aa3ce42922bed16df6cc8368",
       "packages/platform_contracts/operations.py": "b797bbe94289672d4a00f0666a524c46ab698150ccc613cff2ac8638a3fc2737",
       "packages/platform_contracts/ops_dashboard.py": "fdacc5f5e28fb3d02696ce6dd47520f6f497336e6bf6e72a2986880cfb76fcf4",
-      "packages/platform_contracts/ossie.py": "5ee71fa7633705b7ef9fcfbc779d992ed75c80ba233a467aec116ce4d68a91cf",
+      "packages/platform_contracts/ossie.py": "d53d50b82d646758f8a85c0ed0a429cc424aeec2f33c75f7d0c5ca5eba8ab57d",
       "packages/platform_contracts/prompt_registry.py": "4028bccc5283a619bbd4adeb690a91d1b761124615447d53e1e8272d6ee8d309",
       "packages/platform_contracts/proposals.py": "24563a0ed078a5113e29fde0b9b0c46318f618d7f7e8ddc07d2a9a761f5c87f5",
       "packages/platform_contracts/quotas.py": "14ed106d340a59d058e4b97381d43d80e8ac7136de34778373c1461abb3c6006",
@@ -239,7 +239,7 @@
       "services/analytics-api/reference_stack/m7/abstention-thresholds.proposed.json": "94592280cae33707384df693439c72c15c59b14c25dd7376175a159f81fa2d83",
       "services/analytics-api/reference_stack/m7/e2e-thresholds.proposed.json": "82fba11318e5e9a2c0b14532645039bbcb7912ff2bd0735d2ac39bfc8ac8b61b",
       "services/analytics-api/reference_stack/m7/isolation-thresholds.proposed.json": "20c09356f4cf72275bc16a39c3bd6763a056f4cf6dca65dbe015e6c06547db0f",
-      "services/analytics-api/reference_stack/m7/onboarding-thresholds.proposed.json": "2279f7fb76110e71f67b3eb4a079814a9e4627dfaecd3bde7ba8d4920730f989",
+      "services/analytics-api/reference_stack/m7/onboarding-thresholds.proposed.json": "48380e8f5bb24c40cd62ad6395cb7f4ee5ba388e290360d8358eff75fd776600",
       "services/analytics-api/reference_stack/m7/performance-thresholds.proposed.json": "a27700c0c8dc4ccf3955da374e7a128c321d2ad2bf46a74e6e9b49780a9d651d",
       "services/analytics-api/reference_stack/m7/provider-thresholds.proposed.json": "2c4d1b6b89d6ac8f3cf194d67d2b93827d0221f4ae75c1b2cadc87a8d1b9daa9",
       "services/analytics-api/reference_stack/m7/reliability-thresholds.proposed.json": "c9e6ca4c378f36b920aef42b1c82cd15a16e6fda3195323bd1d583c95750e102",
@@ -296,7 +296,7 @@
       "docs/execution/enterprise-analytics/reports/ADS-075-reliability-report.json": "3970a6d8646d94b91bcc1a4e66a8c2698fbad22fdb54ae7a533155a34dca4e89",
       "docs/execution/enterprise-analytics/reports/ADS-076-performance-report.json": "03143303afecd6c78816f27f296c0b040b733fccbae1045017d156253551cd36",
       "docs/execution/enterprise-analytics/reports/ADS-077-provider-report.json": "107f42fbc00799c473c039b2bbc483dd2640a5a7c477853865accf25cc220b86",
-      "docs/execution/enterprise-analytics/reports/ADS-078-onboarding-report.json": "df308f1f0c470bd779c113f1b7ee77a918d793394ced56f5ce9d8478753cb2e4"
+      "docs/execution/enterprise-analytics/reports/ADS-078-onboarding-report.json": "57eb18753153b5bd7e696189b004b2b0420b135b34842ee01e98935537d0a015"
     },
     "runbooks": {
       "docs/execution/enterprise-analytics/runbooks/drift-context.md": "a1b57b6353419c9e77964b15f9f46160d283b4690a6904b3d49f799beeba5480",
@@ -514,7 +514,7 @@
       "name": "ADS-078",
       "present": true,
       "file": "docs/execution/enterprise-analytics/reports/ADS-078-onboarding-report.json",
-      "sha256": "df308f1f0c470bd779c113f1b7ee77a918d793394ced56f5ce9d8478753cb2e4",
+      "sha256": "57eb18753153b5bd7e696189b004b2b0420b135b34842ee01e98935537d0a015",
       "ok": true,
       "approval": "proposed",
       "unmet_gates": []
@@ -593,7 +593,7 @@
     "security": null,
     "operations": null
   },
-  "manifest_digest": "d242ed1d55ddb551e4cd0d7673928b791e21dc0fba13e4b414f2f8d6ae3eda09",
+  "manifest_digest": "ce21b3978c07829f87b51417a51fb559ef56922e55b5f2c189f3771dd40a4994",
   "packet": "ADS-079",
   "ok": true
 }

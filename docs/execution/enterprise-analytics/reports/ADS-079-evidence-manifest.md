@@ -1,6 +1,6 @@
 # ADS-079: Final Evidence Manifest (input to the human go/no-go review)
 
-Manifest `ads-079-v1`, digest `d242ed1d55ddb551`, generated at `a5e7ea8e976d` on `claude/ads-079-evidence-manifest`.
+Manifest `ads-079-v1`, digest `ce21b3978c07829f`, generated at `76fbdfde4b9f` on `claude/ads-079-evidence-manifest`.
 
 **Decision: `pending_human_review`.** This document does not decide and is not signed. Product, engineering, data owner, security, and operations must each sign against the digest, and a person records the go/no-go.
 
