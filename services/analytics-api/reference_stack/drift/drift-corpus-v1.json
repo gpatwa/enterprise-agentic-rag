@@ -1,0 +1,446 @@
+{
+  "suite_version": "drift-corpus-v1",
+  "note": "Expected alerts were written by hand from the proposed drift rules and the window generator, not produced by running the monitors. Windows are synthetic and deterministic (see reference_stack/drift_eval.py:make_window). Rates are multiples of 0.05 over n=100 so the arithmetic is exact.",
+  "cases": [
+    {
+      "id": "D01",
+      "name": "stable_with_noise",
+      "group": "quiet",
+      "baseline": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.15,
+        "items": 6,
+        "latency_ms": 1200,
+        "cost": 1.3,
+        "max_age_hours": 10,
+        "stale": 0.05
+      },
+      "expect_alerts": []
+    },
+    {
+      "id": "D02",
+      "name": "stale_context",
+      "group": "drift",
+      "baseline": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.0,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10,
+        "stale": 0.2
+      },
+      "expect_alerts": [
+        "C-01"
+      ]
+    },
+    {
+      "id": "D03",
+      "name": "context_age",
+      "group": "drift",
+      "baseline": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 96
+      },
+      "expect_alerts": [
+        "C-02"
+      ]
+    },
+    {
+      "id": "D04",
+      "name": "empty_retrieval",
+      "group": "drift",
+      "baseline": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10,
+        "empty_retrieval": 0.2
+      },
+      "expect_alerts": [
+        "R-01"
+      ]
+    },
+    {
+      "id": "D05",
+      "name": "retrieval_items_drop",
+      "group": "drift",
+      "baseline": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 3,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "expect_alerts": [
+        "R-02"
+      ]
+    },
+    {
+      "id": "D06",
+      "name": "malformed_intent",
+      "group": "drift",
+      "baseline": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.1,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10,
+        "malformed": 0.1
+      },
+      "expect_alerts": [
+        "I-01"
+      ]
+    },
+    {
+      "id": "D07",
+      "name": "clarification_surge",
+      "group": "drift",
+      "baseline": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.0,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10,
+        "clarify": 0.2
+      },
+      "expect_alerts": [
+        "I-02"
+      ]
+    },
+    {
+      "id": "D08",
+      "name": "outcome_mix_shift",
+      "group": "drift",
+      "baseline": {
+        "n": 100,
+        "refused": 0.5,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.0,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10,
+        "failed": 0.5
+      },
+      "expect_alerts": [
+        "O-01"
+      ]
+    },
+    {
+      "id": "D09",
+      "name": "success_rate_drop",
+      "group": "drift",
+      "baseline": {
+        "n": 100,
+        "refused": 0.1,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.25,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "expect_alerts": [
+        "O-02"
+      ]
+    },
+    {
+      "id": "D10",
+      "name": "latency_regression",
+      "group": "drift",
+      "baseline": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1600,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "expect_alerts": [
+        "L-01"
+      ]
+    },
+    {
+      "id": "D11",
+      "name": "cost_regression",
+      "group": "drift",
+      "baseline": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.6,
+        "max_age_hours": 10
+      },
+      "expect_alerts": [
+        "K-01"
+      ]
+    },
+    {
+      "id": "D12",
+      "name": "latency_and_cost",
+      "group": "drift",
+      "baseline": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 2000,
+        "cost": 2.0,
+        "max_age_hours": 10
+      },
+      "expect_alerts": [
+        "K-01",
+        "L-01"
+      ]
+    },
+    {
+      "id": "D13",
+      "name": "insufficient_data",
+      "group": "silence",
+      "baseline": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 10,
+        "refused": 0.0,
+        "items": 6,
+        "latency_ms": 5000,
+        "cost": 5.0,
+        "max_age_hours": 500,
+        "stale": 0.5
+      },
+      "expect_alerts": [],
+      "expect_skipped": {
+        "count": 10,
+        "reason": "insufficient_data"
+      }
+    },
+    {
+      "id": "D14",
+      "name": "just_below_thresholds",
+      "group": "quiet",
+      "baseline": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.11,
+        "items": 6,
+        "latency_ms": 1490,
+        "cost": 1.49,
+        "max_age_hours": 10,
+        "stale": 0.09
+      },
+      "expect_alerts": []
+    },
+    {
+      "id": "D15",
+      "name": "latency_exactly_at_threshold",
+      "group": "drift",
+      "baseline": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1500,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "expect_alerts": [
+        "L-01"
+      ]
+    },
+    {
+      "id": "D16",
+      "name": "stale_exactly_at_threshold",
+      "group": "drift",
+      "baseline": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.1,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10,
+        "stale": 0.1
+      },
+      "expect_alerts": [
+        "C-01"
+      ]
+    },
+    {
+      "id": "D17",
+      "name": "improvement_is_not_drift",
+      "group": "quiet",
+      "baseline": {
+        "n": 100,
+        "refused": 0.1,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.0,
+        "items": 9,
+        "latency_ms": 500,
+        "cost": 0.5,
+        "max_age_hours": 10
+      },
+      "expect_alerts": []
+    },
+    {
+      "id": "D18",
+      "name": "zero_baseline_cost",
+      "group": "silence",
+      "baseline": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 0.0,
+        "max_age_hours": 10
+      },
+      "current": {
+        "n": 100,
+        "refused": 0.2,
+        "items": 6,
+        "latency_ms": 1000,
+        "cost": 1.0,
+        "max_age_hours": 10
+      },
+      "expect_alerts": [],
+      "expect_skipped": {
+        "count": 1,
+        "reason": "baseline_zero"
+      }
+    }
+  ]
+}

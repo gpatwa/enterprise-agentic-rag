@@ -1,0 +1,69 @@
+{
+  "suite_version": "drift-corpus-v1",
+  "rules_version": "drift-rules-v1",
+  "corpus_sha256": "3fc910dadfafd94ff878cdfb2c08b82079d167f827e1b4756c072e7e98d5ac42",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "scope_note": "Synthetic, deterministic windows with hand-written expected alerts. These gates check that the monitors detect the drift they are specified to detect, stay quiet otherwise, point at a real runbook, and write nothing; they say nothing about alert quality on production traffic.",
+  "gates": {
+    "case_agreement": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "cases whose raised alert set equals the hand-written expectation"
+    },
+    "drift_recall": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "expected alerts that were raised"
+    },
+    "false_alerts": {
+      "op": "<=",
+      "value": 0,
+      "measure": "alerts raised that no case expected"
+    },
+    "runbook_coverage": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "1 when every raised alert and every policy rule points at an existing runbook with all required sections"
+    },
+    "insufficient_data_silence": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "silence cases (too little data, zero baseline) that raise no alert and report the rule as skipped"
+    },
+    "quiet_window_silence": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "cases with no expected alert (noise, just-below, improvement) that raise none"
+    },
+    "real_run_extraction": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "1 when a real reference-stack run yields one complete observation (outcome, latency, cost, retrieval count)"
+    },
+    "monitor_writes": {
+      "op": "<=",
+      "value": 0,
+      "measure": "control-store tables whose row count changed while the monitors ran"
+    },
+    "runtime_unwired": {
+      "op": "<=",
+      "value": 0,
+      "measure": "runtime or API modules that import the drift monitors"
+    },
+    "protected_file_writes": {
+      "op": "<=",
+      "value": 0,
+      "measure": "changes to goldens, thresholds, the case index, the runtime prompt, registry contracts, or the manifest during the run"
+    }
+  },
+  "not_measured": {
+    "production_traffic": "windows are synthetic; real alert precision, recall, and the right thresholds need production data",
+    "alert_delivery": "alerts go to an in-memory sink; paging, dashboards, and on-call routing are not built",
+    "automatic_response": "an alert never triggers a rollback or any action; a person follows the runbook"
+  }
+}

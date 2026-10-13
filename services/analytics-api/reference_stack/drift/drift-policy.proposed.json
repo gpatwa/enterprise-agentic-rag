@@ -1,0 +1,21 @@
+{
+  "policy_version": "drift-policy-v1",
+  "rules": [
+    {"rule_id": "C-01", "monitor": "context", "statistic": "stale_context_rate", "comparison": "abs_increase", "threshold": 0.10, "severity": "critical", "runbook_id": "drift-context", "min_samples": 30},
+    {"rule_id": "C-02", "monitor": "context", "statistic": "max_context_age_hours", "comparison": "value", "threshold": 72, "severity": "warning", "runbook_id": "drift-context", "min_samples": 30},
+    {"rule_id": "R-01", "monitor": "retrieval", "statistic": "empty_retrieval_rate", "comparison": "abs_increase", "threshold": 0.10, "severity": "critical", "runbook_id": "drift-retrieval", "min_samples": 30},
+    {"rule_id": "R-02", "monitor": "retrieval", "statistic": "mean_context_items", "comparison": "rel_decrease", "threshold": 0.30, "severity": "warning", "runbook_id": "drift-retrieval", "min_samples": 30},
+    {"rule_id": "I-01", "monitor": "intent", "statistic": "malformed_intent_rate", "comparison": "abs_increase", "threshold": 0.05, "severity": "critical", "runbook_id": "drift-intent", "min_samples": 30},
+    {"rule_id": "I-02", "monitor": "intent", "statistic": "clarification_rate", "comparison": "abs_increase", "threshold": 0.15, "severity": "warning", "runbook_id": "drift-intent", "min_samples": 30},
+    {"rule_id": "O-01", "monitor": "outcomes", "statistic": "outcome_distribution_tvd", "comparison": "value", "threshold": 0.25, "severity": "warning", "runbook_id": "drift-outcomes", "min_samples": 30},
+    {"rule_id": "O-02", "monitor": "outcomes", "statistic": "success_rate", "comparison": "abs_decrease", "threshold": 0.10, "severity": "critical", "runbook_id": "drift-outcomes", "min_samples": 30},
+    {"rule_id": "L-01", "monitor": "latency", "statistic": "p95_latency_ms", "comparison": "ratio", "threshold": 1.5, "severity": "warning", "runbook_id": "drift-latency", "min_samples": 30},
+    {"rule_id": "K-01", "monitor": "cost", "statistic": "mean_cost_units", "comparison": "ratio", "threshold": 1.5, "severity": "warning", "runbook_id": "drift-cost", "min_samples": 30}
+  ],
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. These alert thresholds were chosen without production data; only the user may approve or change them."
+  }
+}
