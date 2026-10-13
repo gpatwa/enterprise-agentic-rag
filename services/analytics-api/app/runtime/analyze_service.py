@@ -99,9 +99,7 @@ class GovernedAnalyzeService:
         self._authorize(identity, purpose)
         if not _KEY.match(idempotency_key or ""):
             raise ServiceError(400, "invalid_idempotency_key")
-        run_id = hashlib.sha256(
-            f"{identity.tenant_id}:{identity.user_id}:{purpose}:{idempotency_key}".encode()
-        ).hexdigest()[:32]
+        run_id = self.derive_run_id(identity, purpose, idempotency_key)
         request = BootstrapRequest(
             request_id=f"{_tag(identity)}:{idempotency_key}", request_text=request_text, identity=identity
         )
@@ -124,6 +122,13 @@ class GovernedAnalyzeService:
             if existing.status == "active":  # recover a run whose worker died; a live lease means "running"
                 self._resume(identity, existing)
         return self._respond(identity, self._load(run_id, identity.tenant_id, purpose))
+
+    @staticmethod
+    def derive_run_id(identity: AnalyticsIdentity, purpose: str, idempotency_key: str) -> str:
+        """The deterministic run ID for a caller, purpose, and idempotency key (also used to correlate telemetry)."""
+        return hashlib.sha256(
+            f"{identity.tenant_id}:{identity.user_id}:{purpose}:{idempotency_key}".encode()
+        ).hexdigest()[:32]
 
     def status(self, identity: AnalyticsIdentity, *, purpose: str, run_id: str) -> AnalyzeRunResponse:
         self._authorize(identity, purpose)

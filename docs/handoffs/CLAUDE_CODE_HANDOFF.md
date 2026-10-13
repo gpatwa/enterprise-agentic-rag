@@ -214,6 +214,10 @@ Canonical task status is in
     requesting person from the data plane with their own token; a boundary scanner **blocks and records** leaks (a leaking agent is
     detected in tests). A simulator, not isolation; **graph integration (remote result stage, withheld-rows answer) is not done**.
     Packet: `ADS-064-data-plane.md`.
+  - **ADS-065** observability (`app/observability/`): one trace per run (trace ID derives from the run) across API, graph, context, gateway, and
+    evidence via proxies; allow-listed span attributes and metric labels, a pattern redactor, `run_ref` correlation, capped label
+    cardinality, Prometheus text; nothing sensitive in exported telemetry (tested). In-memory only; not mounted; the data-plane agent is
+    not instrumented. Packet: `ADS-065-observability.md`. **This completes wave 6B.**
   - **Next:** PRs #25-#29 (ADS-055..059) are all merged to `main` (the last three on 2026-10-13). M5's packets are implemented
     and in `review`. **Wave 6A (M6) is implemented:** ADS-060, ADS-062, ADS-063 (all `review`); next is wave 6B (ADS-061 MCP adapter,
     ADS-064 customer-data-plane simulator, ADS-065 traces/metrics/redaction). Open user decisions: approve/amend the
