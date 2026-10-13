@@ -179,6 +179,14 @@ Canonical task status is in
     starts no rollback, and nothing in the runtime or API imports it.** The alert rules
     (`reference_stack/drift/drift-policy.proposed.json`) and corpus thresholds (`drift-thresholds.proposed.json`) are
     **PROPOSED, NOT APPROVED**. Packet: `ADS-058-drift-monitors.md`. `make analytics-drift-eval`: 18/18 cases.
+  - **ADS-059** closed-loop safety and poisoning evaluation (`reference_stack/poisoning_eval.py`, 26-case pinned corpus,
+    `make analytics-poisoning-eval`): hostile feedback, candidates, patches, approvals, and rollouts run against the real
+    ADS-050..057 code; after the campaign protected files are byte-identical, the golden suite still meets its approved
+    thresholds on both engines, the same question gives the same answer, no release/pointer changed, and no barred identity
+    approved anything. It fails when a defence is weakened (tested). Thresholds in
+    `reference_stack/poisoning/poisoning-thresholds.proposed.json` are **PROPOSED, NOT APPROVED**; this is not the M5
+    `separation_of_duties_review` and not an independent review. Collusion between two real reviewers is out of scope.
+    Packet: `ADS-059-poisoning-evaluation.md`. **This completes wave 5D (all of M5's packets are now implemented, in `review`).**
   - **Next:** the user's decisions: merge #25, #26, #27 in order; approve (or amend) the proposed thresholds for ADS-054..057
     and the rollout policy; then wave 5D (ADS-058 drift monitors, ADS-059 closed-loop safety and poisoning evaluation) and the
     M5 human gate `separation_of_duties_review` (still open). ADS-040..057 are still `review` (no independent review of the
