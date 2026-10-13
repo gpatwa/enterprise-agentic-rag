@@ -1,6 +1,6 @@
 {
   "manifest_version": "ads-079-v1",
-  "base_commit": "9b2defc9b1b1c3c84455091a1cc6532cd44147fa",
+  "base_commit": "a5e7ea8e976d5156af2c52cae468b640db27b419",
   "base_branch": "claude/ads-079-evidence-manifest",
   "artifacts": {
     "code": {
@@ -556,9 +556,8 @@
       }
     },
     "task_statuses": {
-      "review": 41,
-      "complete": 37,
-      "planned": 1
+      "review": 42,
+      "complete": 37
     }
   },
   "open_security_findings": [
@@ -583,7 +582,7 @@
     "human gate not approved: M5 (separation_of_duties_review)",
     "human gate not approved: M6 (security_and_operations_review)",
     "human gate not approved: M7 (final_go_no_go)",
-    "41 packets are `review` with no independent review recorded",
+    "42 packets are `review` with no independent review recorded",
     "security findings not resolved: F-02, F-03, F-05",
     "no signed human sign-off yet from: product, engineering, data_owner, security, operations"
   ],
@@ -594,7 +593,7 @@
     "security": null,
     "operations": null
   },
-  "manifest_digest": "eec7543366aec419059f0c214d8f924a2ce0ec410e02f8822e709e9c07ec2dce",
+  "manifest_digest": "d242ed1d55ddb551e4cd0d7673928b791e21dc0fba13e4b414f2f8d6ae3eda09",
   "packet": "ADS-079",
   "ok": true
 }

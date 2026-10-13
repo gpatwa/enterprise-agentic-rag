@@ -1,6 +1,6 @@
 # ADS-079: Final Evidence Manifest (input to the human go/no-go review)
 
-Manifest `ads-079-v1`, digest `eec7543366aec419`, generated at `9b2defc9b1b1` on `claude/ads-079-evidence-manifest`.
+Manifest `ads-079-v1`, digest `d242ed1d55ddb551`, generated at `a5e7ea8e976d` on `claude/ads-079-evidence-manifest`.
 
 **Decision: `pending_human_review`.** This document does not decide and is not signed. Product, engineering, data owner, security, and operations must each sign against the digest, and a person records the go/no-go.
 
@@ -14,7 +14,7 @@ Manifest `ads-079-v1`, digest `eec7543366aec419`, generated at `9b2defc9b1b1` on
 - human gate not approved: M5 (separation_of_duties_review)
 - human gate not approved: M6 (security_and_operations_review)
 - human gate not approved: M7 (final_go_no_go)
-- 41 packets are `review` with no independent review recorded
+- 42 packets are `review` with no independent review recorded
 - security findings not resolved: F-02, F-03, F-05
 - no signed human sign-off yet from: product, engineering, data_owner, security, operations
 
@@ -69,7 +69,7 @@ Models: no real model or provider has been selected or evaluated; evaluations us
 - M6: security_and_operations_review = **not_recorded**
 - M7: final_go_no_go = **not_recorded**
 
-Task statuses: {'review': 41, 'complete': 37, 'planned': 1}.
+Task statuses: {'review': 42, 'complete': 37}.
 
 ## Signatures
 
