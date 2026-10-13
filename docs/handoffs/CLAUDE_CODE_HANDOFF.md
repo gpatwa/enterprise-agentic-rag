@@ -208,6 +208,12 @@ Canonical task status is in
     ADS-060 surface with **per-message authentication** through the identity resolver and an append-only hash-chained audit of every
     tool call on every transport (argument digests only). It imports only the tool surface and identity layers (tested). stdio line
     framing only; no HTTP/SSE transport. Packet: `ADS-061-mcp-adapter.md`.
+  - **ADS-064** customer data-plane protocol and VPC-boundary simulator (`packages/platform_contracts/data_plane.py`, `app/data_plane/`): a
+    signed (HMAC, fresh, replay-proof) control-path protocol whose messages **cannot carry rows or credentials**; the data-plane agent
+    holds the warehouse credential, executes, **validates locally (ADS-041)**, and returns metadata plus a verdict; rows go only to the
+    requesting person from the data plane with their own token; a boundary scanner **blocks and records** leaks (a leaking agent is
+    detected in tests). A simulator, not isolation; **graph integration (remote result stage, withheld-rows answer) is not done**.
+    Packet: `ADS-064-data-plane.md`.
   - **Next:** PRs #25-#29 (ADS-055..059) are all merged to `main` (the last three on 2026-10-13). M5's packets are implemented
     and in `review`. **Wave 6A (M6) is implemented:** ADS-060, ADS-062, ADS-063 (all `review`); next is wave 6B (ADS-061 MCP adapter,
     ADS-064 customer-data-plane simulator, ADS-065 traces/metrics/redaction). Open user decisions: approve/amend the
