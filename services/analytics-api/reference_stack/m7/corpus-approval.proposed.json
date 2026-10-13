@@ -1,0 +1,24 @@
+{
+  "suite_version": "m7-reference-v1",
+  "corpus_sha256": "d0d2cce4529e09a6da6152cbbac3a8ffced74572402a0bbc690b8795bbf76747",
+  "composition": {
+    "answer": 60,
+    "refuse_no_execution": 16,
+    "policy_denied": 4,
+    "tenant_isolation": 4,
+    "clarify": 8,
+    "review": 8,
+    "p0_customer_style_answers": 30
+  },
+  "approval": {
+    "status": "proposed",
+    "definitions_owner": null,
+    "results_owner": null,
+    "note": "ADS-070 requires the owners to approve the question definitions and the expected results independently. Neither has approved. Until both do, every report that uses this corpus says so.",
+    "change_rule": "Changing the corpus changes its digest; a new digest needs new owner approvals and must not be bundled with a change that regresses a gate."
+  },
+  "limits": [
+    "Written for the reference stack: one seeded table, one certified metric (revenue), two dimensions, and a scripted model that recognises these phrasings. It measures the governed pipeline, not language understanding.",
+    "Customer-style questions here are phrasings of the reference intents, not real customer questions; the data owner must supply real ones before a pilot decision."
+  ]
+}
