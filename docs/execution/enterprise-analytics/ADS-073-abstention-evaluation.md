@@ -13,7 +13,7 @@ Depends on: ADS-039, ADS-070
    would retry forever), although the outcome contract already has `refuse / unsupported_request`. The intent node now raises a distinct `unsupported_request` error and the service reports a refusal with that reason and a remediation. The run's terminal kind stays `failed`
    (the evidence envelope reserves `refused` for policy denials) and triage still files it as an intent-stage fault; the smoke journey and three tests were updated to the new outcome. Malformed model output is unchanged (`failed / planner_unavailable`). A test reverts the fix and shows the new gate fails.
 3. **Calibration.** No confidence value exists or is claimed (`confidence` is always null), so the gate is zero confidence claims. Calibrating a real model's confidence is not evaluated.
-4. **An open gap is reported, not hidden.** The scripted keyword model answered all 4 near-miss questions ("Show total profit", ...) with a certified metric. That is a property of the scripted
+4. **The gap this found was closed afterwards (M7-H2).** (Original text:)  The scripted keyword model answered all 4 near-miss questions ("Show total profit", ...) with a certified metric. That is a property of the scripted
    model, but it also shows the pipeline has no *intent-echo* check (comparing the question to the extracted intent). A real model, or such a check, must close it before a pilot; this is a decision for the user.
 
 ## Deliverable
@@ -24,3 +24,7 @@ Depends on: ADS-039, ADS-070
 ## Boundary
 
 - No real model was used. Abstention of a real model, calibration, and near-miss behaviour are open. Approval of the thresholds is the user's.
+
+## Update: intent-echo check (M7-H2)
+
+After the first run, a deterministic intent-echo check was added (`app/runtime/intent_echo.py`, wired into the ontology resolution node): every metric and grouping in the intent must be named in the question by a certified term, and a grouping phrase ("by X", "per X", "for each X") must name a certified dimension or a time unit that the intent also groups by. All 8 near-miss questions are now refused as unsupported (gate `near_miss_answered <= 0`), and none of the 60 valid corpus answers is refused. The check is lexical and conservative: an unusual phrasing of a valid question can be refused, and it does not understand meaning. Each other defence is tested with the echo off so it cannot mask them.

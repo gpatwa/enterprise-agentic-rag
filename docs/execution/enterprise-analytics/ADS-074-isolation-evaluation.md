@@ -10,7 +10,7 @@ Depends on: ADS-067, ADS-070
    (read, feedback, clarify, review, idempotency-key reuse, tool status and evidence), purposes the caller lacks or that differ from the run's, the requester approving their own review,
    an automated caller and a delegated agent deciding a review, a stale plan fingerprint, and forged/expired/wrong-audience/wrong-issuer/missing/malformed tokens.
 2. **A probe passes only if it is refused AND nothing of the victim's run (ID, rows, plan fingerprint) is in the response.**
-3. **Fold in the earlier evidence.** The ADS-067 security corpus (28 cases) and the ADS-070 policy-denied, tenant-isolation, and refusal cases (both dialects) are re-run; their results are gates here.
+3. **Fold in the earlier evidence.** The ADS-067 security corpus (31 cases) and the ADS-070 policy-denied, tenant-isolation, and refusal cases (both dialects) are re-run; their results are gates here.
 4. **Each defence is shown able to fail.** Tests remove one defence at a time (tenant scoping, purpose check, token verification, the automated-caller rule) and show the matching gate fails.
 5. **Findings are carried, not hidden.** F-02, F-03, and F-05 are still not resolved in the findings register and are listed in the report.
 

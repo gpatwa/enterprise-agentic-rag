@@ -80,7 +80,7 @@
     "flaky_runs": 6,
     "degraded": {
       "requests": 12,
-      "seconds": 0.60825658403337,
+      "seconds": 0.82666429085657,
       "unsafe": 0,
       "codes": [
         "planner_unavailable"

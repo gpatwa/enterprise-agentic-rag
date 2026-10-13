@@ -40,6 +40,12 @@
       "threshold": 0.05,
       "meets": true
     },
+    "near_miss_answered": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
     "executed_queries_on_abstention": {
       "value": 0,
       "op": "<=",
@@ -60,17 +66,18 @@
     "clarify_recall": "Ambiguous request clarify-or-review recall >= 95%",
     "false_abstention_rate": "Valid certified questions answered (false abstention <= 5%)",
     "executed_queries_on_abstention": "No query runs for a case that abstains",
+    "near_miss_answered": "A question about something uncertified is answered with a certified metric (intent-echo check): 0",
     "uncalibrated_confidence_claims": "No confidence value is claimed (none is calibrated)"
   },
   "open_gap": {
     "near_miss_questions": 4,
-    "answered_by_scripted_model": 4,
-    "note": "The scripted keyword model answers a question that asks for something uncertified with a certified metric. A real model, or an intent-echo check, must close this; it is not measured here."
+    "answered_by_scripted_model": 0,
+    "note": "The scripted keyword model answers a question that asks for something uncertified with a certified metric. The deterministic intent-echo check (M7-H2) is meant to refuse these; it is lexical and conservative, so it can also refuse an unusual phrasing of a valid question (see false_abstention_rate), and it does not understand meaning."
   },
   "not_measured": {
     "real_model_abstention": "the model is replaced by chosen outputs; a real model's tendency to guess is not measured",
     "calibration": "no model confidence exists to calibrate; the system claims none, and calibration of a real model's confidence is not evaluated",
-    "near_miss_questions": "see the open gap in the report: the scripted keyword model answers some"
+    "near_miss_questions": "the intent-echo check is lexical: it compares the question's words with certified terms, so a near-miss that reuses certified words can still pass, and an unusual phrasing of a valid question can be refused; it does not understand meaning"
   },
   "cases": [
     {

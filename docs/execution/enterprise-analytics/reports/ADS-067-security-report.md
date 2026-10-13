@@ -1,6 +1,6 @@
 # ADS-067: Security Evaluation Report
 
-Generated 2026-10-13 07:54 UTC by `make analytics-security-eval`. Corpus `security-corpus-v1` (`5b495a8ee2c1`), rules `security-rules-v1`.
+Generated 2026-10-13 16:38 UTC by `make analytics-security-eval`. Corpus `security-corpus-v1` (`80b3629a7d24`), rules `security-rules-v1`.
 
 **Result: MEETS the proposed thresholds.** The thresholds are PROPOSED and NOT APPROVED. This is not the M6 `security_and_operations_review`, and it is not an independent security review. Severities are the implementing agent's ratings; accepting a residual risk is the security owner's decision.
 
@@ -64,6 +64,9 @@ Generated 2026-10-13 07:54 UTC by `make analytics-security-eval`. Corpus `securi
 | GAP01 run_ids_are_derivable_without_a_server_key | exfiltration | known_gap | readable | readable | pass |
 | GAP02 a_single_entity_is_reportable_when_no_minimum_cohort_is_configured | inference | known_gap | row_level_value_returned | row_level_value_returned | pass |
 | GAP03 exact_differencing_across_two_aggregate_queries_is_possible | inference | known_gap | differencing_possible | differencing_possible | pass |
+| EC01 a_model_that_groups_differently_from_the_question_runs_nothing | intent_echo | control | no_execution | no_execution | pass |
+| EC02 a_question_about_an_uncertified_metric_is_not_answered_with_revenue | intent_echo | control | no_execution | no_execution | pass |
+| EC03 a_matching_question_and_intent_still_answer | intent_echo | control | answered | answered | pass |
 
 ## Not measured
 

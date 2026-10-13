@@ -28,6 +28,10 @@
       "op": "<=",
       "value": 0.05
     },
+    "near_miss_answered": {
+      "op": "<=",
+      "value": 0
+    },
     "executed_queries_on_abstention": {
       "op": "<=",
       "value": 0
@@ -40,6 +44,6 @@
   "not_measured": {
     "real_model_abstention": "the model is replaced by chosen outputs; a real model's tendency to guess is not measured",
     "calibration": "no model confidence exists to calibrate; the system claims none, and calibration of a real model's confidence is not evaluated",
-    "near_miss_questions": "see the open gap in the report: the scripted keyword model answers some"
+    "near_miss_questions": "the intent-echo check is lexical: it compares the question's words with certified terms, so a near-miss that reuses certified words can still pass, and an unusual phrasing of a valid question can be refused; it does not understand meaning"
   }
 }

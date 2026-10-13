@@ -2,7 +2,7 @@
 
 **Result: MEETS the proposed thresholds.** The thresholds are PROPOSED and NOT APPROVED. The providers are scripted distortions of one scripted model: **this shows the pipeline's bounds, not how a real provider behaves.**
 
-66 provider runs over 11 behaviours, a provider-down run of 12 requests (0.6 s, codes ['planner_unavailable']), 3 explainer failures, and 4 prompt-version comparisons over 6 questions.
+66 provider runs over 11 behaviours, a provider-down run of 12 requests (0.8 s, codes ['planner_unavailable']), 3 explainer failures, and 4 prompt-version comparisons over 6 questions.
 
 ## Metrics
 

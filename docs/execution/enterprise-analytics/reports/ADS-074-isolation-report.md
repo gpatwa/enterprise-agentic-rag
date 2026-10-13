@@ -2,7 +2,7 @@
 
 **Result: MEETS the proposed thresholds.** The thresholds are PROPOSED and NOT APPROVED. This is a test matrix over a local reference stack, **not an independent security review**; zero violations here is not a statement that none exist.
 
-24 hostile probes (REST and agent tools), the 28-case ADS-067 corpus, and 48 protected-case runs from the ADS-070 corpus.
+24 hostile probes (REST and agent tools), the 31-case ADS-067 corpus, and 48 protected-case runs from the ADS-070 corpus.
 
 ## Metrics
 

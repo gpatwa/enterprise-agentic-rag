@@ -44,6 +44,8 @@ Status: **Recommendations only.** Written by the implementing agent speaking as 
 
 Recommendation from the evidence: **no-go for a pilot today.** The blockers are in `reports/ADS-079-evidence-manifest.md`. Reconsider after: real model and warehouse are selected and the latency/cost gates re-baselined; thresholds and corpus are approved by named people; independent reviews and the five human gates are recorded; F-02, F-03, F-05 are resolved or formally accepted.
 
-## Progress after the user's "go ahead"
+## Progress after the user's instructions
 
-The user's message did not name any gate, threshold, corpus, or sign-off, so none was recorded. Built from the engineering recommendations: **Ossie export carries metrics and time dimensions** (done, tested). Not yet built: durable plan/result storage, the intent-echo check, retry guidance, and cost-unit calibration (needs the real warehouse).
+- The user wrote "I approved M0/M1/M5/M6/M7 gates"; that is recorded in the program manifest in their words and only for those five gates. No threshold or policy file, corpus, sign-off, or independent review was approved by it.
+- Built from the engineering recommendations: Ossie export carries metrics and time dimensions; durable plan and policy-value storage (M7-H1); the intent-echo check (M7-H2); retry guidance (M7-H3); the cost-calibration mechanism (M7-H4). See `M7-hardening.md`.
+- Not done: cost-unit calibration against a real warehouse (needs real samples and a person's approval).

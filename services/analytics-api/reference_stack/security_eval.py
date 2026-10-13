@@ -71,6 +71,8 @@ def _base(request) -> dict[str, Any]:
 
 def _stack(root: Path, name: str, *, intent=None, replace=False, explainer=None, **stack_kwargs):
     """A reference stack whose 'model' (and optionally explainer) is replaced by hostile scripted behaviour."""
+    # Each defence is tested on its own: the intent-echo check (M7-H2) is off unless a case turns it on, so it cannot mask the others.
+    stack_kwargs.setdefault("intent_echo", False)
     stack = build_stack("duckdb", root / name, **stack_kwargs)
     original = stack.nodes
 

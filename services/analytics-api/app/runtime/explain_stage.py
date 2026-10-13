@@ -44,7 +44,7 @@ def explain_node(results, contracts, plans, explainer: Explainer, store: Explana
                 intent.semantic_contract.contract_id, intent.semantic_contract.contract_version
             ).contract
             plan = plans.get(node_input.tenant_id, node_input.run_id, node_input.payload["compiled_plan_reference"])
-            result = results.get(node_input.tenant_id, node_input.run_id, node_input.payload["execution_reference"])
+            result = getattr(results, "resume", results.get)(node_input.tenant_id, node_input.run_id, node_input.payload["execution_reference"])
         except Exception as exc:  # noqa: BLE001
             return _fail(node_input, "explain_inputs_unavailable", type(exc).__name__)
         report = validate_result(result, plan, intent, contract, require_control_totals=False)

@@ -290,6 +290,10 @@ analytics-m7-onboarding:
 analytics-m7-manifest:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack m7 079 --write-report ../../docs/execution/enterprise-analytics/reports
 
+# M7-H4 cost-unit calibration mechanism checks (fakes only; not a warehouse calibration; nothing is applied by default).
+analytics-cost-calibration:
+	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack calibration --write-report ../../docs/execution/enterprise-analytics/reports
+
 # M4 golden suite (fakes only); regenerates the report against the user-approved M4 thresholds.
 analytics-golden:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack golden --write-report ../../docs/execution/enterprise-analytics/reports

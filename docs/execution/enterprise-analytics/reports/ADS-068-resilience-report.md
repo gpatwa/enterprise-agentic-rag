@@ -1,6 +1,6 @@
 # ADS-068: Resilience Drill Report
 
-Generated 2026-10-13 08:05 UTC by `make analytics-resilience-drill`. Objectives `resilience-objectives-v1` (**proposed**): RPO 900s, RTO 900s, lease 30s.
+Generated 2026-10-13 16:30 UTC by `make analytics-resilience-drill`. Objectives `resilience-objectives-v1` (**proposed**): RPO 900s, RTO 900s, lease 30s.
 
 The objectives are **PROPOSED and NOT APPROVED**. This is not the M6 `security_and_operations_review`. The drills run on the reference stack with SQLite, DuckDB, and fakes: they measure the mechanisms, not production recovery.
 
@@ -8,18 +8,18 @@ Restore seconds are wall-clock time on this machine; failover seconds are **simu
 
 | Drill | Passed | Seconds | Findings |
 |---|:---:|---:|---|
-| restore | yes | 0.030 | - |
+| restore | yes | 0.107 | - |
 | failover | yes | 31.000 | - |
 
 ## Measurements
 
 **restore**
-- `backup_seconds`: 0.05497
-- `restore_seconds`: 0.03031
+- `backup_seconds`: 0.06227
+- `restore_seconds`: 0.1072
 - `data_loss_window_seconds`: 600
 - `runs_in_backup`: 5
 - `runs_lost`: 3
-- `rows_backed_up`: 187
+- `rows_backed_up`: 199
 - `evidence_envelopes_verified`: 2
 - `feedback_restored`: True
 - `answer_rows_survive_restart`: False

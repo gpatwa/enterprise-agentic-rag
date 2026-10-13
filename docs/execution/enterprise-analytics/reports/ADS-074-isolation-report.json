@@ -62,7 +62,7 @@
   },
   "samples": {
     "probes": 24,
-    "security_cases": 28,
+    "security_cases": 31,
     "protected_case_runs": 48
   },
   "open_findings": [

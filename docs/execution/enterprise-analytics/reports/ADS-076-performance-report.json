@@ -9,19 +9,19 @@
   "ok": false,
   "gates": {
     "p95_warm_latency_seconds": {
-      "value": 0.04370537539944053,
+      "value": 0.08196133328601718,
       "op": "<=",
       "threshold": 8.0,
       "meets": true
     },
     "p95_concurrent_latency_seconds": {
-      "value": 0.5486589167267084,
+      "value": 2.4857563339173794,
       "op": "<=",
       "threshold": 8.0,
       "meets": true
     },
     "p95_compile_policy_overhead_ms": {
-      "value": 0.5001653917133808,
+      "value": 3.2597496174275875,
       "op": "<=",
       "threshold": 250.0,
       "meets": true
@@ -86,13 +86,13 @@
     "concurrent_requests": 320,
     "workers": 8,
     "throughput_per_second": {
-      "duckdb": 41.4,
-      "postgres": 45.7
+      "duckdb": 10.2,
+      "postgres": 12.9
     },
     "latency_seconds": {
-      "p50": 0.03292316710576415,
-      "p95": 0.04370537539944053,
-      "p99": 0.0606865412555635
+      "p50": 0.04711037455126643,
+      "p95": 0.08196133328601718,
+      "p99": 0.18739079218357801
     },
     "cost_units_range": [
       25.0,
@@ -101,7 +101,7 @@
     "daily_cost_units": 10000.0,
     "mean_prompt_tokens": 109.5,
     "mean_completion_tokens": 118.17992424242425,
-    "peak_rss_mb": 214.5
+    "peak_rss_mb": 211.6
   },
   "assumed_prices": {
     "usd_per_million_input_tokens": 3.0,

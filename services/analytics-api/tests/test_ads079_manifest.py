@@ -46,7 +46,8 @@ def test_the_generator_never_decides_and_never_signs():
 def test_the_blockers_are_listed_and_include_the_real_open_items():
     text = "\n".join(MANIFEST["blocking_reasons"])
     assert "not approved by a person" in text and "reference corpus is not approved" in text
-    assert "human gate not approved: M7" in text and "no independent review" in text
+    assert "human gate not approved" not in text  # the user recorded M0/M1/M5/M6/M7 in their own words
+    assert "no independent review" in text
     assert "F-03" in text and "no signed human sign-off" in text
     assert "ADS-076" in text and "answers_per_tenant_day" in text  # an unmet gate is surfaced, not smoothed over
 

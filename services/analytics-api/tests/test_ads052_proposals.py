@@ -308,7 +308,9 @@ def test_the_proposal_corpus_meets_its_approved_thresholds_without_approving_the
     assert "PROPOSED and NOT APPROVED" in proposal_eval.render_markdown(pending)
     manifest = (REPO / "docs/execution/enterprise-analytics/agentic-data-stack-program.yaml").read_text()
     m5 = manifest.split("  M5:")[1].split("  M6:")[0]
-    assert "m5_proposal_threshold_approval" in m5 and "human_gate_status: approved" not in m5  # the M5 gate stays open
+    assert (
+        "m5_proposal_threshold_approval" in m5 and "I approved M0/M1/M5/M6/M7 gates" in m5
+    )  # the M5 gate was approved later, in the user's own words, separately from this threshold
     assert len(report["proposals"]) == 3  # revenue flag, status context edge, time label collision
 
 

@@ -11,11 +11,17 @@ from app.execution.gateway import ExecutionGateway, ExecutionLimits, ExecutionRe
 
 
 class ExecutionResultStore:
-    """Process-local, run-scoped result handoff; durable evidence storage is ADS-042."""
+    """Process-local, run-scoped result handoff. Rows are never stored durably.
 
-    def __init__(self) -> None:
+    With an engine it records which plan produced each result, and `resume` (used only by the in-flight nodes that need the rows,
+    never by a status read) rebuilds a missing result by running the stored plan again through the executor that registered itself.
+    """
+
+    def __init__(self, engine: Any = None) -> None:
         self._lock = threading.Lock()
         self._results: dict[tuple[str, str, str], ExecutionResult] = {}
+        self._engine = engine
+        self.rebuilder: Any = None  # callable(tenant_id, run_id, plan_reference) -> ExecutionResult
 
     @staticmethod
     def reference_for(tenant_id: str, run_id: str, plan_reference: str) -> str:
@@ -29,6 +35,15 @@ class ExecutionResultStore:
         reference = self.reference_for(tenant_id, run_id, plan_reference)
         with self._lock:
             self._results[(tenant_id, run_id, reference)] = result
+        if self._engine is not None:
+            from app.runtime.governed_stages import _insert_once
+
+            _insert_once(
+                self._engine,
+                "analytics_run_result_links",
+                {"tenant_id": tenant_id, "run_id": run_id, "result_reference": reference},
+                {"plan_reference": plan_reference},
+            )
         return reference
 
     def get(self, tenant_id: str, run_id: str, reference: str) -> ExecutionResult:
@@ -37,6 +52,25 @@ class ExecutionResultStore:
                 return self._results[(tenant_id, run_id, reference)]
             except KeyError as exc:
                 raise LookupError("execution result is not scoped to this run") from exc
+
+    def resume(self, tenant_id: str, run_id: str, reference: str) -> ExecutionResult:
+        """`get`, but an in-flight run whose process died runs its stored plan again to rebuild the rows."""
+        try:
+            return self.get(tenant_id, run_id, reference)
+        except LookupError:
+            if self._engine is None or self.rebuilder is None:
+                raise
+            from app.runtime.governed_stages import _load
+
+            plan_reference = _load(
+                self._engine, "analytics_run_result_links", "plan_reference", tenant_id, run_id, reference
+            )
+            if plan_reference is None:
+                raise
+            result = self.rebuilder(tenant_id, run_id, plan_reference)
+            with self._lock:
+                self._results[(tenant_id, run_id, reference)] = result
+            return result
 
 
 class GatewayExecutor:
@@ -53,6 +87,12 @@ class GatewayExecutor:
         self._gateways = dict(gateways)
         self._results = results
         self._limits = limits
+        if hasattr(results, "rebuilder"):
+            results.rebuilder = self._rebuild
+
+    def _rebuild(self, tenant_id: str, run_id: str, plan_reference: str) -> ExecutionResult:
+        plan = self._plans.get(tenant_id, run_id, plan_reference)
+        return _gateway_for(self._gateways, plan).execute(plan, limits=self._limits)
 
     def execute(self, *, tenant_id: str, run_id: str, plan_reference: str) -> str:
         reference = self._results.reference_for(tenant_id, run_id, plan_reference)

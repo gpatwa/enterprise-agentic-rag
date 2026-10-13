@@ -20,6 +20,18 @@
       "threshold": 0,
       "meets": true
     },
+    "reexecution_outside_window": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "max_executions_per_run": {
+      "value": 2,
+      "op": "<=",
+      "threshold": 2,
+      "meets": true
+    },
     "unhandled_errors": {
       "value": 0,
       "op": "<=",
@@ -39,6 +51,12 @@
       "meets": true
     },
     "crash_recovery_same_process": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true
+    },
+    "crash_recovery_process_death": {
       "value": 1.0,
       "op": ">=",
       "threshold": 1.0,
@@ -65,11 +83,14 @@
   },
   "gate_plan": {
     "wrong_answers": "Answers whose rows differ from the independent oracle: 0",
-    "duplicate_executions": "A query executed more than once for one run: 0",
+    "duplicate_executions": "A query executed more than once for one run, other than after a process crash: 0",
+    "reexecution_outside_window": "After a process crash, a query run again although the rows had not been produced yet: 0",
+    "max_executions_per_run": "Executions per run never exceed the one original plus one rebuild after a process crash",
     "unhandled_errors": "Errors that reach the caller untyped (a raw exception or HTTP 500): 0",
     "unsafe_outcomes": "Runs that end in neither a correct answer nor a typed failure: 0",
     "evidence_chain_breaks": "Evidence chains that no longer verify: 0",
     "crash_recovery_same_process": "Worker-crash points that still end in a correct answer (stores intact)",
+    "crash_recovery_process_death": "Process-crash points (fresh process, same database) that still end in a correct answer",
     "crash_safe_ending_process_death": "Process-crash points that end safely: a correct answer or a typed failure",
     "dependency_failures_handled": "Dependency failures that end in a typed failure or a degraded-but-correct answer",
     "chaos_safe_ending_rate": "Chaos runs that end safely"
@@ -84,8 +105,16 @@
     "recovered": [
       "bootstrap-after",
       "bootstrap-before",
+      "compile-after",
+      "compile-before",
       "create-after",
       "create-before",
+      "estimate-after",
+      "estimate-before",
+      "execute-after",
+      "execute-before",
+      "explain-after",
+      "explain-before",
       "extract_intent-after",
       "extract_intent-before",
       "plan-after",
@@ -94,23 +123,14 @@
       "policy-before",
       "resolve-after",
       "resolve-before",
+      "result_validate-after",
+      "result_validate-before",
       "retrieve-after",
       "retrieve-before",
       "validate-after",
       "validate-before"
     ],
-    "failed_closed": [
-      "compile-after",
-      "compile-before",
-      "estimate-after",
-      "estimate-before",
-      "execute-after",
-      "execute-before",
-      "explain-after",
-      "explain-before",
-      "result_validate-after",
-      "result_validate-before"
-    ]
+    "failed_closed": []
   },
   "chaos_mix": {
     "dependency": 18,
@@ -119,10 +139,11 @@
   },
   "not_measured": {
     "availability_percentage": "no availability target has been declared and no uptime was measured; these are mechanism tests",
-    "real_process_recovery": "compiled plans, policy values, and result rows are process-local, so a real process crash after the compile step fails closed (shown in the report); durable plan/result storage is not built",
+    "real_process_recovery": "the process crash is simulated by a second stack object on the same database; a real process crash in a deployed environment (separate hosts, a real PostgreSQL, lease expiry on wall-clock time) is not exercised. Result rows are rebuilt by running the stored plan again, so a rebuilt answer reflects the data at rebuild time.",
     "retry_after_failure": "a failed run is terminal and the same idempotency key returns the same failure; a client must use a new key to retry. No retry guidance beyond the `retryable` flag exists.",
     "real_dependencies": "the warehouse, search, model, and explainer failures are simulated exceptions; timeouts, partial responses, slow dependencies, and network partitions are not modelled",
-    "concurrency": "crashes are injected one at a time; concurrent crashes and contention are covered only by the ADS-066 load simulator and the ADS-068 failover drill"
+    "concurrency": "crashes are injected one at a time; concurrent crashes and contention are covered only by the ADS-066 load simulator and the ADS-068 failover drill",
+    "at_least_once_reads": "after a process crash that follows the query, the stored plan runs again once to rebuild the rows (reads are idempotent but cost twice); exactly-once execution across processes would need result rows to be stored, which was not chosen."
   },
   "same_process": [
     {
@@ -132,6 +153,7 @@
       "executions": 1,
       "node": "create",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -141,6 +163,7 @@
       "executions": 1,
       "node": "create",
       "when": "after",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -150,6 +173,7 @@
       "executions": 1,
       "node": "bootstrap",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -159,6 +183,7 @@
       "executions": 1,
       "node": "bootstrap",
       "when": "after",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -168,6 +193,7 @@
       "executions": 1,
       "node": "retrieve",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -177,6 +203,7 @@
       "executions": 1,
       "node": "retrieve",
       "when": "after",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -186,6 +213,7 @@
       "executions": 1,
       "node": "extract_intent",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -195,6 +223,7 @@
       "executions": 1,
       "node": "extract_intent",
       "when": "after",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -204,6 +233,7 @@
       "executions": 1,
       "node": "resolve",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -213,6 +243,7 @@
       "executions": 1,
       "node": "resolve",
       "when": "after",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -222,6 +253,7 @@
       "executions": 1,
       "node": "plan",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -231,6 +263,7 @@
       "executions": 1,
       "node": "plan",
       "when": "after",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -240,6 +273,7 @@
       "executions": 1,
       "node": "validate",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -249,6 +283,7 @@
       "executions": 1,
       "node": "validate",
       "when": "after",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -258,6 +293,7 @@
       "executions": 1,
       "node": "policy",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -267,6 +303,7 @@
       "executions": 1,
       "node": "policy",
       "when": "after",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -276,6 +313,7 @@
       "executions": 1,
       "node": "compile",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -285,6 +323,7 @@
       "executions": 1,
       "node": "compile",
       "when": "after",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -294,6 +333,7 @@
       "executions": 1,
       "node": "estimate",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -303,6 +343,7 @@
       "executions": 1,
       "node": "estimate",
       "when": "after",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -312,6 +353,7 @@
       "executions": 1,
       "node": "execute",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -321,6 +363,7 @@
       "executions": 1,
       "node": "execute",
       "when": "after",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -330,6 +373,7 @@
       "executions": 1,
       "node": "result_validate",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -339,6 +383,7 @@
       "executions": 1,
       "node": "result_validate",
       "when": "after",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -348,6 +393,7 @@
       "executions": 1,
       "node": "explain",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -357,6 +403,7 @@
       "executions": 1,
       "node": "explain",
       "when": "after",
+      "process_death": false,
       "chain_ok": true
     }
   ],
@@ -368,6 +415,7 @@
       "executions": 1,
       "node": "create",
       "when": "before",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -377,6 +425,7 @@
       "executions": 1,
       "node": "create",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -386,6 +435,7 @@
       "executions": 1,
       "node": "bootstrap",
       "when": "before",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -395,6 +445,7 @@
       "executions": 1,
       "node": "bootstrap",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -404,6 +455,7 @@
       "executions": 1,
       "node": "retrieve",
       "when": "before",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -413,6 +465,7 @@
       "executions": 1,
       "node": "retrieve",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -422,6 +475,7 @@
       "executions": 1,
       "node": "extract_intent",
       "when": "before",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -431,6 +485,7 @@
       "executions": 1,
       "node": "extract_intent",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -440,6 +495,7 @@
       "executions": 1,
       "node": "resolve",
       "when": "before",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -449,6 +505,7 @@
       "executions": 1,
       "node": "resolve",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -458,6 +515,7 @@
       "executions": 1,
       "node": "plan",
       "when": "before",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -467,6 +525,7 @@
       "executions": 1,
       "node": "plan",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -476,6 +535,7 @@
       "executions": 1,
       "node": "validate",
       "when": "before",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -485,6 +545,7 @@
       "executions": 1,
       "node": "validate",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -494,6 +555,7 @@
       "executions": 1,
       "node": "policy",
       "when": "before",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -503,96 +565,107 @@
       "executions": 1,
       "node": "policy",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     },
     {
-      "verdict": "typed_failure",
-      "outcome": "failed",
-      "code": "internal_error",
-      "executions": 0,
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
       "node": "compile",
       "when": "before",
+      "process_death": true,
       "chain_ok": true
     },
     {
-      "verdict": "typed_failure",
-      "outcome": "failed",
-      "code": "internal_error",
-      "executions": 0,
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
       "node": "compile",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     },
     {
-      "verdict": "typed_failure",
-      "outcome": "failed",
-      "code": "executor_unavailable",
-      "executions": 0,
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
       "node": "estimate",
       "when": "before",
+      "process_death": true,
       "chain_ok": true
     },
     {
-      "verdict": "typed_failure",
-      "outcome": "failed",
-      "code": "executor_unavailable",
-      "executions": 0,
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
       "node": "estimate",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     },
     {
-      "verdict": "typed_failure",
-      "outcome": "failed",
-      "code": "executor_unavailable",
-      "executions": 0,
-      "node": "execute",
-      "when": "before",
-      "chain_ok": true
-    },
-    {
-      "verdict": "typed_failure",
-      "outcome": "failed",
-      "code": "executor_unavailable",
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
       "executions": 1,
       "node": "execute",
-      "when": "after",
+      "when": "before",
+      "process_death": true,
       "chain_ok": true
     },
     {
-      "verdict": "typed_failure",
-      "outcome": "failed",
-      "code": "internal_error",
-      "executions": 1,
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 2,
+      "node": "execute",
+      "when": "after",
+      "process_death": true,
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 2,
       "node": "result_validate",
       "when": "before",
+      "process_death": true,
       "chain_ok": true
     },
     {
-      "verdict": "typed_failure",
-      "outcome": "failed",
-      "code": "internal_error",
-      "executions": 1,
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 2,
       "node": "result_validate",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     },
     {
-      "verdict": "typed_failure",
-      "outcome": "failed",
-      "code": "internal_error",
-      "executions": 1,
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 2,
       "node": "explain",
       "when": "before",
+      "process_death": true,
       "chain_ok": true
     },
     {
-      "verdict": "typed_failure",
-      "outcome": "failed",
-      "code": "internal_error",
-      "executions": 1,
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 2,
       "node": "explain",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     }
   ],
@@ -686,6 +759,7 @@
       "executions": 1,
       "node": "result_validate",
       "when": "after",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -727,6 +801,7 @@
       "executions": 1,
       "node": "result_validate",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -754,6 +829,7 @@
       "executions": 1,
       "node": "result_validate",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -776,12 +852,13 @@
         "when": "before",
         "process_death": true
       },
-      "verdict": "typed_failure",
-      "outcome": "failed",
-      "code": "internal_error",
-      "executions": 1,
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 2,
       "node": "result_validate",
       "when": "before",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -804,12 +881,13 @@
         "when": "after",
         "process_death": true
       },
-      "verdict": "typed_failure",
-      "outcome": "failed",
-      "code": "executor_unavailable",
-      "executions": 0,
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
       "node": "estimate",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -868,6 +946,7 @@
       "executions": 1,
       "node": "policy",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -910,6 +989,7 @@
       "executions": 1,
       "node": "retrieve",
       "when": "after",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -973,12 +1053,13 @@
         "when": "after",
         "process_death": true
       },
-      "verdict": "typed_failure",
-      "outcome": "failed",
-      "code": "internal_error",
-      "executions": 0,
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
       "node": "compile",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -995,6 +1076,7 @@
       "executions": 1,
       "node": "validate",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -1011,6 +1093,7 @@
       "executions": 1,
       "node": "extract_intent",
       "when": "before",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -1041,6 +1124,7 @@
       "executions": 1,
       "node": "create",
       "when": "before",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -1057,6 +1141,7 @@
       "executions": 1,
       "node": "policy",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -1073,6 +1158,7 @@
       "executions": 1,
       "node": "explain",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -1100,6 +1186,7 @@
       "executions": 1,
       "node": "compile",
       "when": "before",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -1191,12 +1278,13 @@
         "when": "after",
         "process_death": true
       },
-      "verdict": "typed_failure",
-      "outcome": "failed",
-      "code": "executor_unavailable",
-      "executions": 1,
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 2,
       "node": "execute",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     },
     {
@@ -1213,6 +1301,7 @@
       "executions": 1,
       "node": "create",
       "when": "after",
+      "process_death": false,
       "chain_ok": true
     },
     {
@@ -1229,6 +1318,7 @@
       "executions": 1,
       "node": "extract_intent",
       "when": "after",
+      "process_death": true,
       "chain_ok": true
     }
   ]

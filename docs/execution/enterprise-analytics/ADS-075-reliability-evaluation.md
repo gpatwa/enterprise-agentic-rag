@@ -21,7 +21,7 @@ Depends on: ADS-068
 | A dead context provider at run start raised an **unhandled error** (HTTP 500). | Fixed: reported as `503 context_unavailable`. |
 | A warehouse or estimator outage was reported as a non-retryable `internal_error`. | Fixed: reported as `executor_unavailable` (retryable). |
 | **A real process crash after the compile step cannot be continued** (10 of 26 crash points fail closed with `internal_error`; none returns a wrong answer). | **Open**: needs durable compiled-plan and result storage (or re-planning on resume). Decision for the user. |
-| A failed run is terminal and the same idempotency key returns the same failure, so a client must use a new key to retry. | **Open**: no retry guidance exists beyond the `retryable` flag. |
+| A failed run is terminal and the same idempotency key returns the same failure, so a client must use a new key to retry. | **Fixed (M7-H3)**: a retryable failure carries `retry_guidance: resubmit_with_new_idempotency_key`. |
 
 ## Deliverable
 

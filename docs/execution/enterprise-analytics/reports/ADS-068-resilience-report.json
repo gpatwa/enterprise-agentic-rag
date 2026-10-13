@@ -3,16 +3,16 @@
     "result": {
       "drill": "restore",
       "passed": true,
-      "duration_seconds": 0.03030895907431841,
+      "duration_seconds": 0.10717662516981363,
       "findings": []
     },
     "measured": {
-      "backup_seconds": 0.05497491592541337,
-      "restore_seconds": 0.03030895907431841,
+      "backup_seconds": 0.06226566666737199,
+      "restore_seconds": 0.10717662516981363,
       "data_loss_window_seconds": 600.0,
       "runs_in_backup": 5,
       "runs_lost": 3,
-      "rows_backed_up": 187,
+      "rows_backed_up": 199,
       "evidence_envelopes_verified": 2,
       "feedback_restored": true,
       "answer_rows_survive_restart": false

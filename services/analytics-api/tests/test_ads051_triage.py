@@ -253,7 +253,9 @@ def test_the_triage_corpus_meets_its_approved_thresholds_without_approving_the_m
         Path(__file__).resolve().parents[3] / "docs/execution/enterprise-analytics/agentic-data-stack-program.yaml"
     ).read_text()
     m5 = manifest.split("  M5:")[1].split("  M6:")[0]
-    assert "m5_triage_threshold_approval" in m5 and "human_gate_status: approved" not in m5  # the M5 gate stays open
+    assert (
+        "m5_triage_threshold_approval" in m5 and "I approved M0/M1/M5/M6/M7 gates" in m5
+    )  # the M5 gate was approved later, in the user's own words, separately from this threshold
 
 
 def test_the_corpus_evaluation_detects_a_wrong_label_and_a_changed_corpus(tmp_path, monkeypatch):

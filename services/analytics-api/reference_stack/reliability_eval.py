@@ -56,11 +56,14 @@ LEASE = 30
 _OPS = {">=": lambda a, b: a >= b, "<=": lambda a, b: a <= b}
 GATE_PLAN = {
     "wrong_answers": "Answers whose rows differ from the independent oracle: 0",
-    "duplicate_executions": "A query executed more than once for one run: 0",
+    "duplicate_executions": "A query executed more than once for one run, other than after a process crash: 0",
+    "reexecution_outside_window": "After a process crash, a query run again although the rows had not been produced yet: 0",
+    "max_executions_per_run": "Executions per run never exceed the one original plus one rebuild after a process crash",
     "unhandled_errors": "Errors that reach the caller untyped (a raw exception or HTTP 500): 0",
     "unsafe_outcomes": "Runs that end in neither a correct answer nor a typed failure: 0",
     "evidence_chain_breaks": "Evidence chains that no longer verify: 0",
     "crash_recovery_same_process": "Worker-crash points that still end in a correct answer (stores intact)",
+    "crash_recovery_process_death": "Process-crash points (fresh process, same database) that still end in a correct answer",
     "crash_safe_ending_process_death": "Process-crash points that end safely: a correct answer or a typed failure",
     "dependency_failures_handled": "Dependency failures that end in a typed failure or a degraded-but-correct answer",
     "chaos_safe_ending_rate": "Chaos runs that end safely",
@@ -165,7 +168,9 @@ def _crash(root: Path, node: str, when: str, *, process_death: bool) -> dict[str
     executions = len(stack.executed_sql) + (len(second.executed_sql) if second is not stack else 0)
     response = second.service().status(who, purpose=PURPOSE, run_id=state.run_id)
     result = _classify(response, executions=executions)
-    result.update({"node": node, "when": when, "chain_ok": _chain_ok(second, who.tenant_id)})
+    result.update(
+        {"node": node, "when": when, "process_death": process_death, "chain_ok": _chain_ok(second, who.tenant_id)}
+    )
     return result
 
 
@@ -309,6 +314,20 @@ def _classify_run(root: Path, index: int) -> dict[str, Any]:
 SAFE = {"correct_answer", "typed_failure"}
 
 
+REBUILD_WINDOW = {
+    ("execute", "after"),
+    ("result_validate", "before"),
+    ("result_validate", "after"),
+    ("explain", "before"),
+    ("explain", "after"),
+}
+
+
+def _in_rebuild_window(run: dict[str, Any]) -> bool:
+    """A process crash after the query ran loses the process-local rows, so the stored plan runs once more (at-least-once reads)."""
+    return (run.get("node"), run.get("when")) in REBUILD_WINDOW
+
+
 def run_reliability(
     *, thresholds: dict[str, Any] | None = None, root: Path | None = None, chaos_runs: int = 40, seed: int = 20261013
 ) -> dict[str, Any]:
@@ -321,11 +340,16 @@ def run_reliability(
     everything = same + death + deps + mixed
     metrics = {
         "wrong_answers": sum(r["verdict"] == "wrong_answer" for r in everything),
-        "duplicate_executions": sum(r["executions"] > 1 for r in everything),
+        "duplicate_executions": sum(r["executions"] > 1 for r in everything if not r.get("process_death")),
+        "reexecution_outside_window": sum(
+            r["executions"] > 1 for r in everything if r.get("process_death") and not _in_rebuild_window(r)
+        ),
+        "max_executions_per_run": max(r["executions"] for r in everything),
         "unhandled_errors": sum(r["verdict"] == "unhandled_error" for r in everything),
         "unsafe_outcomes": sum(r["verdict"] not in SAFE for r in everything),
         "evidence_chain_breaks": sum(r.get("chain_ok") is False for r in everything),
         "crash_recovery_same_process": sum(r["verdict"] == "correct_answer" for r in same) / len(same),
+        "crash_recovery_process_death": sum(r["verdict"] == "correct_answer" for r in death) / len(death),
         "crash_safe_ending_process_death": sum(r["verdict"] in SAFE for r in death) / len(death),
         "dependency_failures_handled": sum(r["verdict"] in SAFE for r in deps) / len(deps),
         "chaos_safe_ending_rate": sum(r["verdict"] in SAFE for r in mixed) / len(mixed),
@@ -380,13 +404,16 @@ def render_markdown(report: dict[str, Any]) -> str:
         )
     lines += [
         "",
-        "## What a real process crash does today",
+        "## A real process crash",
         "",
-        f"With fresh in-memory stores on the same database, {len(death['recovered'])} of {len(death['recovered']) + len(death['failed_closed'])} crash points still finish with a correct answer and "
-        f"{len(death['failed_closed'])} **fail closed with a typed failure** (never a wrong answer): "
-        + (", ".join(death["failed_closed"]) or "none")
-        + ". "
-        "Compiled plans, policy values, and result rows are process-local, so a run that crashed after they were created cannot continue in a new process. Durable plan and result storage is not built.",
+        f"With fresh in-memory stores on the same database, {len(death['recovered'])} of {len(death['recovered']) + len(death['failed_closed'])} crash points finish with a correct answer"
+        + (
+            f" and {len(death['failed_closed'])} fail closed with a typed failure (never a wrong answer): "
+            + ", ".join(death["failed_closed"])
+            if death["failed_closed"]
+            else ""
+        )
+        + ". Compiled plans and policy values are stored durably (M7-H1) so another process can continue the run; result rows are never stored, and a result missing after a crash is rebuilt by running the stored plan again while the run is in flight.",
         "",
         "## Dependency failures",
         "",
