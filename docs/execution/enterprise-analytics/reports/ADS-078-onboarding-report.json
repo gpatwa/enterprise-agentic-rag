@@ -1,0 +1,142 @@
+{
+  "packet": "ADS-078",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Plan acceptance is 'onboards without product-code or contract-schema changes'; the other gates are the implementing agent's proposals. Not approved."
+  },
+  "ok": true,
+  "gates": {
+    "code_and_schema_changes": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "draft_import_served": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "second_tenant_result_equivalence": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true
+    },
+    "cross_tenant_contract_use": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "round_trip_id_stability": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true
+    },
+    "hostile_expressions_imported": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "first_tenant_unchanged": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true
+    },
+    "round_trip_omissions": {
+      "value": 2,
+      "op": ">=",
+      "threshold": 0,
+      "meets": true
+    }
+  },
+  "gate_plan": {
+    "code_and_schema_changes": "Onboards without product-code or contract-schema changes: 0 changed files",
+    "draft_import_served": "An imported (draft) model served or compiled before certification: 0",
+    "second_tenant_result_equivalence": "The second tenant's answer equals the independent oracle: 100%",
+    "cross_tenant_contract_use": "A tenant using another tenant's contract: 0",
+    "round_trip_id_stability": "Export then import keeps dataset ids: 100%",
+    "round_trip_omissions": "Metrics and time dimensions an export omits (informational; a documented subset, not a gate)",
+    "hostile_expressions_imported": "Unsupported or hostile Ossie expressions that become metrics: 0",
+    "first_tenant_unchanged": "The first tenant's answers are unchanged after onboarding: 100%"
+  },
+  "ossie_report": {
+    "operation": "import",
+    "ossie_spec_version": "0.2.0.dev0",
+    "ossie_schema_fingerprint": "43f31fe9f01be1df2ae1cd9c42952db5f84c3f5544d0d08b48b3c85c1a81948c",
+    "mapping_version": "ads-008.v1",
+    "compass_contract_version": "ossie-0.2.0.dev0",
+    "source_reference": "drill://subscriptions",
+    "source_fingerprint": "43f31fe9f01be1df2ae1cd9c42952db5f84c3f5544d0d08b48b3c85c1a81948c",
+    "tenant_id": "tenant-b",
+    "provenance": "complete",
+    "supported_paths": [
+      "semantic_model.datasets",
+      "semantic_model.datasets.fields"
+    ],
+    "extended_paths": [],
+    "lossy_paths": [],
+    "unsupported_paths": [],
+    "round_trip": "exact_subset",
+    "certification_eligible": false
+  },
+  "manual_steps": [
+    "The data owner reviews the imported draft: ownership, descriptions, grain, and the metric definition.",
+    "A human adds policies (allowed purposes, classification, required filters); an import carries none, so nothing is answerable without them.",
+    "Semantic certification (lifecycle and metric) by the certifying owner, in the Git-backed registry; the drill's sandbox flip is not this.",
+    "A context snapshot, ontology labels/aliases, and a physical data source and gateway for the tenant are provisioned.",
+    "The scripted model of the reference stack knows only the first tenant's phrasings; a real model with the tenant's context is needed for natural-language questions."
+  ],
+  "not_measured": {
+    "natural_language_for_tenant_b": "the drill compiles and runs an intent; the reference stack's scripted model only understands the first tenant, so end-to-end natural-language onboarding is not shown",
+    "policy_authoring": "an imported model has no policies; authoring and reviewing them is manual and not evaluated",
+    "real_ossie_models": "one small hand-written model in the pinned 0.2.0.dev0 subset; real-world Ossie documents, other versions, and lossy constructs beyond metric expressions are not exercised",
+    "live_warehouse": "a local Parquet file stands in for the tenant's warehouse",
+    "identity_and_groups": "the second tenant's identity provider mapping is not onboarded",
+    "export_of_metrics": "Ossie export carries datasets and fields only (the ADS-008 subset): metrics and time-dimension flags are not exported, so a round trip is not lossless. Whether export should carry metrics is a decision for the user; it would not change the Compass contract schema."
+  },
+  "steps": [
+    {
+      "step": "import is a draft",
+      "ok": true,
+      "detail": "round_trip=exact_subset"
+    },
+    {
+      "step": "draft is refused by the registry and the compiler",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "the second tenant's answer equals the oracle",
+      "ok": true,
+      "detail": "got [['2025-02-01', '12460'], ['2025-01-01', '4650'], ['2025-03-01', '1190']], wanted [['2025-02-01', '12460'], ['2025-01-01', '4650'], ['2025-03-01', '1190']]"
+    },
+    {
+      "step": "each tenant can use only its own contract",
+      "ok": true,
+      "detail": "own=completed"
+    },
+    {
+      "step": "export then import keeps dataset ids",
+      "ok": true,
+      "detail": "export omits (by the ADS-008 subset): ['dimension.subs.billed_at', 'mrr']"
+    },
+    {
+      "step": "unsupported and hostile expressions are reported lossy and dropped",
+      "ok": true,
+      "detail": "metrics=['mrr']"
+    },
+    {
+      "step": "the first tenant still gets the oracle answer",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

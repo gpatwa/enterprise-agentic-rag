@@ -1,0 +1,58 @@
+{
+  "suite_version": "m7-onboarding-v1",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Plan acceptance is 'onboards without product-code or contract-schema changes'; the other gates are the implementing agent's proposals. Not approved."
+  },
+  "gates": {
+    "code_and_schema_changes": {
+      "op": "<=",
+      "value": 0
+    },
+    "draft_import_served": {
+      "op": "<=",
+      "value": 0
+    },
+    "second_tenant_result_equivalence": {
+      "op": ">=",
+      "value": 1.0
+    },
+    "cross_tenant_contract_use": {
+      "op": "<=",
+      "value": 0
+    },
+    "round_trip_id_stability": {
+      "op": ">=",
+      "value": 1.0
+    },
+    "hostile_expressions_imported": {
+      "op": "<=",
+      "value": 0
+    },
+    "first_tenant_unchanged": {
+      "op": ">=",
+      "value": 1.0
+    },
+    "round_trip_omissions": {
+      "op": ">=",
+      "value": 0
+    }
+  },
+  "manual_steps": [
+    "The data owner reviews the imported draft: ownership, descriptions, grain, and the metric definition.",
+    "A human adds policies (allowed purposes, classification, required filters); an import carries none, so nothing is answerable without them.",
+    "Semantic certification (lifecycle and metric) by the certifying owner, in the Git-backed registry; the drill's sandbox flip is not this.",
+    "A context snapshot, ontology labels/aliases, and a physical data source and gateway for the tenant are provisioned.",
+    "The scripted model of the reference stack knows only the first tenant's phrasings; a real model with the tenant's context is needed for natural-language questions."
+  ],
+  "not_measured": {
+    "natural_language_for_tenant_b": "the drill compiles and runs an intent; the reference stack's scripted model only understands the first tenant, so end-to-end natural-language onboarding is not shown",
+    "policy_authoring": "an imported model has no policies; authoring and reviewing them is manual and not evaluated",
+    "real_ossie_models": "one small hand-written model in the pinned 0.2.0.dev0 subset; real-world Ossie documents, other versions, and lossy constructs beyond metric expressions are not exercised",
+    "live_warehouse": "a local Parquet file stands in for the tenant's warehouse",
+    "identity_and_groups": "the second tenant's identity provider mapping is not onboarded",
+    "export_of_metrics": "Ossie export carries datasets and fields only (the ADS-008 subset): metrics and time-dimension flags are not exported, so a round trip is not lossless. Whether export should carry metrics is a decision for the user; it would not change the Compass contract schema."
+  }
+}
