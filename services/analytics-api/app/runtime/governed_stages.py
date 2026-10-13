@@ -39,7 +39,14 @@ class CompiledPlanStore:
 
 
 class PolicyValueStore:
-    """Short-lived local handoff for sensitive policy values; values never enter run state."""
+    """Short-lived local handoff for sensitive policy values; values never enter run state.
+
+    Reads do not consume the entry: a worker that crashes after compiling but before its transition is committed must be able to
+    compile again on resume. The compiled-plan store already keeps the same values as bound parameters, so this adds no retention;
+    the store is bounded and drops its oldest entries first.
+    """
+
+    MAX_ENTRIES = 10_000
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -49,14 +56,20 @@ class PolicyValueStore:
         reference = uuid4().hex
         with self._lock:
             self._values[(tenant_id, run_id, reference)] = dict(values)
+            while len(self._values) > self.MAX_ENTRIES:
+                self._values.pop(next(iter(self._values)))
         return reference
 
     def get(self, tenant_id: str, run_id: str, reference: str) -> dict[str, Any]:
         with self._lock:
             try:
-                return self._values.pop((tenant_id, run_id, reference))
+                return dict(self._values[(tenant_id, run_id, reference)])
             except KeyError as exc:
                 raise LookupError("policy values are not scoped to this run") from exc
+
+    def discard(self, tenant_id: str, run_id: str, reference: str) -> None:
+        with self._lock:
+            self._values.pop((tenant_id, run_id, reference), None)
 
 
 class CostEstimator(Protocol):

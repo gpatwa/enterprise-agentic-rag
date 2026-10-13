@@ -113,6 +113,8 @@ class GovernedAnalyzeService:
             except SnapshotSelectionError as exc:
                 forbidden = exc.code in {"snapshot_tenant_mismatch", "purpose_not_authorized"}
                 raise ServiceError(403 if forbidden else 503, exc.code) from exc
+            except Exception as exc:  # noqa: BLE001 - a dead context provider is "unavailable", not an unhandled 500
+                raise ServiceError(503, "context_unavailable") from exc
             try:
                 self.runner_factory(identity, request).start(state, owner_id=_owner(), lease_token=_owner())
             except IntegrityError:  # a concurrent duplicate won the create race
@@ -359,7 +361,10 @@ def _answer(base: dict[str, Any], state: AgentRunState, material: AnswerMaterial
 def _failure(codes: list[str], kind: str) -> tuple[str, str, bool]:
     if "run_deadline_exceeded" in codes:
         return "query_timeout", "The request exceeded its time budget.", True
-    if any(code.startswith(("execution", "execute", "control_query")) for code in codes):
+    if any(
+        code.startswith(("execution", "execute", "control_query", "fake_execution", "estimate_failed"))
+        for code in codes
+    ):
         return "executor_unavailable", "Query execution failed.", True
     if "malformed_model_output" in codes:
         return "planner_unavailable", "The request could not be planned.", True

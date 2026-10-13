@@ -1,0 +1,54 @@
+{
+  "suite_version": "m7-reliability-v1",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Gates chosen by the implementing agent: zero wrong answers, duplicate executions, unhandled errors, unsafe outcomes, and evidence breaks; a worker crash (stores intact) must always still end in a correct answer; a process crash and dependency failures must always end safely. The plan's availability number is not declared, so none is claimed. Not approved."
+  },
+  "gates": {
+    "wrong_answers": {
+      "op": "<=",
+      "value": 0
+    },
+    "duplicate_executions": {
+      "op": "<=",
+      "value": 0
+    },
+    "unhandled_errors": {
+      "op": "<=",
+      "value": 0
+    },
+    "unsafe_outcomes": {
+      "op": "<=",
+      "value": 0
+    },
+    "evidence_chain_breaks": {
+      "op": "<=",
+      "value": 0
+    },
+    "crash_recovery_same_process": {
+      "op": ">=",
+      "value": 1.0
+    },
+    "crash_safe_ending_process_death": {
+      "op": ">=",
+      "value": 1.0
+    },
+    "dependency_failures_handled": {
+      "op": ">=",
+      "value": 1.0
+    },
+    "chaos_safe_ending_rate": {
+      "op": ">=",
+      "value": 1.0
+    }
+  },
+  "not_measured": {
+    "availability_percentage": "no availability target has been declared and no uptime was measured; these are mechanism tests",
+    "real_process_recovery": "compiled plans, policy values, and result rows are process-local, so a real process crash after the compile step fails closed (shown in the report); durable plan/result storage is not built",
+    "retry_after_failure": "a failed run is terminal and the same idempotency key returns the same failure; a client must use a new key to retry. No retry guidance beyond the `retryable` flag exists.",
+    "real_dependencies": "the warehouse, search, model, and explainer failures are simulated exceptions; timeouts, partial responses, slow dependencies, and network partitions are not modelled",
+    "concurrency": "crashes are injected one at a time; concurrent crashes and contention are covered only by the ADS-066 load simulator and the ADS-068 failover drill"
+  }
+}
