@@ -81,3 +81,12 @@ def _abstention():
 
 
 PACKETS["073"] = _abstention()
+
+
+def _isolation():
+    from reference_stack import isolation_eval
+
+    return ("ADS-074-isolation-report", isolation_eval.run_isolation, isolation_eval.render_markdown)
+
+
+PACKETS["074"] = _isolation()

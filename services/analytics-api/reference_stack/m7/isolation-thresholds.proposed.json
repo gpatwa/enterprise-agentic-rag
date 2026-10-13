@@ -1,0 +1,46 @@
+{
+  "suite_version": "m7-isolation-v1",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Plan section 10 requires zero policy and tenant-isolation violations; the other gates are the implementing agent's proposals. Not approved."
+  },
+  "gates": {
+    "cross_tenant_leaks": {
+      "op": "<=",
+      "value": 0
+    },
+    "purpose_violations": {
+      "op": "<=",
+      "value": 0
+    },
+    "separation_of_duties_violations": {
+      "op": "<=",
+      "value": 0
+    },
+    "unauthenticated_successes": {
+      "op": "<=",
+      "value": 0
+    },
+    "probe_agreement": {
+      "op": ">=",
+      "value": 1.0
+    },
+    "security_corpus_gates_met": {
+      "op": ">=",
+      "value": 1.0
+    },
+    "protected_case_failures": {
+      "op": "<=",
+      "value": 0
+    }
+  },
+  "not_measured": {
+    "independent_security_review": "required by the plan before any pilot; this matrix is not one",
+    "live_identity_provider": "tokens are signed by a local issuer; a real IdP's behaviour (key rotation, group claims, token exchange) is not exercised",
+    "automated_actor_naming": "a caller is treated as automated only if its user id has a known prefix (system:, model:, agent:, service:) or carries a delegation claim; an automated actor with an ordinary-looking id would be treated as a human reviewer. Identity-provider configuration must enforce the convention.",
+    "network_and_infrastructure": "no network boundary, storage encryption, or deployment isolation is tested",
+    "data_plane_boundary": "the VPC simulator (ADS-064) is covered by its own tests, not this matrix"
+  }
+}

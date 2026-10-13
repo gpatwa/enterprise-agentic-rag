@@ -249,6 +249,8 @@ Canonical task status is in
   - **ADS-073** abstention evaluation (`reference_stack/abstention_eval.py`, `m7/abstention-*.json`, `make analytics-m7-abstention`): 30 chosen-model-output cases through the whole pipeline; seven proposed gates met (zero guesses, zero queries
     run on abstention, no confidence claims). **Fixed a defect:** an unsupported request was reported as a retryable `planner_unavailable` outage; it is now `refuse / unsupported_request`. **Open gap:** the scripted model answered all 4 near-miss
     questions (no intent-echo check exists); a real model or such a check is the user's decision. Packet: `ADS-073-abstention-evaluation.md`.
+  - **ADS-074** isolation evaluation (`reference_stack/isolation_eval.py`, `m7/isolation-thresholds.proposed.json`, `make analytics-m7-isolation`): 24 hostile probes over REST and agent tools (other tenant, purposes, requester/automated/agent reviewing, bad tokens) + the
+    ADS-067 corpus + ADS-070 protected cases; seven proposed gates met; each defence shown able to fail. Not an independent security review. Caveat: "automated" is recognised by id prefix/delegation claim only. Open findings F-02/F-03/F-05 listed. Packet: `ADS-074-isolation-evaluation.md`.
   - **Next:** PRs #25-#29 (ADS-055..059) are all merged to `main` (the last three on 2026-10-13). M5's packets are implemented
     and in `review`. **Wave 6A (M6) is implemented:** ADS-060, ADS-062, ADS-063 (all `review`); next is wave 6B (ADS-061 MCP adapter,
     ADS-064 customer-data-plane simulator, ADS-065 traces/metrics/redaction). Open user decisions: approve/amend the
