@@ -192,6 +192,11 @@ Canonical task status is in
     is human-only (automated, `agent:`/`system:`/`service:`/`model:`, and delegated-claim identities are refused); evidence is a
     data-free summary with the chain position; schemas are pinned by `catalogue.lock.json` and a generated catalogue doc. No
     transport or endpoint yet (ADS-061 is the MCP adapter). Packet: `ADS-060-agent-tool-surface.md`.
+  - **ADS-062** portable analysis artifact (`packages/platform_contracts/analysis_artifact.py`, `app/analysis_artifacts/`): a content-addressed
+    record of one finished run (answer/claims/visualization/result shape plus a rows hash/semantic IDs/sealed-evidence pointer); rows
+    are opt-in and never change the ID; volatile and sensitive fields are excluded; REST, the ADS-060 tool surface, and the service
+    produce the same artifact and view; 13 tamperings are rejected; verifiable against the live evidence chain. No transport yet.
+    Packet: `ADS-062-analysis-artifact.md`.
   - **Next:** PRs #25-#29 (ADS-055..059) are all merged to `main` (the last three on 2026-10-13). M5's packets are implemented
     and in `review`. **Wave 6A (M6) is in progress:** ADS-060 done (`review`), then ADS-062 (portable artifact) and ADS-063
     (identity/delegation), then wave 6B (ADS-061 MCP adapter, ADS-064, ADS-065). Open user decisions: approve/amend the
