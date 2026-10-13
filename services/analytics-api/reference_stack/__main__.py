@@ -41,6 +41,9 @@ def main(argv: list[str] | None = None) -> int:
     poisoning.add_argument("--write-report", metavar="DIR")
     security = sub.add_parser("security", help="run the ADS-067 security corpus and print or write the report")
     security.add_argument("--write-report", metavar="DIR")
+    resilience = sub.add_parser("resilience", help="run the ADS-068 restore and failover drills and print or write the report")
+    resilience.add_argument("--write-report", metavar="DIR")
+    resilience.add_argument("--write-fixtures", action="store_true", help="regenerate the pinned checkpoint fixtures (a compatibility decision)")
     up = sub.add_parser("up", help="serve the v2 API locally with this stack (loopback only)")
     up.add_argument("--engine", choices=["duckdb", "postgres"], default="duckdb")
     up.add_argument("--port", type=int, default=8095)
@@ -63,6 +66,34 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"cross-dialect rows identical: {report['cross_dialect_rows_identical']}")
             print("RESULT:", "PASS" if report["ok"] else "FAIL")
         return 0 if report["ok"] else 1
+
+    if args.command == "resilience":
+        import tempfile
+        from pathlib import Path
+
+        from reference_stack import resilience_eval
+
+        if args.write_fixtures:
+            print(json.dumps(resilience_eval.write_checkpoint_fixtures(), indent=2))
+            return 0
+        objectives = resilience_eval.load_objectives()
+        root = Path(tempfile.mkdtemp(prefix="analytics-resilience-"))
+        drills = {
+            "restore": resilience_eval.drill_restore(root / "restore", objectives),
+            "failover": resilience_eval.drill_failover(root / "failover", objectives),
+        }
+        markdown = resilience_eval.render_markdown(drills, objectives)
+        if args.write_report:
+            target = Path(args.write_report)
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "ADS-068-resilience-report.md").write_text(markdown)
+            payload = {name: {"result": d["result"].model_dump(), "measured": d["measured"]} for name, d in drills.items()}
+            (target / "ADS-068-resilience-report.json").write_text(json.dumps(payload, indent=2, default=str) + "\n")
+        else:
+            print(markdown)
+        passed = all(d["result"].passed for d in drills.values())
+        print(f"drills passed: {passed}")
+        return 0 if passed else 1
 
     if args.command == "security":
         import tempfile

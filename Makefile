@@ -1,6 +1,6 @@
 # Makefile
 
-.PHONY: help install install-analytics analytics-reference-smoke analytics-reference-up analytics-golden analytics-triage-eval analytics-proposals-eval analytics-dbt-eval analytics-prompts-eval analytics-review-eval analytics-evaluation-eval analytics-rollout-eval analytics-drift-eval analytics-poisoning-eval analytics-security-eval dev dev-support-web dev-analytics-api dev-analytics-web dev-products up down stop init support-demo demo-ready-local deploy infra build bootstrap init-cloud smoke-test verify destroy test test-analytics ingest \
+.PHONY: help install install-analytics analytics-reference-smoke analytics-reference-up analytics-golden analytics-triage-eval analytics-proposals-eval analytics-dbt-eval analytics-prompts-eval analytics-review-eval analytics-evaluation-eval analytics-rollout-eval analytics-drift-eval analytics-poisoning-eval analytics-security-eval analytics-resilience-drill dev dev-support-web dev-analytics-api dev-analytics-web dev-products up down stop init support-demo demo-ready-local deploy infra build bootstrap init-cloud smoke-test verify destroy test test-analytics ingest \
        infra-staging bootstrap-staging deploy-staging deploy-aws \
        deploy-azure infra-azure build-azure bootstrap-azure deploy-api-azure deploy-analytics-azure deploy-landing-azure destroy-azure \
        pause-azure resume-azure import-azure \
@@ -33,6 +33,7 @@ help:
 	@echo "    make analytics-drift-eval - Run the ADS-058 drift corpus and write its report (synthetic windows)"
 	@echo "    make analytics-poisoning-eval - Run the ADS-059 poisoning corpus and write its report (fakes only)"
 	@echo "    make analytics-security-eval - Run the ADS-067 security corpus and findings register and write its report (fakes only)"
+	@echo "    make analytics-resilience-drill - Run the ADS-068 restore and failover drills and write their report (local, fakes only)"
 	@echo "    make dev-products  - Run both products as Docker deployables"
 	@echo "    make observability-up - Start Grafana, Prometheus, exporters, and admin UIs"
 	@echo "    make observability-down - Stop the local operations plane"
@@ -244,6 +245,10 @@ analytics-poisoning-eval:
 # ADS-067 security corpus and findings register (fakes only); thresholds are proposed until the user approves them.
 analytics-security-eval:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack security --write-report ../../docs/execution/enterprise-analytics/reports
+
+# ADS-068 restore and failover drills (local SQLite/DuckDB, fakes); objectives are proposed until the user approves them.
+analytics-resilience-drill:
+	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack resilience --write-report ../../docs/execution/enterprise-analytics/reports
 
 # M4 golden suite (fakes only); regenerates the report against the user-approved M4 thresholds.
 analytics-golden:

@@ -228,6 +228,11 @@ Canonical task status is in
     (optional HMAC `run_id_key`, a deployment requirement), empty results failing as internal errors, and **host-time-zone-dependent time ranges** (gateways now pin UTC).
     New optional `min_cohort` (off by default). **F-03 (small cohorts/differencing) is an OPEN DECISION for the data/security owners** (rated high in general, medium at
     pilot scope); nothing here is an independent security review. Packet: `ADS-067-threat-model-security-suite.md`.
+  - **ADS-068** resilience (`app/resilience/`, `reference_stack/resilience_eval.py`, pinned checkpoint fixtures, `make analytics-resilience-drill`): verified logical backup/restore
+    (refuses corrupt/tampered/wrong-schema/non-empty, atomic, re-verifies digests and every evidence chain), a restore drill measuring RPO/RTO against **PROPOSED** objectives
+    (RPO 15m, RTO 15m, lease 30s), a lease-takeover failover drill (query runs once; zombie fenced), upgrade-with-data and mixed-worker tests, and checkpoint fixtures as the
+    release-to-release compatibility contract. Fixed: a restart/restore made old answered runs raise a 500. **Not restored (decisions for the owners): answer rows, compiled plans, policy
+    values (process-local), so a run paused for review before a restart fails closed.** Local only; no real HA or production recovery tested. Packet: `ADS-068-resilience.md`.
   - **Next:** PRs #25-#29 (ADS-055..059) are all merged to `main` (the last three on 2026-10-13). M5's packets are implemented
     and in `review`. **Wave 6A (M6) is implemented:** ADS-060, ADS-062, ADS-063 (all `review`); next is wave 6B (ADS-061 MCP adapter,
     ADS-064 customer-data-plane simulator, ADS-065 traces/metrics/redaction). Open user decisions: approve/amend the

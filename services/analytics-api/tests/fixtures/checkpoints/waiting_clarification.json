@@ -1,0 +1,215 @@
+{
+  "approval_state": {
+    "reason": "ambiguous_certified_reference"
+  },
+  "budget": {
+    "deadline": "2026-10-13T08:08:22.417633Z",
+    "max_context_tokens": 2000,
+    "max_cost_units": 10000.0,
+    "max_node_attempts": 3,
+    "max_retrieval_candidates": 20,
+    "max_transitions": 40
+  },
+  "cancellation": null,
+  "clarification_state": {
+    "ambiguities": [
+      {
+        "candidate_ids": [
+          "created_at",
+          "status"
+        ],
+        "code": "time",
+        "prompt": "Select the intended certified time."
+      }
+    ],
+    "continuation_count": 0,
+    "purpose": "analytics",
+    "query_id": "2591c674ea8032f0:fixture-key-waiting_clar",
+    "request_fingerprint": "9adf2370b29ee578af5b991b163cd3c427cd3398adbc43f3dbba1003cb1920d2",
+    "run_id": "d0650d1c83ab110241221f944c48dbb5",
+    "tenant_id": "tenant-a"
+  },
+  "compiled_plan_reference": null,
+  "context_pack": {
+    "estimated_tokens": 90,
+    "graph_closure": [
+      {
+        "certified": true,
+        "citation": "context:reference-context-v1:ontology:orders-contains-created_at",
+        "edge_id": "orders-contains-created_at",
+        "edge_type": "contains",
+        "from_node_id": "orders",
+        "to_node_id": "created_at"
+      },
+      {
+        "certified": true,
+        "citation": "context:reference-context-v1:ontology:orders-contains-revenue",
+        "edge_id": "orders-contains-revenue",
+        "edge_type": "contains",
+        "from_node_id": "orders",
+        "to_node_id": "revenue"
+      },
+      {
+        "certified": true,
+        "citation": "context:reference-context-v1:ontology:orders-contains-status",
+        "edge_id": "orders-contains-status",
+        "edge_type": "contains",
+        "from_node_id": "orders",
+        "to_node_id": "status"
+      }
+    ],
+    "items": [
+      {
+        "asset_id": "orders",
+        "certified": true,
+        "citation": "context:reference-context-v1:orders",
+        "score": 1.0,
+        "text": "Certified sales orders dataset with revenue and order dates."
+      }
+    ],
+    "omitted_asset_ids": [],
+    "omitted_relation_ids": [],
+    "pack_version": "v1",
+    "query": "Show monthly revenue",
+    "snapshot_id": "reference-context-v1",
+    "tenant_id": "tenant-a",
+    "token_budget": 2000
+  },
+  "context_snapshot_id": "reference-context-v1",
+  "cost_decision": {
+    "observed_cost_units": 0.0
+  },
+  "current_node": "clarify",
+  "errors": [],
+  "evidence": [
+    {
+      "evidence_id": "d0650d1c83ab110241221f944c48dbb5:transition:1",
+      "fingerprint": "0df1204de5d650f36308ba3ff4bfabefe45e3b6d659ae83e4c90456f30c350e9",
+      "kind": "transition",
+      "redacted": true
+    },
+    {
+      "evidence_id": "bootstrap:8b77b310a5ea9a0060cbca4cdd2d1edd",
+      "fingerprint": "8b77b310a5ea9a0060cbca4cdd2d1eddf0c9bbabe4e37233ab2fe533ff92929b",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "d0650d1c83ab110241221f944c48dbb5:transition:2",
+      "fingerprint": "0bb65b670d86a0f2970a83cb36963841e676dcb5b4ee31377d3f28c72cc58922",
+      "kind": "transition",
+      "redacted": true
+    },
+    {
+      "evidence_id": "context:reference-context-v1:orders",
+      "fingerprint": "11a340bd83ab62567d125a9831c7e1b90a4a59e775a12f0e2833d4b8981f7788",
+      "kind": "context",
+      "redacted": true
+    },
+    {
+      "evidence_id": "context:reference-context-v1:orders-contains-created_at",
+      "fingerprint": "d61c23786ae562331ecb97ae40a339220253e1c2f55a2da2606fd2815067d954",
+      "kind": "context",
+      "redacted": true
+    },
+    {
+      "evidence_id": "context:reference-context-v1:orders-contains-revenue",
+      "fingerprint": "635150101fca2d92e042930f34df9f3cd94e544fb0a0c990e7cddeec0a5571d9",
+      "kind": "context",
+      "redacted": true
+    },
+    {
+      "evidence_id": "context:reference-context-v1:orders-contains-status",
+      "fingerprint": "4ff55cd77bcd08f36fbd35445bfde9f61cfae673e32c0147fcf51c7ed944a893",
+      "kind": "context",
+      "redacted": true
+    },
+    {
+      "evidence_id": "d0650d1c83ab110241221f944c48dbb5:transition:3",
+      "fingerprint": "b1a5d17414c67d01100c1b6185bb69fc6d0ad0c21cc935b3736660cdd77b1210",
+      "kind": "transition",
+      "redacted": true
+    },
+    {
+      "evidence_id": "intent:2591c674ea8032f0:fixture-key-waiting_clar",
+      "fingerprint": "00ddc7eec21b069c1c87be0abf446b8f5690d59ec29b9a387caca1aba9a35b9a",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "d0650d1c83ab110241221f944c48dbb5:transition:4",
+      "fingerprint": "34ea97f1363b6959052231554362ef8cc203f9226de6ca59fb7aca69c0aa2eb9",
+      "kind": "transition",
+      "redacted": true
+    },
+    {
+      "evidence_id": "ontology:d0650d1c83ab110241221f944c48dbb5:28bdd29363524fcaac3aadf8",
+      "fingerprint": "28bdd29363524fcaac3aadf8713a0e1f08dde127e6e56d9242b4a0ff1698a04c",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "d0650d1c83ab110241221f944c48dbb5:transition:5",
+      "fingerprint": "b5854b0546f80385e9aaf438e37c51ef0c4e395e9d8cac6044b2fd291ca03b93",
+      "kind": "transition",
+      "redacted": true
+    }
+  ],
+  "execution_reference": null,
+  "graph_version": "graph-v2",
+  "intent": {
+    "dataset_id": "orders",
+    "filters": [
+      {
+        "field_id": "orders.status",
+        "operator": "equals",
+        "values": [
+          "paid"
+        ]
+      }
+    ],
+    "group_by": [
+      {
+        "dimension_id": "time",
+        "time_granularity": "month"
+      }
+    ],
+    "intent_version": "v1",
+    "limit": 25,
+    "metrics": [
+      {
+        "alias": null,
+        "metric_id": "revenue"
+      }
+    ],
+    "query_id": "2591c674ea8032f0:fixture-key-waiting_clar",
+    "semantic_contract": {
+      "contract_id": "sales-core",
+      "contract_version": "v1"
+    },
+    "sort": [
+      {
+        "direction": "desc",
+        "target_id": "revenue",
+        "target_kind": "metric"
+      }
+    ],
+    "tenant_id": "tenant-a",
+    "time_range": {
+      "dimension_id": "time",
+      "end": "2024-03-31T23:59:59Z",
+      "inclusive_end": true,
+      "start": "2024-01-01T00:00:00Z"
+    }
+  },
+  "policy_decision": null,
+  "purpose": "analytics",
+  "request_id": "2591c674ea8032f0:fixture-key-waiting_clar",
+  "request_text": "Show monthly revenue",
+  "run_id": "d0650d1c83ab110241221f944c48dbb5",
+  "schema_version": "v1",
+  "status": "waiting_approval",
+  "tenant_id": "tenant-a",
+  "terminal_outcome": null,
+  "transition_count": 5
+}

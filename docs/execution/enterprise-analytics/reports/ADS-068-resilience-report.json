@@ -1,0 +1,36 @@
+{
+  "restore": {
+    "result": {
+      "drill": "restore",
+      "passed": true,
+      "duration_seconds": 0.03030895907431841,
+      "findings": []
+    },
+    "measured": {
+      "backup_seconds": 0.05497491592541337,
+      "restore_seconds": 0.03030895907431841,
+      "data_loss_window_seconds": 600.0,
+      "runs_in_backup": 5,
+      "runs_lost": 3,
+      "rows_backed_up": 187,
+      "evidence_envelopes_verified": 2,
+      "feedback_restored": true,
+      "answer_rows_survive_restart": false
+    }
+  },
+  "failover": {
+    "result": {
+      "drill": "failover",
+      "passed": true,
+      "duration_seconds": 31.0,
+      "findings": []
+    },
+    "measured": {
+      "takeover_seconds": 31.0,
+      "lease_seconds": 30.0,
+      "query_executions": 1,
+      "fencing_seq_after_takeover": 2,
+      "transitions": 13
+    }
+  }
+}

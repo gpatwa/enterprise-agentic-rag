@@ -1,0 +1,346 @@
+{
+  "approval_state": null,
+  "budget": {
+    "deadline": "2026-10-13T08:08:22.466451Z",
+    "max_context_tokens": 2000,
+    "max_cost_units": 10000.0,
+    "max_node_attempts": 3,
+    "max_retrieval_candidates": 20,
+    "max_transitions": 40
+  },
+  "cancellation": null,
+  "clarification_state": null,
+  "compiled_plan_reference": "3ed80853f8a7a5af1429e4d37a913c24546edd6cd53b62aa36617c8f7870cb8f",
+  "context_pack": {
+    "estimated_tokens": 90,
+    "graph_closure": [
+      {
+        "certified": true,
+        "citation": "context:reference-context-v1:ontology:orders-contains-created_at",
+        "edge_id": "orders-contains-created_at",
+        "edge_type": "contains",
+        "from_node_id": "orders",
+        "to_node_id": "created_at"
+      },
+      {
+        "certified": true,
+        "citation": "context:reference-context-v1:ontology:orders-contains-revenue",
+        "edge_id": "orders-contains-revenue",
+        "edge_type": "contains",
+        "from_node_id": "orders",
+        "to_node_id": "revenue"
+      },
+      {
+        "certified": true,
+        "citation": "context:reference-context-v1:ontology:orders-contains-status",
+        "edge_id": "orders-contains-status",
+        "edge_type": "contains",
+        "from_node_id": "orders",
+        "to_node_id": "status"
+      }
+    ],
+    "items": [
+      {
+        "asset_id": "orders",
+        "certified": true,
+        "citation": "context:reference-context-v1:orders",
+        "score": 1.0,
+        "text": "Certified sales orders dataset with revenue and order dates."
+      }
+    ],
+    "omitted_asset_ids": [],
+    "omitted_relation_ids": [],
+    "pack_version": "v1",
+    "query": "Show monthly revenue",
+    "snapshot_id": "reference-context-v1",
+    "tenant_id": "tenant-a",
+    "token_budget": 2000
+  },
+  "context_snapshot_id": "reference-context-v1",
+  "cost_decision": {
+    "estimated_cost_units": 40.0,
+    "observed_cost_units": 0.0,
+    "reason": null,
+    "requires_approval": false
+  },
+  "current_node": "explain",
+  "errors": [],
+  "evidence": [
+    {
+      "evidence_id": "9befbe47083a7feb00f3a6f0c8dbfbce:transition:1",
+      "fingerprint": "0df1204de5d650f36308ba3ff4bfabefe45e3b6d659ae83e4c90456f30c350e9",
+      "kind": "transition",
+      "redacted": true
+    },
+    {
+      "evidence_id": "bootstrap:8b77b310a5ea9a0060cbca4cdd2d1edd",
+      "fingerprint": "8b77b310a5ea9a0060cbca4cdd2d1eddf0c9bbabe4e37233ab2fe533ff92929b",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "9befbe47083a7feb00f3a6f0c8dbfbce:transition:2",
+      "fingerprint": "0bb65b670d86a0f2970a83cb36963841e676dcb5b4ee31377d3f28c72cc58922",
+      "kind": "transition",
+      "redacted": true
+    },
+    {
+      "evidence_id": "context:reference-context-v1:orders",
+      "fingerprint": "11a340bd83ab62567d125a9831c7e1b90a4a59e775a12f0e2833d4b8981f7788",
+      "kind": "context",
+      "redacted": true
+    },
+    {
+      "evidence_id": "context:reference-context-v1:orders-contains-created_at",
+      "fingerprint": "d61c23786ae562331ecb97ae40a339220253e1c2f55a2da2606fd2815067d954",
+      "kind": "context",
+      "redacted": true
+    },
+    {
+      "evidence_id": "context:reference-context-v1:orders-contains-revenue",
+      "fingerprint": "635150101fca2d92e042930f34df9f3cd94e544fb0a0c990e7cddeec0a5571d9",
+      "kind": "context",
+      "redacted": true
+    },
+    {
+      "evidence_id": "context:reference-context-v1:orders-contains-status",
+      "fingerprint": "4ff55cd77bcd08f36fbd35445bfde9f61cfae673e32c0147fcf51c7ed944a893",
+      "kind": "context",
+      "redacted": true
+    },
+    {
+      "evidence_id": "9befbe47083a7feb00f3a6f0c8dbfbce:transition:3",
+      "fingerprint": "b1a5d17414c67d01100c1b6185bb69fc6d0ad0c21cc935b3736660cdd77b1210",
+      "kind": "transition",
+      "redacted": true
+    },
+    {
+      "evidence_id": "intent:2591c674ea8032f0:fixture-key-terminal_suc",
+      "fingerprint": "7e1654f8a0cfd2466c4de9e94def74106b5b89e19a39f7a4e8cb649aaf580548",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "9befbe47083a7feb00f3a6f0c8dbfbce:transition:4",
+      "fingerprint": "34ea97f1363b6959052231554362ef8cc203f9226de6ca59fb7aca69c0aa2eb9",
+      "kind": "transition",
+      "redacted": true
+    },
+    {
+      "evidence_id": "ontology:reference-context-v1:orders",
+      "fingerprint": "7e1654f8a0cfd2466c4de9e94def74106b5b89e19a39f7a4e8cb649aaf580548",
+      "kind": "context",
+      "redacted": true
+    },
+    {
+      "evidence_id": "9befbe47083a7feb00f3a6f0c8dbfbce:transition:5",
+      "fingerprint": "c9f4f8f27888d54facba58615f6c723e73f406fbd0ab08ff238c98fe99fa832d",
+      "kind": "transition",
+      "redacted": true
+    },
+    {
+      "evidence_id": "stage:523d99ae8d5a3a7fdc93bc6cb3eaf6ac",
+      "fingerprint": "4d4b12d771154bd444e216c42d0b1cdce056bad1e01574f3acb7d9217f6073a6",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "stage:21f4f7dc1f0e561fb90a317dc1f6e002",
+      "fingerprint": "a18dcc520d4247812fe311e16346f1235007eccf077e043353329bb609e7496b",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "stage:951e9661f5ac03abe9acbac3869bed00",
+      "fingerprint": "1a4652e5f2066c48e282ee517a1dbed781b2e6f10373c4acdfdb1e6ddfc2f6db",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "stage:ea21dde4e6cffc6ddff60361b44b03ed",
+      "fingerprint": "86a43c054f21f577935a05507424dd5638b262055474f03c57f5e5fcbd60e0b5",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "stage:951e9661f5ac03abe9acbac3869bed00",
+      "fingerprint": "1a4652e5f2066c48e282ee517a1dbed781b2e6f10373c4acdfdb1e6ddfc2f6db",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "9befbe47083a7feb00f3a6f0c8dbfbce:transition:6",
+      "fingerprint": "84db191d6bcd011c5aab18c12803f0d1985e0e181be87e24022a09a800fe4e02",
+      "kind": "transition",
+      "redacted": true
+    },
+    {
+      "evidence_id": "certified:sales-core:v1",
+      "fingerprint": "76659e857b6285262ddc83e630a3d95af06efb2605847dda9104fdd54203a259",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "9befbe47083a7feb00f3a6f0c8dbfbce:transition:7",
+      "fingerprint": "565b20750ce5b1d9c27d48fc444c216c6f95291fde41421cc23c9a02e2216388",
+      "kind": "transition",
+      "redacted": true
+    },
+    {
+      "evidence_id": "stage:bd7bd782832d49bfab28dceff49d8996",
+      "fingerprint": "60eff3594198785ee24f424afdb20ad702f737528625dda5a2a763f35280ef7b",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "9befbe47083a7feb00f3a6f0c8dbfbce:transition:8",
+      "fingerprint": "7f5445c8a25c2f3543927e04edf2a2ff5e2a60cc6084a8bc5cfb989e69c178c8",
+      "kind": "transition",
+      "redacted": true
+    },
+    {
+      "evidence_id": "stage:547fc4188214a9db5d1b8344d268b68b",
+      "fingerprint": "f784c5756f46baaa3bc1d3a78b4cdb50a2640410d397d569a08b94c81224096b",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "9befbe47083a7feb00f3a6f0c8dbfbce:transition:9",
+      "fingerprint": "99e8a4ebe3b800db664e355cb21bf80e1d94dcb6c198c7fc798326e1a45cfa56",
+      "kind": "transition",
+      "redacted": true
+    },
+    {
+      "evidence_id": "stage:4034410a1614d099d6f11b0126af2523",
+      "fingerprint": "e15274dcfe2d0cb541e8aa23fef7aaaa116bfcbc937d35ffda9d4506c8d7e785",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "9befbe47083a7feb00f3a6f0c8dbfbce:transition:10",
+      "fingerprint": "22699db4bf9a8ff740df6ed543e2ea259b48720eb50202516cfa1500b48fa03e",
+      "kind": "transition",
+      "redacted": true
+    },
+    {
+      "evidence_id": "stage:e41b04ccc285f837ed300275eaeec133",
+      "fingerprint": "efb655529e972af3456a7b83372ba6dd1477353a72f5c6ae10d3a34365d10572",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "9befbe47083a7feb00f3a6f0c8dbfbce:transition:11",
+      "fingerprint": "21bbbc3883530194674df94ac3f8116eb0675eb1bd74c0d25c1271187668a11e",
+      "kind": "transition",
+      "redacted": true
+    },
+    {
+      "evidence_id": "result-validation:9befbe47083a7feb00f3a6f0c8dbfbce:9905bade4b7c2668",
+      "fingerprint": "9905bade4b7c266887aad9879d15ed5dd6da99ed19d375827dd95d5386df3b3f",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "9befbe47083a7feb00f3a6f0c8dbfbce:transition:12",
+      "fingerprint": "aa6d074fd78b426faeffa4a4e6fa74a9d1ec32bc3bbbd7c0518ff9d85b63e517",
+      "kind": "transition",
+      "redacted": true
+    },
+    {
+      "evidence_id": "explanation:9befbe47083a7feb00f3a6f0c8dbfbce:fa240afbfbbdf0ff",
+      "fingerprint": "fa240afbfbbdf0ff1e8aa62457b5a372b8b88d99321f83c56ea8fafece6c17d5",
+      "kind": "decision",
+      "redacted": true
+    },
+    {
+      "evidence_id": "9befbe47083a7feb00f3a6f0c8dbfbce:transition:13",
+      "fingerprint": "0adda175ee5d2391bcb0ae9173aa08b66876bba52cefd77254ffcd8a3a0d3418",
+      "kind": "transition",
+      "redacted": true
+    }
+  ],
+  "execution_reference": "7f6b760d4e8b3c385c450467272848e210cfef55be85eb61fc047fe617596fd1",
+  "graph_version": "graph-v2",
+  "intent": {
+    "dataset_id": "orders",
+    "filters": [
+      {
+        "field_id": "orders.status",
+        "operator": "equals",
+        "values": [
+          "paid"
+        ]
+      }
+    ],
+    "group_by": [
+      {
+        "dimension_id": "created_at",
+        "time_granularity": "month"
+      }
+    ],
+    "intent_version": "v1",
+    "limit": 25,
+    "metrics": [
+      {
+        "alias": null,
+        "metric_id": "revenue"
+      }
+    ],
+    "query_id": "2591c674ea8032f0:fixture-key-terminal_suc",
+    "semantic_contract": {
+      "contract_id": "sales-core",
+      "contract_version": "v1"
+    },
+    "sort": [
+      {
+        "direction": "desc",
+        "target_id": "revenue",
+        "target_kind": "metric"
+      }
+    ],
+    "tenant_id": "tenant-a",
+    "time_range": {
+      "dimension_id": "created_at",
+      "end": "2024-03-31T23:59:59Z",
+      "inclusive_end": true,
+      "start": "2024-01-01T00:00:00Z"
+    }
+  },
+  "policy_decision": {
+    "decision_id": "b1b3fb8be8ca48b991031f9890eb1a6a",
+    "effect": "allow",
+    "enforced_filter_ids": [],
+    "policy_values_reference": "2060b60875ae412caeb14ad7a14b5571",
+    "policy_version": "v1",
+    "reasons": [
+      "no_restrictive_policy"
+    ]
+  },
+  "purpose": "analytics",
+  "request_id": "2591c674ea8032f0:fixture-key-terminal_suc",
+  "request_text": "Show monthly revenue",
+  "run_id": "9befbe47083a7feb00f3a6f0c8dbfbce",
+  "schema_version": "v1",
+  "status": "terminal",
+  "tenant_id": "tenant-a",
+  "terminal_outcome": {
+    "completed_at": "2026-10-13T08:03:22.506109Z",
+    "evidence": [
+      {
+        "evidence_id": "explanation:9befbe47083a7feb00f3a6f0c8dbfbce:fa240afbfbbdf0ff",
+        "fingerprint": "fa240afbfbbdf0ff1e8aa62457b5a372b8b88d99321f83c56ea8fafece6c17d5",
+        "kind": "decision",
+        "redacted": true
+      },
+      {
+        "evidence_id": "9befbe47083a7feb00f3a6f0c8dbfbce:transition:13",
+        "fingerprint": "0adda175ee5d2391bcb0ae9173aa08b66876bba52cefd77254ffcd8a3a0d3418",
+        "kind": "transition",
+        "redacted": true
+      }
+    ],
+    "kind": "succeeded",
+    "summary_reference": "9befbe47083a7feb00f3a6f0c8dbfbce:terminal"
+  },
+  "transition_count": 13
+}
