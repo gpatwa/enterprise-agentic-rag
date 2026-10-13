@@ -254,6 +254,10 @@ analytics-resilience-drill:
 analytics-operations-drill:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack operations --write-report ../../docs/execution/enterprise-analytics/reports
 
+# ADS-071 end-to-end correctness and PostgreSQL/DuckDB equivalence on the ADS-070 corpus (fakes only); thresholds and corpus are proposed.
+analytics-m7-correctness:
+	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack m7 071 --write-report ../../docs/execution/enterprise-analytics/reports
+
 # M4 golden suite (fakes only); regenerates the report against the user-approved M4 thresholds.
 analytics-golden:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack golden --write-report ../../docs/execution/enterprise-analytics/reports

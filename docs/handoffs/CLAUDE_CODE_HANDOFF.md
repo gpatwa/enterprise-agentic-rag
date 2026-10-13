@@ -241,6 +241,8 @@ Canonical task status is in
   - **ADS-070** reference corpus (`reference_stack/m7_corpus.py`, `reference_stack/m7/corpus-v1.json`, `corpus-approval.proposed.json`): 100 cases (60 answers, 30 marked P0 customer-style; 16
     refusals; 4 policy-denied; 4 tenant-isolation; 8 clarify; 8 review) with expected rows from an oracle that imports nothing from the system under test; pinned by digest. **Owner approval
     (definition owner and results owner, independently) is pending and is not recorded; the questions are phrasings of reference intents, not real customer questions.** Packet: `ADS-070-reference-corpus.md`.
+  - **ADS-071** correctness and dialect equivalence (`reference_stack/m7_eval.py::run_correctness`, `m7/e2e-thresholds.proposed.json`, `make analytics-m7-correctness`): the ADS-070 corpus on DuckDB and emulated PostgreSQL;
+    all twelve proposed gates met (200 case runs). Thresholds and corpus are **unapproved**; PostgreSQL is emulated and the model scripted. Packet: `ADS-071-correctness-equivalence.md`.
   - **Next:** PRs #25-#29 (ADS-055..059) are all merged to `main` (the last three on 2026-10-13). M5's packets are implemented
     and in `review`. **Wave 6A (M6) is implemented:** ADS-060, ADS-062, ADS-063 (all `review`); next is wave 6B (ADS-061 MCP adapter,
     ADS-064 customer-data-plane simulator, ADS-065 traces/metrics/redaction). Open user decisions: approve/amend the
