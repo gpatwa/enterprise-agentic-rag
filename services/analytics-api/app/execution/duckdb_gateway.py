@@ -164,6 +164,8 @@ class DuckDBGateway:
             allowed = ", ".join("'" + str(path).replace("'", "''") + "'" for path in self._sources.values())
             connection.execute(f"SET allowed_paths=[{allowed}]")
             connection.execute("SET enable_external_access=false")
+            # Naive timestamp columns are read as UTC; without this a time range near a boundary depends on the host's zone.
+            connection.execute("SET TimeZone='UTC'")
             connection.execute(f"SET memory_limit='{self._memory_limit}'")
             connection.execute(f"SET threads={int(self._threads)}")
             connection.execute("SET lock_configuration=true")

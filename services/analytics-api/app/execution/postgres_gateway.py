@@ -132,6 +132,7 @@ class PostgresGateway:
         millis = max(1, int(timeout_seconds * 1_000))
         connection.exec_driver_sql(f"SET LOCAL statement_timeout = {millis}")
         connection.exec_driver_sql(f"SET LOCAL lock_timeout = {millis}")
+        connection.exec_driver_sql("SET LOCAL TIME ZONE 'UTC'")  # time ranges must not depend on the server zone
 
     @staticmethod
     def _explain_cost(connection: Any, plan: Any) -> float:

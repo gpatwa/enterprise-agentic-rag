@@ -27,6 +27,7 @@ from app.execution.gateway import (
 )
 from app.execution.postgres_gateway import PostgresGateway
 from app.execution.result_validation import (
+    ControlCohortEmpty,
     ResultIssue,
     ResultValidationReport,
     control_intent,
@@ -62,6 +63,7 @@ __all__ = [
     "ExecutionTimeout",
     "PostgresGateway",
     "QueryRejected",
+    "ControlCohortEmpty",
     "ResultIssue",
     "ResultValidationReport",
     "control_intent",

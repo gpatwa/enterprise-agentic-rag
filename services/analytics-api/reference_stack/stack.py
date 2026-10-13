@@ -124,6 +124,8 @@ class ReferenceStack:
     omit_context_ids: tuple = ()
     max_cost_units: float = REFERENCE_MAX_COST_UNITS
     prompt_template: str | None = None
+    min_cohort: int | None = None
+    run_id_key: bytes | None = None
     executed_sql: list = field(default_factory=list)
     compiled_sql: set = field(default_factory=set)
     timings: list = field(default_factory=list)  # (node_id, seconds) for policy/compile
@@ -186,6 +188,7 @@ class ReferenceStack:
                 self.contracts,
                 self.control_totals,
                 report_sink=lambda ni, report: self.reports.put(ni.tenant_id, ni.run_id, report),
+                min_cohort=self.min_cohort,
             ),
             "explain": explain_node(self.results, self.contracts, self.plans, scripted_explainer, self.explanations),
         }
@@ -258,6 +261,7 @@ class ReferenceStack:
             state_factory=self.new_state,
             answers=self,
             sealer=EvidenceSealer(self.control, self.evidence, self.reports),
+            run_id_key=self.run_id_key,
         )
 
     def proposal_service(self) -> ProposalService:
@@ -348,6 +352,8 @@ def build_stack(
     max_cost_units: float = REFERENCE_MAX_COST_UNITS,
     prompt_template: str | None = None,
     contract_metadata: dict | None = None,
+    min_cohort: int | None = None,
+    run_id_key: bytes | None = None,
 ) -> ReferenceStack:
     """Create the seeded data, migrated control store, gateway, and compiler for one dialect."""
     workdir = Path(workdir or tempfile.mkdtemp(prefix="analytics-reference-"))
@@ -360,10 +366,10 @@ def build_stack(
     sql_engine = create_engine(database)
     if engine == "duckdb":
         gateway = DuckDBGateway({"sales_orders": parquet}, allowed_root=workdir)
-        adapter = DuckDBCompilerAdapter()
+        adapter = DuckDBCompilerAdapter(min_cohort=min_cohort)
     else:
         gateway = PostgresGateway(EmulatedPostgresEngine(parquet), allowed_tables=["sales_orders"])
-        adapter = PostgreSQLCompilerAdapter()
+        adapter = PostgreSQLCompilerAdapter(min_cohort=min_cohort)
     document = SemanticRegistry(SERVICE_ROOT / "semantic_registry").get_certified("sales-core", "v1")
     if denied:  # a policy that allows revenue only for a different purpose
         policy = SemanticPolicy(
@@ -405,6 +411,8 @@ def build_stack(
         max_cost_units=max_cost_units,
         prompt_template=prompt_template,
         compiled_sql=compiled_sql,
+        min_cohort=min_cohort,
+        run_id_key=run_id_key,
     )
 
 

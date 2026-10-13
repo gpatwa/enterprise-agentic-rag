@@ -1,0 +1,55 @@
+{
+  "suite_version": "security-corpus-v1",
+  "rules_version": "security-rules-v1",
+  "corpus_sha256": "5b495a8ee2c1faa2226173b1eba6a45b14a242fbe41b0404edfd2c27b883f15b",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "scope_note": "Hostile inputs run against the real pipeline. The gates check that each control holds, that documented gaps behave as documented, and that no critical or high finding is unresolved at pilot scope; they say nothing about attacks the corpus does not contain.",
+  "gates": {
+    "control_agreement": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "control cases whose observed outcome equals the hand-written expectation"
+    },
+    "documented_gap_agreement": {
+      "op": ">=",
+      "value": 1.0,
+      "measure": "known-gap cases that still behave exactly as the findings register documents"
+    },
+    "hostile_statements_executed": {
+      "op": "<=",
+      "value": 0,
+      "measure": "warehouse statements executed by cases that must run nothing"
+    },
+    "sensitive_text_in_error_bodies": {
+      "op": "<=",
+      "value": 0,
+      "measure": "failure and refusal bodies that carry SQL, physical names, policy references, or a stack trace"
+    },
+    "unresolved_critical_high_findings": {
+      "op": "<=",
+      "value": 0,
+      "measure": "findings that are open or awaiting a decision and rated critical or high at pilot scope"
+    },
+    "findings_without_evidence": {
+      "op": "<=",
+      "value": 0,
+      "measure": "findings that cite no corpus case, or a case or test that does not exist"
+    },
+    "protected_file_writes": {
+      "op": "<=",
+      "value": 0,
+      "measure": "changes to goldens, thresholds, the case index, the runtime prompt, registry contracts, or the manifest during the run"
+    }
+  },
+  "not_measured": {
+    "real_model": "a hijacked model is simulated by replacing its output; resistance of a real model to injection is not measured, the pipeline's controls are",
+    "novel_attacks": "attacks outside the corpus, side channels (timing, caches), and infrastructure compromise",
+    "independent_review": "this is not an independent security review; severities are the implementing agent's ratings",
+    "query_auditing": "detecting differencing across a person's sequence of queries needs per-person query auditing, which is not built"
+  }
+}

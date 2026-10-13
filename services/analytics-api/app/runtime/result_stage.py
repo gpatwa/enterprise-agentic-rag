@@ -6,7 +6,7 @@ import hashlib
 from collections.abc import Callable, Mapping
 from typing import Any
 
-from app.execution.result_validation import validate_result
+from app.execution.result_validation import ControlCohortEmpty, validate_result
 from packages.platform_contracts.agent_runtime import EvidenceReference, NodeInput, NodeOutput, RunError
 from packages.platform_contracts.analytics_intent import AnalyticalIntent
 from packages.platform_contracts.semantic import SemanticContract
@@ -20,6 +20,7 @@ def result_validation_node(
     contracts,
     control_totals: ControlTotals,
     report_sink: Callable[[NodeInput, Any], None] | None = None,
+    min_cohort: int | None = None,
 ):
     """Validate the stored result against the run's intent, plan, and a control query.
 
@@ -40,9 +41,11 @@ def result_validation_node(
             return _fail(node_input, "result_inputs_unavailable", type(exc).__name__)
         try:
             totals = control_totals(node_input, intent, contract) if intent.group_by else {}
+        except ControlCohortEmpty:
+            return _fail(node_input, "policy_denied", "cohort_too_small")  # a privacy refusal, not an outage
         except Exception as exc:  # noqa: BLE001 - an unverifiable result is not a valid one.
             return _fail(node_input, "control_query_failed", type(exc).__name__)
-        report = validate_result(result, plan, intent, contract, control_totals=totals)
+        report = validate_result(result, plan, intent, contract, control_totals=totals, min_cohort=min_cohort)
         if report_sink is not None:
             report_sink(node_input, report)  # lets the run be sealed into an evidence envelope later
         evidence = (
@@ -52,6 +55,8 @@ def result_validation_node(
                 fingerprint=report.fingerprint,
             ),
         )
+        if "cohort_too_small" in report.blocking_codes:
+            return _fail(node_input, "policy_denied", "cohort_too_small")
         if not report.acceptable:
             return NodeOutput(
                 run_id=node_input.run_id,

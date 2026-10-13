@@ -222,6 +222,12 @@ Canonical task status is in
     cap, daily cost budget (resets 00:00 UTC), cost attributed once per run from sealed evidence, deduplicated alerts, two-window SLO burn
     rates; admission happens before any query runs; a deterministic load simulator (reused by ADS-076). The policy is **PROPOSED**; state is
     in-memory (HA is ADS-068); not mounted. Packet: `ADS-066-quotas-slos.md`.
+  - **ADS-067** threat model + security suite (`docs/.../security/threat-model.md`, `reference_stack/security_eval.py`, 28-case corpus, `make analytics-security-eval`):
+    22 threats each tied to real tests (a test checks the references exist); hostile model/explainer/injection/tenant/token/inference cases; **a findings
+    register F-01..F-06**. Real defects found and fixed: unbucketed-timestamp and grain-key grouping (row-level access), run IDs derivable by a colleague
+    (optional HMAC `run_id_key`, a deployment requirement), empty results failing as internal errors, and **host-time-zone-dependent time ranges** (gateways now pin UTC).
+    New optional `min_cohort` (off by default). **F-03 (small cohorts/differencing) is an OPEN DECISION for the data/security owners** (rated high in general, medium at
+    pilot scope); nothing here is an independent security review. Packet: `ADS-067-threat-model-security-suite.md`.
   - **Next:** PRs #25-#29 (ADS-055..059) are all merged to `main` (the last three on 2026-10-13). M5's packets are implemented
     and in `review`. **Wave 6A (M6) is implemented:** ADS-060, ADS-062, ADS-063 (all `review`); next is wave 6B (ADS-061 MCP adapter,
     ADS-064 customer-data-plane simulator, ADS-065 traces/metrics/redaction). Open user decisions: approve/amend the

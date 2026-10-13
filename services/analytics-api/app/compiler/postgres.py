@@ -32,9 +32,18 @@ class CompiledQuery:
 
 
 class PostgreSQLCompiler:
-    """Compile one validated semantic intent into parameterized PostgreSQL SQL."""
+    """Compile one validated semantic intent into parameterized PostgreSQL SQL.
+
+    `min_cohort` (default off) is a deployment's minimum group size: every query then carries `HAVING COUNT(*) >= k`, so a
+    group or a filtered total built from fewer rows is not returned. Choosing k per dataset sensitivity is a human decision.
+    """
 
     dialect = "postgres"
+
+    def __init__(self, *, min_cohort: int | None = None) -> None:
+        if min_cohort is not None and not 2 <= min_cohort <= 10_000:
+            raise ValueError("min_cohort must be between 2 and 10000")
+        self.min_cohort = min_cohort
 
     def compile(
         self,
@@ -55,6 +64,16 @@ class PostgreSQLCompiler:
             raise CompilationError("this compiler supports groupings from the intent dataset only")
         if any(metric.aggregation == "ratio" for metric in selected_metrics):
             raise CompilationError("ratio metrics are not supported by this compiler spike")
+        # A query that returns one row per entity is row-level access wearing an aggregate's clothes.
+        for group, dimension in zip(intent.group_by, selected_dimensions, strict=True):
+            if dimension.dimension_type == "temporal" and not group.time_granularity:
+                raise CompilationError("temporal grouping requires a time granularity")
+        grain_keys = {key for metric in selected_metrics for key in metric.grain.key_field_ids}
+        if any(dimension.field_id in grain_keys for dimension in selected_dimensions):
+            raise CompilationError("grouping by a grain key returns one row per entity")
+        if self.min_cohort and any(filter_.field_id in grain_keys for filter_ in intent.filters):
+            # With a minimum cohort, a filter on the entity key would isolate single entities or enable exact differencing.
+            raise CompilationError("filtering on a grain key is not allowed when a minimum cohort is enforced")
         dimensions = [
             _dimension_sql(group.time_granularity, dimension, selected_fields[dimension.field_id])
             for group, dimension in zip(intent.group_by, selected_dimensions, strict=True)
@@ -81,6 +100,8 @@ class PostgreSQLCompiler:
             sql_parts.append(f"WHERE {' AND '.join(where_parts)}")
         if dimensions:
             sql_parts.append(f"GROUP BY {', '.join(str(index + 1) for index in range(len(dimensions)))}")
+        if self.min_cohort:
+            sql_parts.append(f"HAVING COUNT(*) >= {int(self.min_cohort)}")
         if intent.sort:
             order_parts = [
                 f"{sort.target_kind}_{_sort_index(sort, intent)} {sort.direction.upper()}"

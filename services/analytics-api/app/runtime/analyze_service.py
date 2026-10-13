@@ -9,6 +9,7 @@ to the original requester; review decisions go through the control store's ident
 from __future__ import annotations
 
 import hashlib
+import hmac
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -81,6 +82,7 @@ class GovernedAnalyzeService:
         answers: AnswerSource,
         sealer: Any = None,
         now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+        run_id_key: bytes | None = None,
     ) -> None:
         self.store, self.runner_factory, self.state_factory, self.answers, self.now = (
             store,
@@ -90,6 +92,7 @@ class GovernedAnalyzeService:
             now,
         )
         self.sealer = sealer
+        self._run_id_key = run_id_key
 
     # ---- operations ----
 
@@ -99,7 +102,7 @@ class GovernedAnalyzeService:
         self._authorize(identity, purpose)
         if not _KEY.match(idempotency_key or ""):
             raise ServiceError(400, "invalid_idempotency_key")
-        run_id = self.derive_run_id(identity, purpose, idempotency_key)
+        run_id = self.run_id_for(identity, purpose, idempotency_key)
         request = BootstrapRequest(
             request_id=f"{_tag(identity)}:{idempotency_key}", request_text=request_text, identity=identity
         )
@@ -122,6 +125,18 @@ class GovernedAnalyzeService:
             if existing.status == "active":  # recover a run whose worker died; a live lease means "running"
                 self._resume(identity, existing)
         return self._respond(identity, self._load(run_id, identity.tenant_id, purpose))
+
+    def run_id_for(self, identity: AnalyticsIdentity, purpose: str, idempotency_key: str) -> str:
+        """The run ID for a caller, purpose, and idempotency key.
+
+        With `run_id_key` (a server-side secret) the ID is an HMAC, so another person in the tenant cannot compute a colleague's
+        run ID from their user ID and a guessable key. Without it the ID is the plain, derivable hash: acceptable for tests and
+        the reference stack, **not for a deployment**.
+        """
+        if self._run_id_key is None:
+            return self.derive_run_id(identity, purpose, idempotency_key)
+        material = f"{identity.tenant_id}:{identity.user_id}:{purpose}:{idempotency_key}".encode()
+        return hmac.new(self._run_id_key, material, hashlib.sha256).hexdigest()[:32]
 
     @staticmethod
     def derive_run_id(identity: AnalyticsIdentity, purpose: str, idempotency_key: str) -> str:
