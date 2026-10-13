@@ -1,0 +1,54 @@
+{
+  "suite_version": "m7-provider-v1",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Gates chosen by the implementing agent: zero wrong answers, equivalent wire formats agree, non-conforming output and a down provider end safely and without a retry storm, ungrounded claims never shown, pinned prompts reproduce, and the ADS-057/059 gates stay met (unreviewed correction promotions 0 is a plan section 10 gate). Not approved."
+  },
+  "gates": {
+    "provider_wrong_answers": {
+      "op": "<=",
+      "value": 0
+    },
+    "equivalent_provider_agreement": {
+      "op": ">=",
+      "value": 1.0
+    },
+    "nonconforming_provider_safe_rate": {
+      "op": ">=",
+      "value": 1.0
+    },
+    "model_calls_per_failing_run_max": {
+      "op": "<=",
+      "value": 1
+    },
+    "degraded_mode_unsafe_outcomes": {
+      "op": "<=",
+      "value": 0
+    },
+    "ungrounded_claims_shown": {
+      "op": "<=",
+      "value": 0
+    },
+    "prompt_version_reproducibility": {
+      "op": ">=",
+      "value": 1.0
+    },
+    "rollout_and_rollback_gates_met": {
+      "op": ">=",
+      "value": 1.0
+    },
+    "unreviewed_correction_promotions": {
+      "op": "<=",
+      "value": 0
+    }
+  },
+  "not_measured": {
+    "real_provider_behaviour": "real providers differ in ways not modelled here: token limits, safety refusals, partial streams, rate limits, latency tails, silent model updates",
+    "valid_but_wrong_intent": "a well-formed intent for the wrong question (for example a status breakdown for a monthly question) is answered; no intent-echo check exists (open gap from ADS-073)",
+    "prompt_effect": "the scripted model ignores prompt text, so reproducibility across prompt versions shows the pipeline adds no nondeterminism, not that a prompt change leaves a real model's behaviour unchanged",
+    "runtime_wiring": "the runtime does not read the prompt registry or rollout pointer; rollback is evaluated on the rollout controller (ADS-057) and pinned prompt templates, not on a live pointer",
+    "retry_and_circuit_breaking": "there is no retry and no circuit breaker: each run makes one model call and fails, which bounds a failure but means a flaky provider is never retried automatically"
+  }
+}

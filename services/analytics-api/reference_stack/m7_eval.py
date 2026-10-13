@@ -108,3 +108,12 @@ def _performance():
 
 
 PACKETS["076"] = _performance()
+
+
+def _provider():
+    from reference_stack import provider_eval
+
+    return ("ADS-077-provider-report", provider_eval.run_provider_evaluation, provider_eval.render_markdown)
+
+
+PACKETS["077"] = _provider()
