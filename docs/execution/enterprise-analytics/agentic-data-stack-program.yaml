@@ -114,7 +114,7 @@ milestones:
       record: "User wrote \"ADS-052 and ADS-053 approved\" in conversation, in reply to whether to approve, amend, or reject the ADS-053 dbt corpus thresholds. Applies only to services/analytics-api/reference_stack/dbt_proposals/dbt-thresholds.json (reference stack). It is not the separation_of_duties_review approval and not independent packet review."
   M6:
     name: Agent-operable and enterprise runtime
-    status: planned
+    status: in_progress
     waves:
       - [ADS-060, ADS-062, ADS-063]
       - [ADS-061, ADS-064, ADS-065]
@@ -189,7 +189,7 @@ tasks:
   ADS-057: {milestone: M5, status: review, depends_on: [ADS-056]}
   ADS-058: {milestone: M5, status: review, depends_on: [ADS-049, ADS-057]}
   ADS-059: {milestone: M5, status: review, depends_on: [ADS-050, ADS-051, ADS-052, ADS-053, ADS-054, ADS-055, ADS-056, ADS-057, ADS-058]}
-  ADS-060: {milestone: M6, status: planned, depends_on: [ADS-045]}
+  ADS-060: {milestone: M6, status: review, depends_on: [ADS-045]}
   ADS-061: {milestone: M6, status: planned, depends_on: [ADS-060]}
   ADS-062: {milestone: M6, status: planned, depends_on: [ADS-042, ADS-060]}
   ADS-063: {milestone: M6, status: planned, depends_on: [ADS-031, ADS-045]}

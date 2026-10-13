@@ -1,0 +1,11 @@
+{
+  "catalog_version": "agent-tools-v1",
+  "schema_digest": "2c73bd0c6a3d0b70236b598d57594eed9719b113cd35a03fdd39b9ad3ab63095",
+  "tools": [
+    "analytics.analyze",
+    "analytics.status",
+    "analytics.clarify",
+    "analytics.review",
+    "analytics.evidence"
+  ]
+}

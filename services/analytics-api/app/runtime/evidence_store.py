@@ -73,6 +73,22 @@ class EvidenceStore:
             raise EvidenceNotFoundError("no evidence is sealed for this run in this tenant")
         return EvidenceEnvelope.model_validate(_load(row["payload"]))
 
+    def seal_position(self, run_id: str, *, tenant_id: str, purpose: str) -> tuple[int, str]:
+        """(chain_seq, chain_hash) of the run's sealed envelope in its tenant's chain."""
+        with self.engine.connect() as connection:
+            row = (
+                connection.execute(
+                    text("""SELECT chain_seq, chain_hash FROM analytics_evidence_envelopes
+                    WHERE tenant_id=:tenant_id AND run_id=:run_id AND purpose=:purpose"""),
+                    {"tenant_id": tenant_id, "run_id": run_id, "purpose": purpose},
+                )
+                .mappings()
+                .first()
+            )
+        if row is None:
+            raise EvidenceNotFoundError("no evidence is sealed for this run in this tenant")
+        return int(row["chain_seq"]), str(row["chain_hash"])
+
     def verify_chain(self, tenant_id: str) -> int:
         """Recompute every link and content address for the tenant; returns the envelope count."""
         with self.engine.connect() as connection:
