@@ -1,0 +1,455 @@
+{
+  "packet": "ADS-072",
+  "suite_version": "m7-retrieval-v1",
+  "corpus_sha256": "e1f69faf3609f3e3bacb1253d6fb501406c3e682a7212bde7e8c918b0566ec43",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Numbers are plan section 10 gates (top-3 recall 98%, token baseline -20%) plus zero-leak and 100% provenance/freshness gates chosen by the implementing agent. Not approved."
+  },
+  "meets_thresholds": true,
+  "ok": true,
+  "gates": {
+    "certified_top3_recall": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 0.98,
+      "meets": true
+    },
+    "uncertified_or_foreign_results": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "provenance_coverage": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true
+    },
+    "stale_detection_recall": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true
+    },
+    "context_token_reduction": {
+      "value": 0.7805194805194805,
+      "op": ">=",
+      "threshold": 0.2,
+      "meets": true
+    },
+    "pack_budget_overruns": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    }
+  },
+  "gate_plan": {
+    "certified_top3_recall": "Certified dataset/metric top-3 recall >= 98%",
+    "uncertified_or_foreign_results": "Uncertified or other-tenant results served: 0 (provider-owned filters)",
+    "provenance_coverage": "Provenance on every served asset: 100%",
+    "stale_detection_recall": "Stale assets detected by the freshness gate: 100%",
+    "context_token_reduction": "Context tokens per successful intent: baseline -20%",
+    "pack_budget_overruns": "Packs over their token budget: 0"
+  },
+  "samples": {
+    "queries": 40,
+    "baseline_tokens": 308,
+    "mean_pack_tokens": 67.6
+  },
+  "not_measured": {
+    "real_relevance_ranking": "the stand-in is term overlap, not BM25, analyzers, or embeddings; recall on a real OpenSearch index and a real catalogue size is untested",
+    "paraphrase_robustness": "queries are written against the catalogue's vocabulary and aliases; unseen customer wording is not measured",
+    "live_index": "no live OpenSearch validation was run (requires the user's explicit request)",
+    "baseline": "the token baseline is the whole certified catalogue, not the ADS-007 v1 baseline"
+  },
+  "misses": [],
+  "queries": [
+    {
+      "id": "Q001",
+      "kind": "dataset",
+      "expect": "orders",
+      "top3": [
+        "orders",
+        "customers",
+        "order_items"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q002",
+      "kind": "dataset",
+      "expect": "order_items",
+      "top3": [
+        "order_items",
+        "orders",
+        "payments"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q003",
+      "kind": "dataset",
+      "expect": "customers",
+      "top3": [
+        "customers",
+        "orders",
+        "employees"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q004",
+      "kind": "dataset",
+      "expect": "products",
+      "top3": [
+        "products",
+        "pricing_history",
+        "order_items"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q005",
+      "kind": "dataset",
+      "expect": "payments",
+      "top3": [
+        "payments"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q006",
+      "kind": "dataset",
+      "expect": "refunds",
+      "top3": [
+        "refunds"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q007",
+      "kind": "dataset",
+      "expect": "shipments",
+      "top3": [
+        "shipments"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q008",
+      "kind": "dataset",
+      "expect": "inventory",
+      "top3": [
+        "inventory"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q009",
+      "kind": "dataset",
+      "expect": "web_sessions",
+      "top3": [
+        "web_sessions"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q010",
+      "kind": "dataset",
+      "expect": "marketing_spend",
+      "top3": [
+        "marketing_spend"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q011",
+      "kind": "dataset",
+      "expect": "support_tickets",
+      "top3": [
+        "support_tickets"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q012",
+      "kind": "dataset",
+      "expect": "employees",
+      "top3": [
+        "employees"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q013",
+      "kind": "dataset",
+      "expect": "orders",
+      "top3": [
+        "orders",
+        "refunds"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q014",
+      "kind": "dataset",
+      "expect": "payments",
+      "top3": [
+        "payments",
+        "customers",
+        "employees"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q015",
+      "kind": "dataset",
+      "expect": "inventory",
+      "top3": [
+        "inventory",
+        "order_items",
+        "pricing_history"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q016",
+      "kind": "dataset",
+      "expect": "marketing_spend",
+      "top3": [
+        "marketing_spend",
+        "web_sessions"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q017",
+      "kind": "dataset",
+      "expect": "customers",
+      "top3": [
+        "customers",
+        "orders",
+        "support_tickets"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q018",
+      "kind": "dataset",
+      "expect": "employees",
+      "top3": [
+        "employees",
+        "customers",
+        "orders"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q019",
+      "kind": "dataset",
+      "expect": "support_tickets",
+      "top3": [
+        "support_tickets"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q020",
+      "kind": "dataset",
+      "expect": "refunds",
+      "top3": [
+        "refunds",
+        "orders"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q021",
+      "kind": "metric",
+      "expect": "revenue",
+      "top3": [
+        "revenue"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q022",
+      "kind": "metric",
+      "expect": "revenue",
+      "top3": [
+        "revenue"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q023",
+      "kind": "metric",
+      "expect": "order_count",
+      "top3": [
+        "order_count"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q024",
+      "kind": "metric",
+      "expect": "average_order_value",
+      "top3": [
+        "average_order_value"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q025",
+      "kind": "metric",
+      "expect": "refund_rate",
+      "top3": [
+        "refund_rate"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q026",
+      "kind": "metric",
+      "expect": "units_sold",
+      "top3": [
+        "units_sold"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q027",
+      "kind": "metric",
+      "expect": "ad_spend",
+      "top3": [
+        "ad_spend"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q028",
+      "kind": "metric",
+      "expect": "ticket_count",
+      "top3": [
+        "ticket_count"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q029",
+      "kind": "metric",
+      "expect": "resolution_time",
+      "top3": [
+        "resolution_time",
+        "delivery_days"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q030",
+      "kind": "metric",
+      "expect": "stock_on_hand",
+      "top3": [
+        "stock_on_hand"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q031",
+      "kind": "metric",
+      "expect": "delivery_days",
+      "top3": [
+        "resolution_time",
+        "delivery_days"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q032",
+      "kind": "metric",
+      "expect": "revenue",
+      "top3": [
+        "revenue"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q033",
+      "kind": "dimension",
+      "expect": "region",
+      "top3": [
+        "customer_segment",
+        "region"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q034",
+      "kind": "dimension",
+      "expect": "customer_segment",
+      "top3": [
+        "customer_segment"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q035",
+      "kind": "dimension",
+      "expect": "product_category",
+      "top3": [
+        "product_category"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q036",
+      "kind": "dimension",
+      "expect": "channel",
+      "top3": [
+        "channel"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q037",
+      "kind": "dimension",
+      "expect": "carrier",
+      "top3": [
+        "carrier"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q038",
+      "kind": "dimension",
+      "expect": "channel",
+      "top3": [
+        "channel"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q039",
+      "kind": "dimension",
+      "expect": "customer_segment",
+      "top3": [
+        "customer_segment"
+      ],
+      "hit": true
+    },
+    {
+      "id": "Q040",
+      "kind": "dimension",
+      "expect": "region",
+      "top3": [
+        "region"
+      ],
+      "hit": true
+    }
+  ]
+}

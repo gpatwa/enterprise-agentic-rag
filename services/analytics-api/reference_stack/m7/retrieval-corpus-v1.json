@@ -1,0 +1,495 @@
+{
+ "suite_version": "m7-retrieval-v1",
+ "note": "Catalogue, ontology, and queries for ADS-072; hand-written. Expected ids are the certified asset a person would pick.",
+ "tenant": "tenant-a",
+ "other_tenant": "tenant-b",
+ "datasets": {
+  "orders": [
+   "Orders",
+   "sales_orders",
+   "One row per customer order with amount, status, and order date",
+   "order_id amount status created_at"
+  ],
+  "order_items": [
+   "Order items",
+   "sales_order_items",
+   "Line items within an order, with product and quantity",
+   "order_id product_id quantity unit_price"
+  ],
+  "customers": [
+   "Customers",
+   "crm_customers",
+   "One row per customer with signup date, region, and segment",
+   "customer_id signup_date region segment"
+  ],
+  "products": [
+   "Products",
+   "catalog_products",
+   "Product catalogue with category, brand, and list price",
+   "product_id category brand list_price"
+  ],
+  "payments": [
+   "Payments",
+   "finance_payments",
+   "Payments received per order, with method and settlement date",
+   "payment_id method settled_at"
+  ],
+  "refunds": [
+   "Refunds",
+   "finance_refunds",
+   "Refunds issued against orders, with reason and amount",
+   "refund_id reason refund_amount"
+  ],
+  "shipments": [
+   "Shipments",
+   "logistics_shipments",
+   "Shipment events with carrier, dispatch date, and delivery date",
+   "shipment_id carrier dispatched_at delivered_at"
+  ],
+  "inventory": [
+   "Inventory levels",
+   "warehouse_inventory",
+   "Stock on hand by product and warehouse",
+   "product_id warehouse stock_on_hand"
+  ],
+  "web_sessions": [
+   "Web sessions",
+   "web_sessions",
+   "Website visits with acquisition channel, device, and landing page",
+   "session_id channel device landing_page"
+  ],
+  "marketing_spend": [
+   "Marketing spend",
+   "marketing_spend",
+   "Daily advertising spend by campaign and channel",
+   "campaign channel spend day"
+  ],
+  "support_tickets": [
+   "Support tickets",
+   "support_tickets",
+   "Customer support tickets with priority, topic, and resolution time",
+   "ticket_id priority topic resolution_hours"
+  ],
+  "employees": [
+   "Employees",
+   "hr_employees",
+   "Employee roster with department and hire date",
+   "employee_id department hired_at"
+  ]
+ },
+ "uncertified_lookalikes": {
+  "orders_draft": [
+   "Orders draft copy",
+   "scratch_orders_draft",
+   "One row per customer order with amount, status, and order date (work in progress copy)",
+   "order_id amount status"
+  ],
+  "customers_legacy": [
+   "Customers legacy",
+   "legacy_customers",
+   "One row per customer with signup date, region, and segment (old system)",
+   "customer_id region"
+  ]
+ },
+ "stale": {
+  "pricing_history": [
+   "Pricing history",
+   "catalog_pricing_history",
+   "Historic list price changes by product",
+   "product_id price effective_from"
+  ]
+ },
+ "ontology": {
+  "revenue": [
+   "metric",
+   "Revenue",
+   [
+    "sales",
+    "turnover",
+    "net sales"
+   ],
+   "Sum of order amounts"
+  ],
+  "order_count": [
+   "metric",
+   "Order count",
+   [
+    "number of orders",
+    "orders placed"
+   ],
+   "Count of orders"
+  ],
+  "average_order_value": [
+   "metric",
+   "Average order value",
+   [
+    "AOV",
+    "basket size"
+   ],
+   "Mean amount per order"
+  ],
+  "refund_rate": [
+   "metric",
+   "Refund rate",
+   [
+    "returns rate",
+    "share refunded"
+   ],
+   "Refunded amount over revenue"
+  ],
+  "units_sold": [
+   "metric",
+   "Units sold",
+   [
+    "items sold",
+    "quantity sold"
+   ],
+   "Sum of line item quantities"
+  ],
+  "ad_spend": [
+   "metric",
+   "Advertising spend",
+   [
+    "marketing cost",
+    "campaign spend"
+   ],
+   "Sum of daily advertising spend"
+  ],
+  "ticket_count": [
+   "metric",
+   "Ticket count",
+   [
+    "support volume",
+    "tickets opened"
+   ],
+   "Count of support tickets"
+  ],
+  "resolution_time": [
+   "metric",
+   "Resolution time",
+   [
+    "time to resolve",
+    "ticket handling time"
+   ],
+   "Mean hours to resolve a ticket"
+  ],
+  "stock_on_hand": [
+   "metric",
+   "Stock on hand",
+   [
+    "inventory level",
+    "units in warehouse"
+   ],
+   "Units currently in stock"
+  ],
+  "delivery_days": [
+   "metric",
+   "Delivery days",
+   [
+    "shipping time",
+    "delivery lead time"
+   ],
+   "Days from dispatch to delivery"
+  ],
+  "region": [
+   "dimension",
+   "Region",
+   [
+    "geography",
+    "customer location"
+   ],
+   "Customer region"
+  ],
+  "customer_segment": [
+   "dimension",
+   "Customer segment",
+   [
+    "audience",
+    "cohort"
+   ],
+   "Customer segment"
+  ],
+  "product_category": [
+   "dimension",
+   "Product category",
+   [
+    "department of goods",
+    "merchandise group"
+   ],
+   "Product category"
+  ],
+  "channel": [
+   "dimension",
+   "Acquisition channel",
+   [
+    "traffic source",
+    "marketing channel"
+   ],
+   "How the visit arrived"
+  ],
+  "carrier": [
+   "dimension",
+   "Shipping carrier",
+   [
+    "courier",
+    "delivery company"
+   ],
+   "Shipment carrier"
+  ]
+ },
+ "contains": {
+  "orders": [
+   "revenue",
+   "order_count",
+   "average_order_value"
+  ],
+  "refunds": [
+   "refund_rate"
+  ],
+  "order_items": [
+   "units_sold"
+  ]
+ },
+ "queries": [
+  {
+   "id": "Q001",
+   "query": "which table has one row per customer order",
+   "kind": "dataset",
+   "expect": "orders"
+  },
+  {
+   "id": "Q002",
+   "query": "order line items with product and quantity",
+   "kind": "dataset",
+   "expect": "order_items"
+  },
+  {
+   "id": "Q003",
+   "query": "customer signup date and segment",
+   "kind": "dataset",
+   "expect": "customers"
+  },
+  {
+   "id": "Q004",
+   "query": "product catalogue brand and list price",
+   "kind": "dataset",
+   "expect": "products"
+  },
+  {
+   "id": "Q005",
+   "query": "payments received by method",
+   "kind": "dataset",
+   "expect": "payments"
+  },
+  {
+   "id": "Q006",
+   "query": "refund reasons and amounts",
+   "kind": "dataset",
+   "expect": "refunds"
+  },
+  {
+   "id": "Q007",
+   "query": "carrier dispatch and delivery dates",
+   "kind": "dataset",
+   "expect": "shipments"
+  },
+  {
+   "id": "Q008",
+   "query": "stock on hand by warehouse",
+   "kind": "dataset",
+   "expect": "inventory"
+  },
+  {
+   "id": "Q009",
+   "query": "website visits by device and landing page",
+   "kind": "dataset",
+   "expect": "web_sessions"
+  },
+  {
+   "id": "Q010",
+   "query": "daily advertising spend by campaign",
+   "kind": "dataset",
+   "expect": "marketing_spend"
+  },
+  {
+   "id": "Q011",
+   "query": "support tickets by priority and topic",
+   "kind": "dataset",
+   "expect": "support_tickets"
+  },
+  {
+   "id": "Q012",
+   "query": "employee roster by department",
+   "kind": "dataset",
+   "expect": "employees"
+  },
+  {
+   "id": "Q013",
+   "query": "where are orders stored",
+   "kind": "dataset",
+   "expect": "orders"
+  },
+  {
+   "id": "Q014",
+   "query": "settlement date for payments",
+   "kind": "dataset",
+   "expect": "payments"
+  },
+  {
+   "id": "Q015",
+   "query": "which warehouse holds each product",
+   "kind": "dataset",
+   "expect": "inventory"
+  },
+  {
+   "id": "Q016",
+   "query": "campaign and channel spend per day",
+   "kind": "dataset",
+   "expect": "marketing_spend"
+  },
+  {
+   "id": "Q017",
+   "query": "customer region",
+   "kind": "dataset",
+   "expect": "customers"
+  },
+  {
+   "id": "Q018",
+   "query": "hire date of staff by department",
+   "kind": "dataset",
+   "expect": "employees"
+  },
+  {
+   "id": "Q019",
+   "query": "ticket resolution hours",
+   "kind": "dataset",
+   "expect": "support_tickets"
+  },
+  {
+   "id": "Q020",
+   "query": "refund amount against orders",
+   "kind": "dataset",
+   "expect": "refunds"
+  },
+  {
+   "id": "Q021",
+   "query": "sales",
+   "kind": "metric",
+   "expect": "revenue"
+  },
+  {
+   "id": "Q022",
+   "query": "turnover",
+   "kind": "metric",
+   "expect": "revenue"
+  },
+  {
+   "id": "Q023",
+   "query": "number of orders",
+   "kind": "metric",
+   "expect": "order_count"
+  },
+  {
+   "id": "Q024",
+   "query": "AOV",
+   "kind": "metric",
+   "expect": "average_order_value"
+  },
+  {
+   "id": "Q025",
+   "query": "returns rate",
+   "kind": "metric",
+   "expect": "refund_rate"
+  },
+  {
+   "id": "Q026",
+   "query": "quantity sold",
+   "kind": "metric",
+   "expect": "units_sold"
+  },
+  {
+   "id": "Q027",
+   "query": "marketing cost",
+   "kind": "metric",
+   "expect": "ad_spend"
+  },
+  {
+   "id": "Q028",
+   "query": "support volume",
+   "kind": "metric",
+   "expect": "ticket_count"
+  },
+  {
+   "id": "Q029",
+   "query": "time to resolve",
+   "kind": "metric",
+   "expect": "resolution_time"
+  },
+  {
+   "id": "Q030",
+   "query": "inventory level",
+   "kind": "metric",
+   "expect": "stock_on_hand"
+  },
+  {
+   "id": "Q031",
+   "query": "shipping time",
+   "kind": "metric",
+   "expect": "delivery_days"
+  },
+  {
+   "id": "Q032",
+   "query": "net sales",
+   "kind": "metric",
+   "expect": "revenue"
+  },
+  {
+   "id": "Q033",
+   "query": "customer location",
+   "kind": "dimension",
+   "expect": "region"
+  },
+  {
+   "id": "Q034",
+   "query": "cohort",
+   "kind": "dimension",
+   "expect": "customer_segment"
+  },
+  {
+   "id": "Q035",
+   "query": "merchandise group",
+   "kind": "dimension",
+   "expect": "product_category"
+  },
+  {
+   "id": "Q036",
+   "query": "traffic source",
+   "kind": "dimension",
+   "expect": "channel"
+  },
+  {
+   "id": "Q037",
+   "query": "courier",
+   "kind": "dimension",
+   "expect": "carrier"
+  },
+  {
+   "id": "Q038",
+   "query": "marketing channel",
+   "kind": "dimension",
+   "expect": "channel"
+  },
+  {
+   "id": "Q039",
+   "query": "audience",
+   "kind": "dimension",
+   "expect": "customer_segment"
+  },
+  {
+   "id": "Q040",
+   "query": "geography",
+   "kind": "dimension",
+   "expect": "region"
+  }
+ ]
+}
