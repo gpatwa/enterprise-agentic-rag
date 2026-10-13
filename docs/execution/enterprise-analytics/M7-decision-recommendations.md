@@ -43,3 +43,7 @@ Status: **Recommendations only.** Written by the implementing agent speaking as 
 ## Final go/no-go
 
 Recommendation from the evidence: **no-go for a pilot today.** The blockers are in `reports/ADS-079-evidence-manifest.md`. Reconsider after: real model and warehouse are selected and the latency/cost gates re-baselined; thresholds and corpus are approved by named people; independent reviews and the five human gates are recorded; F-02, F-03, F-05 are resolved or formally accepted.
+
+## Progress after the user's "go ahead"
+
+The user's message did not name any gate, threshold, corpus, or sign-off, so none was recorded. Built from the engineering recommendations: **Ossie export carries metrics and time dimensions** (done, tested). Not yet built: durable plan/result storage, the intent-echo check, retry guidance, and cost-unit calibration (needs the real warehouse).

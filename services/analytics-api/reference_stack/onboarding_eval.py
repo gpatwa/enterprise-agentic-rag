@@ -41,7 +41,7 @@ GATE_PLAN = {
     "second_tenant_result_equivalence": "The second tenant's answer equals the independent oracle: 100%",
     "cross_tenant_contract_use": "A tenant using another tenant's contract: 0",
     "round_trip_id_stability": "Export then import keeps dataset ids: 100%",
-    "round_trip_omissions": "Metrics and time dimensions an export omits (informational; a documented subset, not a gate)",
+    "round_trip_omissions": "Metrics and time dimensions lost by an export then import: 0",
     "hostile_expressions_imported": "Unsupported or hostile Ossie expressions that become metrics: 0",
     "first_tenant_unchanged": "The first tenant's answers are unchanged after onboarding: 100%",
 }

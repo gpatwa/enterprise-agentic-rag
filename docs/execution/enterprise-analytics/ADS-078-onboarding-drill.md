@@ -16,7 +16,7 @@ Depends on: ADS-011, ADS-064
 
 ## Findings and limits
 
-- **Ossie export is not lossless**: it carries datasets and fields only (the ADS-008 subset), so metrics and time-dimension flags are lost on a round trip (2 omissions here). Dataset ids are stable. Whether export should carry metrics is the user's decision; it would not change the Compass schema.
+- **Ossie export now carries metrics and time-dimension flags** (changed after the user said "go ahead" on the recommendation; no Compass schema change). The first drill run showed 2 omissions on a round trip; it now shows 0 and `round_trip_omissions` is a `<= 0` gate.
 - An import carries **no policies**, so nothing is answerable until a human adds them; the report lists the manual steps (review, policies, certification, context snapshot and ontology, data source and gateway).
 - The reference stack's scripted model understands only the first tenant, so end-to-end natural-language onboarding of tenant B is **not** shown; the drill runs an intent.
 

@@ -160,8 +160,9 @@ def export_ossie(
     contract = document.contract
     datasets: list[dict[str, Any]] = []
     for dataset in contract.datasets:
+        time_field_ids = {d.field_id for d in contract.dimensions if d.dimension_type == "temporal"}
         field_rows = [
-            {"name": field.physical_name, "data_type": field.data_type}
+            {"name": field.physical_name, "data_type": field.data_type, **({"dimension": {"is_time": True}} if field.id in time_field_ids else {})}
             for field in contract.fields if field.dataset_id == dataset.id
         ]
         entity = next((item for item in contract.entities if item.dataset_id == dataset.id), None)
@@ -170,9 +171,16 @@ def export_ossie(
             "fields": field_rows,
             "primary_key": [next(field.physical_name for field in contract.fields if field.id == key) for key in entity.grain.key_field_ids] if entity else [],
         })
+    field_names = {field.id: field.physical_name for field in contract.fields}
+    aggregate = {"sum": "SUM", "average": "AVG", "count": "COUNT", "count_distinct": "COUNT DISTINCT", "min": "MIN", "max": "MAX"}
+    metrics = [
+        {"name": m.id, "dataset": m.dataset_id,
+         "expression": f"{aggregate[m.aggregation]}({field_names[m.measure_field_id] if m.measure_field_id else '*'})"}
+        for m in contract.metrics if m.aggregation in aggregate and (m.measure_field_id is None or m.measure_field_id in field_names)
+    ]
     payload: dict[str, Any] = {
         "version": OSSIE_SPEC_VERSION,
-        "semantic_model": [{"name": contract.id, "description": contract.domain, "datasets": datasets}],
+        "semantic_model": [{"name": contract.id, "description": contract.domain, "datasets": datasets, **({"metrics": metrics} if metrics else {})}],
     }
     if include_extensions:
         payload["semantic_model"][0]["custom_extensions"] = {
@@ -182,7 +190,7 @@ def export_ossie(
         operation="export", payload=payload, source_reference=source_reference,
         source_fingerprint=_fingerprint(payload), tenant_id=contract.tenant_id,
         round_trip="extension_preserved" if include_extensions else "exact_subset",
-        supported=("semantic_model.datasets", "semantic_model.datasets.fields"),
+        supported=("semantic_model.datasets", "semantic_model.datasets.fields", "semantic_model.metrics"),
         extended=("semantic_model.custom_extensions",) if include_extensions else (),
         compass_version=contract.version,
     )

@@ -13,7 +13,7 @@
 | `round_trip_id_stability` | 1 | >= 1.0 | yes | Export then import keeps dataset ids: 100% |
 | `hostile_expressions_imported` | 0 | <= 0 | yes | Unsupported or hostile Ossie expressions that become metrics: 0 |
 | `first_tenant_unchanged` | 1 | >= 1.0 | yes | The first tenant's answers are unchanged after onboarding: 100% |
-| `round_trip_omissions` | 2 | >= 0 | yes | Metrics and time dimensions an export omits (informational; a documented subset, not a gate) |
+| `round_trip_omissions` | 0 | <= 0 | yes | Metrics and time dimensions lost by an export then import: 0 |
 
 ## Steps
 
@@ -23,7 +23,7 @@
 | draft is refused by the registry and the compiler | yes |  |
 | the second tenant's answer equals the oracle | yes | got [['2025-02-01', '12460'], ['2025-01-01', '4650'], ['2025-03-01', '1190']], wanted [['2025-02-01', '12460'], ['2025-01-01', '4650'], ['2025-03-01', '1190']] |
 | each tenant can use only its own contract | yes | own=completed |
-| export then import keeps dataset ids | yes | export omits (by the ADS-008 subset): ['dimension.subs.billed_at', 'mrr'] |
+| export then import keeps dataset ids | yes | export omits (by the ADS-008 subset): [] |
 | unsupported and hostile expressions are reported lossy and dropped | yes | metrics=['mrr'] |
 | the first tenant still gets the oracle answer | yes |  |
 
@@ -42,4 +42,3 @@
 - **real_ossie_models**: one small hand-written model in the pinned 0.2.0.dev0 subset; real-world Ossie documents, other versions, and lossy constructs beyond metric expressions are not exercised
 - **live_warehouse**: a local Parquet file stands in for the tenant's warehouse
 - **identity_and_groups**: the second tenant's identity provider mapping is not onboarded
-- **export_of_metrics**: Ossie export carries datasets and fields only (the ADS-008 subset): metrics and time-dimension flags are not exported, so a round trip is not lossless. Whether export should carry metrics is a decision for the user; it would not change the Compass contract schema.
