@@ -1,0 +1,45 @@
+{
+  "suite_version": "m7-abstention-v1",
+  "corpus_sha256": "dc21ae598a6567359a3b95e198c2482eba2f1660b3b1881352510908e3155314",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Gates chosen by the implementing agent from plan section 10 (refusal recall 100%, clarify recall >= 95%) and zero-guess, zero-execution, and no-confidence-claim rules. Not approved."
+  },
+  "gates": {
+    "abstention_recall": {
+      "op": ">=",
+      "value": 1.0
+    },
+    "guess_rate": {
+      "op": "<=",
+      "value": 0
+    },
+    "unsupported_reason_precision": {
+      "op": ">=",
+      "value": 1.0
+    },
+    "clarify_recall": {
+      "op": ">=",
+      "value": 0.95
+    },
+    "false_abstention_rate": {
+      "op": "<=",
+      "value": 0.05
+    },
+    "executed_queries_on_abstention": {
+      "op": "<=",
+      "value": 0
+    },
+    "uncalibrated_confidence_claims": {
+      "op": "<=",
+      "value": 0
+    }
+  },
+  "not_measured": {
+    "real_model_abstention": "the model is replaced by chosen outputs; a real model's tendency to guess is not measured",
+    "calibration": "no model confidence exists to calibrate; the system claims none, and calibration of a real model's confidence is not evaluated",
+    "near_miss_questions": "see the open gap in the report: the scripted keyword model answers some"
+  }
+}

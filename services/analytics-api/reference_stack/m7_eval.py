@@ -72,3 +72,12 @@ PACKETS = {
     "071": ("ADS-071-correctness-report", run_correctness, render_correctness),
 }
 PACKETS["072"] = _retrieval()
+
+
+def _abstention():
+    from reference_stack import abstention_eval
+
+    return ("ADS-073-abstention-report", abstention_eval.run_abstention, abstention_eval.render_markdown)
+
+
+PACKETS["073"] = _abstention()

@@ -246,6 +246,9 @@ Canonical task status is in
   - **ADS-072** retrieval evaluation (`reference_stack/retrieval_eval.py`, `m7/retrieval-*.json`, `make analytics-m7-retrieval`): 40 queries over a trap-laden catalogue through the real `OpenSearchContextIndex` adapter into
     an in-memory stand-in (term overlap, not BM25); six proposed gates met (top-3 recall, zero uncertified/foreign results, provenance, stale detection, -78% tokens vs whole-catalogue baseline, no overruns). Finding: the adapter's
     per-hit re-check keeps leaks at zero even when the backend ignores filters. Not measured: real ranking, live index, ADS-007 baseline. Packet: `ADS-072-retrieval-evaluation.md`.
+  - **ADS-073** abstention evaluation (`reference_stack/abstention_eval.py`, `m7/abstention-*.json`, `make analytics-m7-abstention`): 30 chosen-model-output cases through the whole pipeline; seven proposed gates met (zero guesses, zero queries
+    run on abstention, no confidence claims). **Fixed a defect:** an unsupported request was reported as a retryable `planner_unavailable` outage; it is now `refuse / unsupported_request`. **Open gap:** the scripted model answered all 4 near-miss
+    questions (no intent-echo check exists); a real model or such a check is the user's decision. Packet: `ADS-073-abstention-evaluation.md`.
   - **Next:** PRs #25-#29 (ADS-055..059) are all merged to `main` (the last three on 2026-10-13). M5's packets are implemented
     and in `review`. **Wave 6A (M6) is implemented:** ADS-060, ADS-062, ADS-063 (all `review`); next is wave 6B (ADS-061 MCP adapter,
     ADS-064 customer-data-plane simulator, ADS-065 traces/metrics/redaction). Open user decisions: approve/amend the

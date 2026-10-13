@@ -102,7 +102,7 @@ def test_real_runs_are_triaged_by_the_documented_rules(
 
 def test_a_failed_planning_step_is_an_intent_fault_and_blaming_context_conflicts(tmp_path):
     stack, client, run = _run(tmp_path, question="Tell me a joke")
-    assert run["outcome"]["outcome"] == "failed"
+    assert run["outcome"]["outcome"] == "refuse" and run["outcome"]["reason_code"] == "unsupported_request"
     record, _ = _triage(stack, client, run, reason_code="wrong_metric")
     assert (record.category, record.rule_id, record.conflict) == ("intent", "T-20", False)
     other, _ = _triage(stack, client, run, key="fb-key-0002", reason_code="missing_context")

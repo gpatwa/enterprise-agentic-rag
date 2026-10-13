@@ -45,7 +45,7 @@ def test_journey_covers_the_governed_boundaries():
         "monthly revenue returns a grounded answer",
         "idempotent replay returns the same run and fingerprint",
         "terminal run is sealed in a verified evidence chain",
-        "an unsupported question fails safely without a result",
+        "an unsupported question is refused as unsupported, without a result",
         "an expensive plan pauses for human review",
         "the requester cannot approve their own plan",
     ):

@@ -262,6 +262,10 @@ analytics-m7-correctness:
 analytics-m7-retrieval:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack m7 072 --write-report ../../docs/execution/enterprise-analytics/reports
 
+# ADS-073 ambiguity, abstention, unsupported-question, and calibration evaluation (fakes only); thresholds are proposed.
+analytics-m7-abstention:
+	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack m7 073 --write-report ../../docs/execution/enterprise-analytics/reports
+
 # M4 golden suite (fakes only); regenerates the report against the user-approved M4 thresholds.
 analytics-golden:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack golden --write-report ../../docs/execution/enterprise-analytics/reports

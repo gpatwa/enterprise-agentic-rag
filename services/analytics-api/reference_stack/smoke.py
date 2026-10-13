@@ -109,8 +109,10 @@ def run_journey(engine: Engine) -> JourneyReport:
         headers=_headers(stack, "requester", "key-00000004"),
     ).json()
     check(
-        "an unsupported question fails safely without a result",
-        (unknown.get("outcome") or {}).get("outcome") == "failed" and "result" not in unknown["outcome"],
+        "an unsupported question is refused as unsupported, without a result",
+        (unknown.get("outcome") or {}).get("outcome") == "refuse"
+        and unknown["outcome"].get("reason_code") == "unsupported_request"
+        and "result" not in unknown["outcome"],
         str(unknown)[:200],
     )
 
