@@ -49,9 +49,9 @@ that is a one-line change in `caller_kind` and should be a separate, explicit de
 
 - The surface is a library: no transport, authentication, or session handling. A caller (the ADS-061 MCP adapter, or a test)
   supplies a verified `AnalyticsIdentity`.
-- `caller_kind` recognises automated identities by the ADS-055 prefixes and delegation by three claim names. The OIDC
-  verifier does not yet carry those claims through (ADS-063), so today a delegated token would not be recognised as delegated
-  until ADS-063 lands; tests build the identities directly.
+- `caller_kind` recognises automated identities by the ADS-055 prefixes and delegation by three claim names. **Update (ADS-063):**
+  the OIDC verifier now carries a valid RFC 8693 actor claim through as `act_sub`, `caller_kind` and `DELEGATION_CLAIMS` live in
+  `app/security/identity.py` (re-exported from `app.agent_tools`), and the REST review endpoint applies the same human-only rule.
 - The service's own `decide_review` applies the ADS-038 rules (no self-approval, plan fingerprint, expiry); the ADS-055
   automated-identity rule applies to the *candidate-review* workflow, not to run approval, which is why the human-only rule is
   enforced in this layer.

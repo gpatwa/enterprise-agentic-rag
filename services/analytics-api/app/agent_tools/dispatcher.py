@@ -11,9 +11,9 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from app.review.rules import is_automated
 from app.runtime.analyze_service import GovernedAnalyzeService, ServiceError
 from app.runtime.evidence_store import EvidenceNotFoundError, EvidenceStore
+from app.security.identity import caller_kind
 from packages.platform_contracts.agent_tools import (
     ARGUMENT_MODELS,
     TOOLS,
@@ -25,16 +25,6 @@ from packages.platform_contracts.agent_tools import (
 )
 from packages.platform_contracts.evidence import EvidenceEnvelope
 from packages.platform_contracts.security import AnalyticsIdentity
-
-# A token that names an acting party on behalf of the subject carries one of these claims (ADS-063 propagates them).
-DELEGATION_CLAIMS = ("act_sub", "azp_agent", "delegated_by")
-
-
-def caller_kind(identity: AnalyticsIdentity) -> str:
-    """`agent` for automated or delegated callers; `human` only for a direct, non-automated identity."""
-    if is_automated(identity.user_id) or any(identity.claims.get(claim) for claim in DELEGATION_CLAIMS):
-        return "agent"
-    return "human"
 
 
 class AgentToolSurface:
