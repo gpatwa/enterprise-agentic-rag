@@ -187,10 +187,16 @@ Canonical task status is in
     `reference_stack/poisoning/poisoning-thresholds.proposed.json` are **PROPOSED, NOT APPROVED**; this is not the M5
     `separation_of_duties_review` and not an independent review. Collusion between two real reviewers is out of scope.
     Packet: `ADS-059-poisoning-evaluation.md`. **This completes wave 5D (all of M5's packets are now implemented, in `review`).**
-  - **Next:** the user's decisions: merge #25, #26, #27 in order; approve (or amend) the proposed thresholds for ADS-054..057
-    and the rollout policy; then wave 5D (ADS-058 drift monitors, ADS-059 closed-loop safety and poisoning evaluation) and the
-    M5 human gate `separation_of_duties_review` (still open). ADS-040..057 are still `review` (no independent review of the
-    code), M1 certification is pending, nothing was validated live.
+  - **ADS-060** versioned agent tool surface (`packages/platform_contracts/agent_tools.py`, `app/agent_tools/`; M6 wave 6A): five
+    strict tools (analyze, status, clarify, review, evidence) over the same `GovernedAnalyzeService` as REST; `analytics.review`
+    is human-only (automated, `agent:`/`system:`/`service:`/`model:`, and delegated-claim identities are refused); evidence is a
+    data-free summary with the chain position; schemas are pinned by `catalogue.lock.json` and a generated catalogue doc. No
+    transport or endpoint yet (ADS-061 is the MCP adapter). Packet: `ADS-060-agent-tool-surface.md`.
+  - **Next:** PRs #25-#29 (ADS-055..059) are all merged to `main` (the last three on 2026-10-13). M5's packets are implemented
+    and in `review`. **Wave 6A (M6) is in progress:** ADS-060 done (`review`), then ADS-062 (portable artifact) and ADS-063
+    (identity/delegation), then wave 6B (ADS-061 MCP adapter, ADS-064, ADS-065). Open user decisions: approve/amend the
+    proposed thresholds for ADS-054..059 and the rollout policy and drift rules; the M5 gate `separation_of_duties_review`;
+    independent review of ADS-040..060; M1 certification (pending); nothing was validated live.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls
     `new_governed_run_state`, `record_terminal_evidence`, or the control-total
     builder in a production path yet (ADS-045 owns API/worker wiring; the control
