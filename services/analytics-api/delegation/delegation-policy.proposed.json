@@ -1,0 +1,12 @@
+{
+  "policy_version": "delegation-policy-v1",
+  "grants": [
+    {"agent_id": "agent-planner", "purposes": ["analytics"], "groups": [], "tenants": []}
+  ],
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. No delegated token is honoured until the user approves a delegation policy; only the user may approve or change it. The example grant gives one agent the analytics purpose and no groups."
+  }
+}

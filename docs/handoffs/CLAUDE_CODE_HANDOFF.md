@@ -197,9 +197,16 @@ Canonical task status is in
     are opt-in and never change the ID; volatile and sensitive fields are excluded; REST, the ADS-060 tool surface, and the service
     produce the same artifact and view; 13 tamperings are rejected; verifiable against the live evidence chain. No transport yet.
     Packet: `ADS-062-analysis-artifact.md`.
+  - **ADS-063** identity and delegated-purpose policy (`app/security/identity.py`, `packages/platform_contracts/delegation.py`,
+    hardened `app/security/oidc.py`; `V2Runtime.resolver`): token claims are strictly validated (a 30-case issuer-agnostic negative suite;
+    **12 of the 30 were accepted by the previous verifier**, including disagreeing `tid`/`tenant_id`); groups are intersected with a
+    directory on every request so a removal takes effect on the next call; a delegated (`act`) token gets only the intersection of the
+    person's and the agent's purposes and groups, requires an **approved** delegation policy (the shipped one is PROPOSED, so delegation
+    is off), and is an agent call that can never decide a review (now also enforced on REST). Local issuer only: the "real IdP" suite
+    is not run. Packet: `ADS-063-identity-delegation.md`. **This completes wave 6A.**
   - **Next:** PRs #25-#29 (ADS-055..059) are all merged to `main` (the last three on 2026-10-13). M5's packets are implemented
-    and in `review`. **Wave 6A (M6) is in progress:** ADS-060 done (`review`), then ADS-062 (portable artifact) and ADS-063
-    (identity/delegation), then wave 6B (ADS-061 MCP adapter, ADS-064, ADS-065). Open user decisions: approve/amend the
+    and in `review`. **Wave 6A (M6) is implemented:** ADS-060, ADS-062, ADS-063 (all `review`); next is wave 6B (ADS-061 MCP adapter,
+    ADS-064 customer-data-plane simulator, ADS-065 traces/metrics/redaction). Open user decisions: approve/amend the
     proposed thresholds for ADS-054..059 and the rollout policy and drift rules; the M5 gate `separation_of_duties_review`;
     independent review of ADS-040..060; M1 certification (pending); nothing was validated live.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls

@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Response
 
 from app.runtime.analyze_service import GovernedAnalyzeService, ServiceError
 from app.runtime.feedback_service import FeedbackService
-from app.security import AuthenticationError, OIDCVerifier
+from app.security import AuthenticationError, IdentityResolver, OIDCVerifier, caller_kind
 from packages.platform_contracts.analytics_v2_api import (
     AnalyzeRequest,
     AnalyzeRunResponse,
@@ -28,6 +28,7 @@ class V2Runtime:
     service: GovernedAnalyzeService | None = None
     verifier: OIDCVerifier | None = None
     feedback: FeedbackService | None = None
+    resolver: IdentityResolver | None = None  # when set, it replaces the bare verifier (groups, delegation)
 
 
 def build_v2_router(runtime: V2Runtime, api_key_dependency) -> APIRouter:
@@ -40,7 +41,7 @@ def build_v2_router(runtime: V2Runtime, api_key_dependency) -> APIRouter:
         if scheme.lower() != "bearer" or not token:
             raise HTTPException(401, "missing_bearer_token", headers={"WWW-Authenticate": "Bearer"})
         try:
-            return runtime.verifier.verify(token)
+            return runtime.resolver.resolve(token) if runtime.resolver else runtime.verifier.verify(token)
         except AuthenticationError as exc:
             raise HTTPException(401, "invalid_identity_token", headers={"WWW-Authenticate": "Bearer"}) from exc
 
@@ -87,6 +88,8 @@ def build_v2_router(runtime: V2Runtime, api_key_dependency) -> APIRouter:
     def review(
         run_id: str, body: ReviewDecisionRequest, response: Response, who: AnalyticsIdentity = Depends(identity)
     ):
+        if caller_kind(who) != "human":  # agents and delegated callers can never decide a review
+            raise HTTPException(403, "human_required")
         return respond(
             lambda: runtime.service.decide_review(
                 who,
