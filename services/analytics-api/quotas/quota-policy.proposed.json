@@ -1,0 +1,13 @@
+{
+  "policy_version": "quota-policy-v1",
+  "default": {"requests_per_minute": 60, "burst": 20, "max_concurrent_runs": 4, "daily_cost_units": 10000, "warn_fraction": 0.8},
+  "tenants": {},
+  "slo": {
+    "success_target": 0.99, "p95_latency_seconds": 8, "fast_window_seconds": 300, "slow_window_seconds": 3600,
+    "fast_burn_rate": 14.4, "slow_burn_rate": 6.0, "min_requests": 20
+  },
+  "approval": {
+    "status": "proposed", "approved_by": null, "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. These limits were chosen without production data and must be re-baselined for the staging model and warehouse; only the user may approve or change them."
+  }
+}

@@ -218,6 +218,10 @@ Canonical task status is in
     evidence via proxies; allow-listed span attributes and metric labels, a pattern redactor, `run_ref` correlation, capped label
     cardinality, Prometheus text; nothing sensitive in exported telemetry (tested). In-memory only; not mounted; the data-plane agent is
     not instrumented. Packet: `ADS-065-observability.md`. **This completes wave 6B.**
+  - **ADS-066** per-tenant quotas, SLOs, cost attribution, alerts (`app/quotas/`, `packages/platform_contracts/quotas.py`): token-bucket rate limit, concurrency
+    cap, daily cost budget (resets 00:00 UTC), cost attributed once per run from sealed evidence, deduplicated alerts, two-window SLO burn
+    rates; admission happens before any query runs; a deterministic load simulator (reused by ADS-076). The policy is **PROPOSED**; state is
+    in-memory (HA is ADS-068); not mounted. Packet: `ADS-066-quotas-slos.md`.
   - **Next:** PRs #25-#29 (ADS-055..059) are all merged to `main` (the last three on 2026-10-13). M5's packets are implemented
     and in `review`. **Wave 6A (M6) is implemented:** ADS-060, ADS-062, ADS-063 (all `review`); next is wave 6B (ADS-061 MCP adapter,
     ADS-064 customer-data-plane simulator, ADS-065 traces/metrics/redaction). Open user decisions: approve/amend the
