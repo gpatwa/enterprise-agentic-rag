@@ -1,0 +1,137 @@
+{
+  "packet": "ADS-076",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Latency numbers are plan section 10 (P95 <= 8 s, compile/policy <= 250 ms). Concurrency, token, cost, and fairness gates are the implementing agent's proposals. The plan requires latency and cost to be re-baselined for the selected staging model and warehouse. Not approved. Cost ceilings were set from the reference stack's own estimates (25 to 200 uncalibrated units per answer) and a modest analyst workload (100 answers a day); they are placeholders until real prices and usage exist."
+  },
+  "ok": false,
+  "gates": {
+    "p95_warm_latency_seconds": {
+      "value": 0.04370537539944053,
+      "op": "<=",
+      "threshold": 8.0,
+      "meets": true
+    },
+    "p95_concurrent_latency_seconds": {
+      "value": 0.5486589167267084,
+      "op": "<=",
+      "threshold": 8.0,
+      "meets": true
+    },
+    "p95_compile_policy_overhead_ms": {
+      "value": 0.5001653917133808,
+      "op": "<=",
+      "threshold": 250.0,
+      "meets": true
+    },
+    "concurrent_errors_or_wrong_rows": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "prompt_tokens_per_intent_max": {
+      "value": 110,
+      "op": "<=",
+      "threshold": 2000,
+      "meets": true
+    },
+    "cost_per_answer_usd": {
+      "value": 0.05622619886363636,
+      "op": "<=",
+      "threshold": 0.25,
+      "meets": true
+    },
+    "warehouse_cost_units_per_answer": {
+      "value": 108.25,
+      "op": "<=",
+      "threshold": 150,
+      "meets": true
+    },
+    "quiet_tenant_denials": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "noisy_tenant_over_quota": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "answers_per_tenant_day": {
+      "value": 92.37875288683603,
+      "op": ">=",
+      "threshold": 100,
+      "meets": false
+    }
+  },
+  "gate_plan": {
+    "p95_warm_latency_seconds": "P95 warm answer latency, local reference data <= 8 seconds",
+    "p95_concurrent_latency_seconds": "P95 at target concurrency <= 8 seconds",
+    "p95_compile_policy_overhead_ms": "P95 deterministic compile/policy overhead <= 250 ms",
+    "concurrent_errors_or_wrong_rows": "No errors or wrong rows under concurrency: 0",
+    "prompt_tokens_per_intent_max": "Context tokens per intent stay within the run's context budget",
+    "cost_per_answer_usd": "Unit economics: assumed cost per answered question within the proposed ceiling",
+    "warehouse_cost_units_per_answer": "Warehouse cost units per answer (mean over the question mix) within the proposed ceiling",
+    "answers_per_tenant_day": "The proposed daily cost budget affords a tenant at least this many answers a day",
+    "quiet_tenant_denials": "A noisy neighbour does not deny a quiet tenant: 0",
+    "noisy_tenant_over_quota": "A tenant above its quota is held to it: 0 admissions above the allowed"
+  },
+  "samples": {
+    "warm_requests": 200,
+    "concurrent_requests": 320,
+    "workers": 8,
+    "throughput_per_second": {
+      "duckdb": 41.4,
+      "postgres": 45.7
+    },
+    "latency_seconds": {
+      "p50": 0.03292316710576415,
+      "p95": 0.04370537539944053,
+      "p99": 0.0606865412555635
+    },
+    "cost_units_range": [
+      25.0,
+      263.0
+    ],
+    "daily_cost_units": 10000.0,
+    "mean_prompt_tokens": 109.5,
+    "mean_completion_tokens": 118.17992424242425,
+    "peak_rss_mb": 214.5
+  },
+  "assumed_prices": {
+    "usd_per_million_input_tokens": 3.0,
+    "usd_per_million_output_tokens": 15.0,
+    "usd_per_warehouse_cost_unit": 0.0005,
+    "note": "PLACEHOLDERS chosen by the implementing agent so that unit economics can be computed; not quotes from any provider or warehouse. Replace with the selected model and warehouse prices."
+  },
+  "fairness": {
+    "duration_seconds": 120,
+    "noisy": {
+      "offered": 1200,
+      "admitted": 139,
+      "denied": {
+        "concurrency_limited": 5,
+        "rate_limited": 1056
+      },
+      "allowed_at_most": 144.0
+    },
+    "quiet": {
+      "offered": 120,
+      "admitted": 120,
+      "denied": {}
+    }
+  },
+  "not_measured": {
+    "real_model_latency": "the model is scripted and instant; a real model call typically dominates latency and cost and is the largest unknown",
+    "real_warehouse": "DuckDB over a 100-row table and an emulated PostgreSQL say nothing about warehouse latency, scan cost, or concurrency",
+    "target_load": "no target load is declared; 8 concurrent workers on one process is a smoke test, not a capacity test",
+    "control_store": "the control store is SQLite in a local file; PostgreSQL contention and connection pooling are not measured",
+    "infrastructure_cost": "compute, storage, network, and observability costs are not modelled; only model tokens and warehouse cost units are",
+    "token_baseline": "the plan's -20% target is against the ADS-007 baseline, which this evaluation does not compare to (see ADS-072 for the retrieval-side token reduction)"
+  }
+}
