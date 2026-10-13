@@ -34,6 +34,7 @@ from app.execution import (
 from app.prompt_registry import ExampleCandidateService, PromptRegistry
 from app.proposals import DbtProject, DbtProposalService, ProposalService, ProposalStore
 from app.review import ReviewService, ReviewStore, SubjectResolver
+from app.rollout import RolloutController, RolloutStore
 from app.runtime import (
     AgentGraphRunner,
     BootstrapRequest,
@@ -281,6 +282,12 @@ class ReferenceStack:
             ProposalStore(engine),
             self.contracts,
             project=project,
+        )
+
+    def rollout_controller(self, policy, observers, *, review, evaluations, now=None) -> RolloutController:
+        kwargs = {"now": now} if now is not None else {}
+        return RolloutController(
+            RolloutStore(self.control.engine), review, evaluations, self.prompt_registry(), observers, policy, **kwargs
         )
 
     def evaluation_service(self, runners, index, protected_paths, *, review=None, now=None) -> EvaluationService:

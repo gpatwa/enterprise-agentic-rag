@@ -67,7 +67,9 @@ class PromptTemplate(_Frozen):
     text_fingerprint: str = Field(pattern=_HEX64)
     parent_version: str | None = None
     origin_triage_ids: tuple[str, ...] = ()
-    created_by: Literal["system:baseline", "system:candidate"]
+    created_by: Literal["system:baseline", "system:candidate", "system:promotion"]
+    promoted_from: str | None = None
+    promotion_id: str | None = Field(default=None, min_length=1, max_length=255)
     created_at: datetime
     content_fingerprint: str = Field(pattern=_HEX64)
 
@@ -94,18 +96,30 @@ class PromptTemplate(_Frozen):
         if missing:
             raise ValueError("a prompt must keep the baseline's defensive clauses")
         if self.status == "released":
-            if not (
-                _RELEASED_VERSION.match(self.version)
-                and self.scope == "system"
-                and self.tenant_id is None
-                and self.created_by == "system:baseline"
+            common = _RELEASED_VERSION.match(self.version) and self.scope == "system" and self.tenant_id is None
+            baseline = (
+                self.created_by == "system:baseline"
                 and self.parent_version is None
                 and not self.origin_triage_ids
-            ):
-                raise ValueError("a released prompt is a system baseline with a vN version and no parent")
+                and self.promoted_from is None
+                and self.promotion_id is None
+            )
+            promoted = (
+                self.created_by == "system:promotion"
+                and bool(self.parent_version)
+                and bool(self.promoted_from and _CANDIDATE_VERSION.match(self.promoted_from))
+                and bool(self.promotion_id)
+            )
+            if not (common and (baseline or promoted)):
+                raise ValueError(
+                    "a released prompt is a system version vN: either the baseline (no parent) or a promotion "
+                    "of a named candidate by a recorded rollout"
+                )
         else:
             if self.version != candidate_version(self.text_fingerprint):
                 raise ValueError("a candidate's version is derived from its content")
+            if self.promoted_from is not None or self.promotion_id is not None:
+                raise ValueError("only a released prompt records a promotion")
             if self.created_by != "system:candidate" or not self.parent_version:
                 raise ValueError("a candidate names its parent version and is created by the candidate path")
             if self.scope == "tenant" and not self.tenant_id:
@@ -154,5 +168,10 @@ class ExampleCandidate(_Frozen):
 
 def content_fingerprint(model: BaseModel) -> str:
     """Digest of the entry's content, excluding its creation time so identical content is identical."""
-    payload = {k: v for k, v in model.model_dump(mode="json").items() if k not in {"content_fingerprint", "created_at"}}
+    skip = {"content_fingerprint", "created_at"}
+    payload = {
+        k: v
+        for k, v in model.model_dump(mode="json").items()
+        if k not in skip and not (k in {"promoted_from", "promotion_id"} and v is None)  # keeps older entries' digests
+    }
     return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()

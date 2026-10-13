@@ -163,10 +163,19 @@ Canonical task status is in
     defaults to the runtime prompt; review flags on a contract copy). Corpus thresholds in
     `reference_stack/evaluation/evaluation-thresholds.proposed.json` are **PROPOSED, NOT APPROVED**. Packet:
     `ADS-056-candidate-evaluation.md`. Suite: **571 passed**. (Stacked on the ADS-055 branch; PR #25 must merge first.)
-  - **Next:** ADS-057 (shadow, canary, promotion with automatic rollback; promotion only creates a new released
-    registry version and never wires the runtime; consumes `review.is_approved` and `evaluation.passed`). The user
-    confirmed this plan. ADS-040..056 are still `review` (no independent review of the code), M1 certification is
-    pending, nothing was validated live, and the M5 human gate (`separation_of_duties_review`) is still open.
+  - **ADS-057** rollout controller (`packages/platform_contracts/rollout.py`, `app/rollout/`, migration `0011`; registry gained
+    `release_promoted`/`next_release_version`; a released prompt may now be a recorded promotion): start needs an *approved*
+    rollout policy, a human starter, an approved fresh review, a passing evaluation, and the candidate's parent still
+    active; shadow then canary stages (each re-checks the gates) roll back automatically on failure; promote creates the next
+    released version and appends the active pointer; rollback only appends (reverted pointer, event), deleting nothing.
+    **The runtime reads none of it.** The shipped policy `reference_stack/rollout/rollout-policy.proposed.json` is
+    **PROPOSED, NOT APPROVED**, so the controller refuses to run until the user approves it; corpus thresholds in
+    `reference_stack/rollout/rollout-thresholds.proposed.json` are also proposed. Packet: `ADS-057-rollout-controller.md`.
+    Suite: **585 passed** (about 4.5 min). Stacked on the ADS-056 branch. **This completes wave 5C.**
+  - **Next:** the user's decisions: merge #25, #26, #27 in order; approve (or amend) the proposed thresholds for ADS-054..057
+    and the rollout policy; then wave 5D (ADS-058 drift monitors, ADS-059 closed-loop safety and poisoning evaluation) and the
+    M5 human gate `separation_of_duties_review` (still open). ADS-040..057 are still `review` (no independent review of the
+    code), M1 certification is pending, nothing was validated live.
   - **Known unwired seams (intentional, owned by later packets):** nothing calls
     `new_governed_run_state`, `record_terminal_evidence`, or the control-total
     builder in a production path yet (ADS-045 owns API/worker wiring; the control

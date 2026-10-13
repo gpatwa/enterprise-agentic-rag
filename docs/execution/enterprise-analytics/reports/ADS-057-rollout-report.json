@@ -1,0 +1,191 @@
+{
+  "suite_version": "rollout-corpus-v1",
+  "rules_version": "rollout-rules-v1",
+  "corpus_sha256": "530321c05dad56b157a9d94ea54b26fb3bc5db5061b1c8132d5cdff0cc7798f0",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. Only the user may approve or change thresholds."
+  },
+  "meets_thresholds": true,
+  "gates": {
+    "outcome_agreement": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "cases whose outcome (promoted version, rolled back with a reason, or refused with a code) equals the hand-written expectation"
+    },
+    "ungated_start_refusal": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "starts without approved review, passing evaluation, approved policy, a human starter, or an active parent that are refused"
+    },
+    "bad_candidate_rollback": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "shadow, canary, monitor, and lost-gate failures that end rolled back automatically"
+    },
+    "pointer_integrity": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "rollouts whose pointer history only names released versions and ends at the expected version"
+    },
+    "release_immutability": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "released registry rows whose stored content changed during a rollout or rollback"
+    },
+    "evidence_preserved": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "rollbacks that delete or alter no run, evidence, feedback, review, or evaluation row"
+    },
+    "idempotency": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true,
+      "measure": "repeated promote calls that create one release and one pointer move"
+    },
+    "runtime_unwired": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "runtime modules that read the rollout controller, the release pointer, or the prompt registry"
+    },
+    "protected_file_writes": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true,
+      "measure": "changes to goldens, thresholds, the case index, the runtime prompt, registry contracts, or the manifest during the run"
+    }
+  },
+  "not_measured": {
+    "live_traffic": "shadow, canary, and monitor use a pinned request set served through sandbox stacks, not production traffic",
+    "runtime_wiring": "nothing reads the promoted version or the active pointer; wiring the runtime to the registry needs its own separately approved step"
+  },
+  "cases": [
+    {
+      "case_id": "K01",
+      "op": "happy_path",
+      "group": "promote",
+      "expected": "promoted:v2",
+      "got": "promoted:v2",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "K02",
+      "op": "no_review",
+      "group": "gate",
+      "expected": "refused:review_not_approved",
+      "got": "refused:review_not_approved",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "K03",
+      "op": "no_evaluation",
+      "group": "gate",
+      "expected": "refused:evaluation_not_passed",
+      "got": "refused:evaluation_not_passed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "K04",
+      "op": "harmful_candidate",
+      "group": "gate",
+      "expected": "refused:evaluation_not_passed",
+      "got": "refused:evaluation_not_passed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "K05",
+      "op": "repository_policy_not_approved",
+      "group": "policy",
+      "expected": "refused:rollout_policy_not_approved",
+      "got": "refused:rollout_policy_not_approved",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "K06",
+      "op": "automated_starter",
+      "group": "gate",
+      "expected": "refused:automated_identity",
+      "got": "refused:automated_identity",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "K07",
+      "op": "shadow_fault",
+      "group": "rollback",
+      "expected": "rolled_back:shadow_disagreement",
+      "got": "rolled_back:shadow_disagreement",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "K08",
+      "op": "canary_fault",
+      "group": "rollback",
+      "expected": "rolled_back:canary_regression:0.5",
+      "got": "rolled_back:canary_regression:0.5",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "K09",
+      "op": "monitor_fault",
+      "group": "rollback",
+      "expected": "rolled_back:monitor_regression",
+      "got": "rolled_back:monitor_regression",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "K10",
+      "op": "stale_approval",
+      "group": "rollback",
+      "expected": "rolled_back:gate_lost:approval_stale",
+      "got": "rolled_back:gate_lost:approval_stale",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "K11",
+      "op": "skip_canary",
+      "group": "gate",
+      "expected": "refused:canary_incomplete",
+      "got": "refused:canary_incomplete",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "case_id": "K12",
+      "op": "double_promote",
+      "group": "promote",
+      "expected": "promoted:v2",
+      "got": "promoted:v2",
+      "passed": true,
+      "detail": ""
+    }
+  ]
+}
