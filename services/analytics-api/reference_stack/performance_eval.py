@@ -23,8 +23,8 @@ from app.quotas import QuotaManager
 from app.quotas.simulation import FakeClock, simulate
 from packages.platform_contracts.quotas import QuotaPolicy
 from reference_stack import m7_corpus as corpus_module
-from reference_stack.golden import canonical_rows
 from reference_stack import stack as stack_module
+from reference_stack.golden import canonical_rows
 from reference_stack.stack import build_stack
 
 HERE = Path(__file__).parent / "m7"
