@@ -117,3 +117,12 @@ def _provider():
 
 
 PACKETS["077"] = _provider()
+
+
+def _onboarding():
+    from reference_stack import onboarding_eval
+
+    return ("ADS-078-onboarding-report", onboarding_eval.run_onboarding, onboarding_eval.render_markdown)
+
+
+PACKETS["078"] = _onboarding()
