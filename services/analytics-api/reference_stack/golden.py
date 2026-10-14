@@ -59,9 +59,9 @@ class Observations:
     rows_by_case: dict[str, dict[str, list]] = field(default_factory=dict)
 
 
-def load_suite() -> tuple[dict, dict]:
-    raw = CORPUS.read_bytes()
-    thresholds = json.loads(THRESHOLDS.read_text())
+def load_suite(corpus: Path | None = None, thresholds_path: Path | None = None) -> tuple[dict, dict]:
+    raw = (corpus or CORPUS).read_bytes()
+    thresholds = json.loads((thresholds_path or THRESHOLDS).read_text())
     if hashlib.sha256(raw).hexdigest() != thresholds["corpus_sha256"]:
         raise SuiteLockError("golden corpus changed without updating the pinned digest in the thresholds file")
     return json.loads(raw), thresholds
@@ -160,7 +160,7 @@ def _refusal_case(stack, client, case, engine, obs: Observations) -> None:
 
 def _tenant_case(stack, client, case, engine, obs: Observations, known_run: str | None) -> None:
     before = len(stack.executed_sql)
-    foreign = _post(client, stack, case["question"], "golden-T01-0", tenant="tenant-b")
+    foreign = _post(client, stack, case["question"], f"golden-{case['id']}-0", tenant="tenant-b")
     leak = foreign.status_code == 200 and "result" in (foreign.json().get("outcome") or {})
     read = (
         client.get(
@@ -295,9 +295,13 @@ def evaluate(metrics: dict[str, float], thresholds: dict) -> dict[str, dict[str,
 
 
 def run_golden(
-    engines: tuple[Engine, ...] = ("duckdb", "postgres"), *, stack_kwargs: dict | None = None
+    engines: tuple[Engine, ...] = ("duckdb", "postgres"),
+    *,
+    stack_kwargs: dict | None = None,
+    corpus: Path | None = None,
+    thresholds_path: Path | None = None,
 ) -> dict[str, Any]:
-    suite, thresholds = load_suite()
+    suite, thresholds = load_suite(corpus, thresholds_path)
     obs = Observations()
     for engine in engines:
         run_engine(engine, suite, obs, stack_kwargs=stack_kwargs)

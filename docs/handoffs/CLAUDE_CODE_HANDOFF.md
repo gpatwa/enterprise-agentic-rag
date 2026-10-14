@@ -238,6 +238,9 @@ Canonical task status is in
     11 `ops-*` runbooks (every alert kind and gate resolves to one; a test checks sections); `diagnose_run` reads a run's durable path/terminal/evidence ids (no content, `run_ref` only); 7 seeded failures
     (cost budget, rate limit, SLO burn, latency, policy-refused run, corrupt backup, failing security gate) are diagnosed to the right runbook and replay with identical signatures. No new thresholds.
     Local only; the dashboard is a library and report, not a mounted UI. Packet: `ADS-069-operations.md`. **This completes wave 6C; the M6 gate `security_and_operations_review` is the user's.**
+  - **ADS-070** reference corpus (`reference_stack/m7_corpus.py`, `reference_stack/m7/corpus-v1.json`, `corpus-approval.proposed.json`): 100 cases (60 answers, 30 marked P0 customer-style; 16
+    refusals; 4 policy-denied; 4 tenant-isolation; 8 clarify; 8 review) with expected rows from an oracle that imports nothing from the system under test; pinned by digest. **Owner approval
+    (definition owner and results owner, independently) is pending and is not recorded; the questions are phrasings of reference intents, not real customer questions.** Packet: `ADS-070-reference-corpus.md`.
   - **Next:** PRs #25-#29 (ADS-055..059) are all merged to `main` (the last three on 2026-10-13). M5's packets are implemented
     and in `review`. **Wave 6A (M6) is implemented:** ADS-060, ADS-062, ADS-063 (all `review`); next is wave 6B (ADS-061 MCP adapter,
     ADS-064 customer-data-plane simulator, ADS-065 traces/metrics/redaction). Open user decisions: approve/amend the
