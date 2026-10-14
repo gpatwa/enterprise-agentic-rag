@@ -288,7 +288,10 @@ class GovernedAnalyzeService:
         kind = state.terminal_outcome.kind
         codes = [error.code for error in state.errors]
         if kind == "succeeded":
-            material = self.answers.answer_for(state)
+            try:
+                material = self.answers.answer_for(state)
+            except LookupError:  # a restart or restore leaves the evidence but not the rows: say so, do not fail the request
+                material = None
             if material is None:
                 return AnalyticsFailedOutcome(
                     **base, error_code="internal_error", message="The answer is unavailable.", retryable=True

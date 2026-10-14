@@ -1,0 +1,13 @@
+{
+  "objectives_version": "resilience-objectives-v1",
+  "rpo_seconds": 900,
+  "rto_seconds": 900,
+  "lease_seconds": 30,
+  "takeover_factor": 2.0,
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Drafted by the implementing agent. Not approved. These targets were chosen without production data and must be re-baselined for the staging database and its backup tooling; only the user may approve or change them."
+  }
+}

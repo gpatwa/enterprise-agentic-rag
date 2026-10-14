@@ -249,10 +249,13 @@ class ReferenceStack:
         return new_governed_run_state(SnapshotProvider(context), request, run_id=run_id, purpose=purpose, budget=budget)
 
     def answer_for(self, state):
-        return AnswerMaterial(
-            self.results.get(state.tenant_id, state.run_id, state.execution_reference),
-            self.explanations.get(state.tenant_id, state.run_id),
-        )
+        try:
+            return AnswerMaterial(
+                self.results.get(state.tenant_id, state.run_id, state.execution_reference),
+                self.explanations.get(state.tenant_id, state.run_id),
+            )
+        except LookupError:
+            return None
 
     def service(self) -> GovernedAnalyzeService:
         return GovernedAnalyzeService(

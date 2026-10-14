@@ -1,0 +1,9 @@
+{
+  "release": "m6-wave-6c",
+  "sha256": {
+    "waiting_review": "963340945646612e1cd555eec4a664cc50d32bc529951ef69903903c5d314565",
+    "waiting_clarification": "3d95033f7623b264293a1bf1d824ff5f8da377e504097f2d0d99ecca22b5ea63",
+    "terminal_succeeded": "33fce07283dd01fdd8f8cf1010a3a4b3b4909be962675f69ef69f6c26cae803b",
+    "terminal_refused": "35d7c1fe5f68572d0218899a01d6007f4644365ec16f53cdb56a4fcbb44d3866"
+  }
+}
