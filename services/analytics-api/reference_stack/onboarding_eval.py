@@ -29,6 +29,7 @@ from packages.platform_contracts.analytics_intent import AnalyticalIntent
 from packages.platform_contracts.ossie import export_ossie, import_ossie
 from packages.platform_contracts.semantic import SemanticContract
 from reference_stack import m7_corpus as corpus_module
+from reference_stack.golden import canonical_rows
 from reference_stack.stack import SERVICE_ROOT, build_stack
 
 HERE = Path(__file__).parent / "m7"
@@ -269,7 +270,9 @@ def run_onboarding(*, thresholds: dict[str, Any] | None = None, root: Path | Non
     answer = stack.service().analyze(
         who, purpose="analytics", idempotency_key="onboard-first-001", request_text="Show monthly revenue"
     )
-    first_ok = [list(r) for r in answer.outcome.result.rows] == corpus_module.expected("monthly_paid")[1]
+    first_ok = (
+        canonical_rows([list(r) for r in answer.outcome.result.rows]) == corpus_module.expected("monthly_paid")[1]
+    )  # a month bucket may be a date or a midnight timestamp
     step("the first tenant still gets the oracle answer", first_ok)
 
     after = (_source_digest(), _schema_digest())
