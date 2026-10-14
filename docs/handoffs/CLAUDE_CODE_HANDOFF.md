@@ -233,6 +233,11 @@ Canonical task status is in
     (RPO 15m, RTO 15m, lease 30s), a lease-takeover failover drill (query runs once; zombie fenced), upgrade-with-data and mixed-worker tests, and checkpoint fixtures as the
     release-to-release compatibility contract. Fixed: a restart/restore made old answered runs raise a 500. **Not restored (decisions for the owners): answer rows, compiled plans, policy
     values (process-local), so a run paused for review before a restart fails closed.** Local only; no real HA or production recovery tested. Packet: `ADS-068-resilience.md`.
+  - **ADS-069** operations dashboard and runbooks (`app/operations/dashboard.py`, `packages/platform_contracts/ops_dashboard.py`, `reference_stack/operations_eval.py`, `make analytics-operations-drill`):
+    read-only dashboard over quota/SLO/drift alerts, 12 release-gate evidence files (status echoed from the file; **it never records or infers an approval**), and open security findings;
+    11 `ops-*` runbooks (every alert kind and gate resolves to one; a test checks sections); `diagnose_run` reads a run's durable path/terminal/evidence ids (no content, `run_ref` only); 7 seeded failures
+    (cost budget, rate limit, SLO burn, latency, policy-refused run, corrupt backup, failing security gate) are diagnosed to the right runbook and replay with identical signatures. No new thresholds.
+    Local only; the dashboard is a library and report, not a mounted UI. Packet: `ADS-069-operations.md`. **This completes wave 6C; the M6 gate `security_and_operations_review` is the user's.**
   - **Next:** PRs #25-#29 (ADS-055..059) are all merged to `main` (the last three on 2026-10-13). M5's packets are implemented
     and in `review`. **Wave 6A (M6) is implemented:** ADS-060, ADS-062, ADS-063 (all `review`); next is wave 6B (ADS-061 MCP adapter,
     ADS-064 customer-data-plane simulator, ADS-065 traces/metrics/redaction). Open user decisions: approve/amend the

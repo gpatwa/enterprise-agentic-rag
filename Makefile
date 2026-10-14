@@ -250,6 +250,10 @@ analytics-security-eval:
 analytics-resilience-drill:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack resilience --write-report ../../docs/execution/enterprise-analytics/reports
 
+# ADS-069 seeded-failure operations drill (fakes only): alerts, runbooks, diagnosis, and replay.
+analytics-operations-drill:
+	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack operations --write-report ../../docs/execution/enterprise-analytics/reports
+
 # M4 golden suite (fakes only); regenerates the report against the user-approved M4 thresholds.
 analytics-golden:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack golden --write-report ../../docs/execution/enterprise-analytics/reports

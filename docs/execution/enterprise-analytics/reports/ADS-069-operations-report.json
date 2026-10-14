@@ -1,0 +1,61 @@
+{
+  "scenarios": {
+    "cost-budget-exhausted": {
+      "expected_runbook": "ops-cost-budget",
+      "diagnosed": true,
+      "replayed_identically": true,
+      "signature": "116087cd39d8b55c608e079b59f6421643bcaca573ff7e42cd7b03d647cbb77f"
+    },
+    "rate-limited": {
+      "expected_runbook": "ops-rate-limit",
+      "diagnosed": true,
+      "replayed_identically": true,
+      "signature": "7d496e0bc2d00ee3c080f1f8afbd70e20e6f5ced9a1dd0d844f648454200bc80"
+    },
+    "slo-fast-burn": {
+      "expected_runbook": "ops-slo-burn",
+      "diagnosed": true,
+      "replayed_identically": true,
+      "signature": "adc7f0b9ccd6521bc2bb41c517c6b2d9c53287e12c0e7ae379ae5c88c7f02fd9"
+    },
+    "slo-latency": {
+      "expected_runbook": "ops-slo-latency",
+      "diagnosed": true,
+      "replayed_identically": true,
+      "signature": "4a9096476944fc494a3bde8f6b4c05f5801ad1cae2a83ccaed41955bb7b4a016"
+    },
+    "policy-refused-run": {
+      "expected_runbook": "ops-run-diagnosis",
+      "diagnosed": true,
+      "replayed_identically": true,
+      "signature": "da5a57dcb5bc37f38dbbcdce165de2d6c59ba7a8b52c9d4b009b06bfb365786e"
+    },
+    "corrupt-backup": {
+      "expected_runbook": "ops-restore",
+      "diagnosed": true,
+      "replayed_identically": true,
+      "signature": "4a5b8ff1267e54fdbbce0ac9708942264c87bc70552c5addccc479a3d3c073c7"
+    },
+    "failing-security-gate": {
+      "expected_runbook": "ops-security-finding",
+      "diagnosed": true,
+      "replayed_identically": true,
+      "signature": "0d052040ef6073bc665d9088e3e360389999283680e6765c4d353ab7755dcddd"
+    }
+  },
+  "runbooks_checked": [
+    "ops-cost-budget",
+    "ops-rate-limit",
+    "ops-slo-burn",
+    "ops-slo-latency",
+    "ops-run-diagnosis",
+    "ops-release-gate",
+    "ops-security-finding",
+    "ops-restore",
+    "ops-failover",
+    "ops-deployment-checklist",
+    "ops-rolling-upgrade"
+  ],
+  "runbook_problems": [],
+  "ok": true
+}

@@ -41,6 +41,8 @@ def main(argv: list[str] | None = None) -> int:
     poisoning.add_argument("--write-report", metavar="DIR")
     security = sub.add_parser("security", help="run the ADS-067 security corpus and print or write the report")
     security.add_argument("--write-report", metavar="DIR")
+    operations = sub.add_parser("operations", help="run the ADS-069 seeded-failure operations drill")
+    operations.add_argument("--write-report", metavar="DIR")
     resilience = sub.add_parser("resilience", help="run the ADS-068 restore and failover drills and print or write the report")
     resilience.add_argument("--write-report", metavar="DIR")
     resilience.add_argument("--write-fixtures", action="store_true", help="regenerate the pinned checkpoint fixtures (a compatibility decision)")
@@ -65,6 +67,22 @@ def main(argv: list[str] | None = None) -> int:
             if report["cross_dialect_rows_identical"] is not None:
                 print(f"cross-dialect rows identical: {report['cross_dialect_rows_identical']}")
             print("RESULT:", "PASS" if report["ok"] else "FAIL")
+        return 0 if report["ok"] else 1
+
+    if args.command == "operations":
+        from pathlib import Path
+
+        from reference_stack import operations_eval
+
+        report = operations_eval.run_scenarios()
+        markdown = operations_eval.render_markdown(report)
+        if args.write_report:
+            target = Path(args.write_report)
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "ADS-069-operations-report.md").write_text(markdown)
+            (target / "ADS-069-operations-report.json").write_text(json.dumps(report, indent=2, default=str) + "\n")
+        else:
+            print(markdown)
         return 0 if report["ok"] else 1
 
     if args.command == "resilience":
