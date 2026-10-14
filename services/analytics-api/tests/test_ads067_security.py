@@ -25,8 +25,8 @@ THREAT_MODEL = SERVICE.parent.parent / "docs/execution/enterprise-analytics/secu
 
 
 @pytest.fixture(scope="module")
-def report(tmp_path_factory):
-    return security_eval.run_corpus(tmp_path_factory.mktemp("security"))
+def report(security_report):
+    return security_report
 
 
 def _cases(report, *ids):

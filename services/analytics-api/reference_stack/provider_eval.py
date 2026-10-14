@@ -210,7 +210,14 @@ def prompt_reproducibility(root: Path) -> dict[str, Any]:
     return {"rate": matches / (len(pairs) * len(QUESTIONS)), "questions": len(QUESTIONS), "comparisons": len(pairs)}
 
 
-def run_provider_evaluation(*, thresholds: dict[str, Any] | None = None, root: Path | None = None) -> dict[str, Any]:
+def run_provider_evaluation(
+    *,
+    thresholds: dict[str, Any] | None = None,
+    root: Path | None = None,
+    rollout: dict[str, Any] | None = None,
+    poisoning: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """`rollout` and `poisoning` are the ADS-057 and ADS-059 corpus reports; when not given they are run here."""
     thresholds = thresholds or json.loads(THRESHOLDS.read_text())
     root = root or Path(tempfile.mkdtemp(prefix="analytics-provider-"))
     runs = provider_variance(root / "variance")
@@ -221,8 +228,8 @@ def run_provider_evaluation(*, thresholds: dict[str, Any] | None = None, root: P
     degraded = degraded_mode(root / "degraded")
     explainers = explainer_degradation(root / "explainer")
     reproducibility = prompt_reproducibility(root / "prompts")
-    rollout = rollout_eval.run_corpus(root / "rollout")
-    poisoning = poisoning_eval.run_corpus(root / "poisoning")
+    rollout = rollout if rollout is not None else rollout_eval.run_corpus(root / "rollout")
+    poisoning = poisoning if poisoning is not None else poisoning_eval.run_corpus(root / "poisoning")
     metrics = {
         "provider_wrong_answers": sum(r["correct"] is False for r in runs),
         "equivalent_provider_agreement": sum(

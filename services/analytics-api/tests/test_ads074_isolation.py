@@ -14,8 +14,8 @@ THRESHOLDS = json.loads(ev.THRESHOLDS.read_text())
 
 
 @pytest.fixture(scope="module")
-def report(tmp_path_factory):
-    return ev.run_isolation(root=tmp_path_factory.mktemp("isolation"))
+def report(tmp_path_factory, isolation_inputs):
+    return ev.run_isolation(**isolation_inputs, root=tmp_path_factory.mktemp("isolation"))
 
 
 def test_every_probe_is_refused_without_leaking_and_the_gates_are_met(report):
@@ -36,18 +36,18 @@ def test_open_security_findings_are_carried_into_the_report_not_hidden(report):
     assert any(f.startswith("F-03") for f in report["open_findings"])
 
 
-def test_broken_tenant_scoping_is_caught_as_a_cross_tenant_leak(monkeypatch, tmp_path):
+def test_broken_tenant_scoping_is_caught_as_a_cross_tenant_leak(monkeypatch, tmp_path, isolation_inputs):
     original = GovernedAnalyzeService.status
 
     def careless(self, identity, *, purpose, run_id):
         return original(self, identity.model_copy(update={"tenant_id": "tenant-a"}), purpose=purpose, run_id=run_id)
 
     monkeypatch.setattr(GovernedAnalyzeService, "status", careless)
-    report = ev.run_isolation(root=tmp_path)
+    report = ev.run_isolation(**isolation_inputs, root=tmp_path)
     assert report["gates"]["cross_tenant_leaks"]["value"] > 0 and not report["ok"]
 
 
-def test_a_verifier_that_accepts_any_token_is_caught_as_unauthenticated_access(monkeypatch, tmp_path):
+def test_a_verifier_that_accepts_any_token_is_caught_as_unauthenticated_access(monkeypatch, tmp_path, isolation_inputs):
     from app.security import OIDCVerifier
 
     monkeypatch.setattr(
@@ -57,25 +57,25 @@ def test_a_verifier_that_accepts_any_token_is_caught_as_unauthenticated_access(m
             tenant_id="tenant-a", user_id="requester", purposes=[ev.PURPOSE], groups=["analyst"]
         ),
     )
-    report = ev.run_isolation(root=tmp_path)
+    report = ev.run_isolation(**isolation_inputs, root=tmp_path)
     assert report["gates"]["unauthenticated_successes"]["value"] > 0 and not report["ok"]
 
 
-def test_dropping_the_purpose_check_is_caught(monkeypatch, tmp_path):
+def test_dropping_the_purpose_check_is_caught(monkeypatch, tmp_path, isolation_inputs):
     original = GovernedAnalyzeService.status
 
     def careless(self, identity, *, purpose, run_id):
         return original(self, identity.model_copy(update={"purposes": [purpose]}), purpose=purpose, run_id=run_id)
 
     monkeypatch.setattr(GovernedAnalyzeService, "status", careless)
-    report = ev.run_isolation(root=tmp_path)
+    report = ev.run_isolation(**isolation_inputs, root=tmp_path)
     assert report["gates"]["purpose_violations"]["value"] > 0 and not report["ok"]
 
 
-def test_letting_automated_callers_review_is_caught(monkeypatch, tmp_path):
+def test_letting_automated_callers_review_is_caught(monkeypatch, tmp_path, isolation_inputs):
     import app.review.rules as rules
 
     monkeypatch.setattr(rules, "is_automated", lambda user_id: False)
-    report = ev.run_isolation(root=tmp_path)
+    report = ev.run_isolation(**isolation_inputs, root=tmp_path)
     assert report["gates"]["separation_of_duties_violations"]["value"] > 0 and not report["ok"]
     assert [p["name"] for p in report["probes"] if not p["passed"]] == ["an automated caller approves a review"]

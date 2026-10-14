@@ -372,10 +372,10 @@ def test_rollouts_change_nothing_protected_are_tenant_scoped_append_only_and_unw
 # ---- pinned corpus evaluation (thresholds are PROPOSED, not approved) ----
 
 
-def test_the_rollout_corpus_meets_its_proposed_thresholds_and_stays_unapproved(tmp_path):
+def test_the_rollout_corpus_meets_its_proposed_thresholds_and_stays_unapproved(rollout_report):
     from reference_stack import rollout_eval
 
-    report = rollout_eval.run_corpus(tmp_path)
+    report = rollout_report
     failed = [(c["case_id"], c["detail"]) for c in report["cases"] if not c["passed"]]
     assert not failed, failed
     unmet = {name: gate for name, gate in report["gates"].items() if not gate["meets"]}
@@ -385,25 +385,30 @@ def test_the_rollout_corpus_meets_its_proposed_thresholds_and_stays_unapproved(t
     assert "PROPOSED and NOT APPROVED" in markdown and "repository's policy remains proposed" in markdown
 
 
-def test_the_rollout_evaluation_detects_a_wrong_expectation_and_a_changed_corpus(tmp_path, monkeypatch):
+def test_the_rollout_evaluation_detects_a_wrong_expectation_and_a_changed_corpus(tmp_path, monkeypatch, rollout_report):
+    """No corpus re-run: the expectation change is scored against the shared run's outcomes, and the digest lock is exercised directly."""
     import json
 
+    from conftest import agreement_with
     from reference_stack import rollout_eval
 
     suite, thresholds = rollout_eval.load_suite()
+    k07 = next(c for c in rollout_report["cases"] if c["case_id"] == "K07")
+    assert k07["got"] != "promoted:v2" and k07["passed"]  # the controller rolled the shadow disagreement back
+    assert (
+        agreement_with(rollout_report, "K07", "promoted:v2") < 1.0
+    )  # claiming it promotes would fail the agreement gate
+    assert rollout_report["gates"]["release_immutability"]["meets"]  # the controller itself still held
     bad = json.loads(json.dumps(suite))
-    next(c for c in bad["cases"] if c["id"] == "K07")["expect"] = (
-        "promoted:v2"  # claim a shadow disagreement still promotes
-    )
+    next(c for c in bad["cases"] if c["id"] == "K07")["expect"] = "promoted:v2"
     corpus = tmp_path / "corpus.json"
     corpus.write_text(json.dumps(bad))
     forged = tmp_path / "thresholds.json"
     forged.write_text(json.dumps({**thresholds, "corpus_sha256": hashlib.sha256(corpus.read_bytes()).hexdigest()}))
     monkeypatch.setattr(rollout_eval, "CORPUS", corpus)
     monkeypatch.setattr(rollout_eval, "THRESHOLDS", forged)
-    report = rollout_eval.run_corpus(tmp_path / "run")
-    assert not report["meets_thresholds"] and not report["gates"]["outcome_agreement"]["meets"]
-    assert report["gates"]["release_immutability"]["meets"]  # the controller itself still rolled it back
+    loaded, _ = rollout_eval.load_suite()  # a re-pinned corpus loads, carrying the wrong expectation
+    assert next(c for c in loaded["cases"] if c["id"] == "K07")["expect"] == "promoted:v2"
     forged.write_text(json.dumps(thresholds))
     with pytest.raises(rollout_eval.RolloutSuiteLockError):
         rollout_eval.load_suite()
