@@ -290,13 +290,24 @@ class GovernedAnalyzeService:
         if kind == "succeeded":
             try:
                 material = self.answers.answer_for(state)
-            except LookupError:  # a restart or restore leaves the evidence but not the rows: say so, do not fail the request
+            except (
+                LookupError
+            ):  # a restart or restore leaves the evidence but not the rows: say so, do not fail the request
                 material = None
             if material is None:
                 return AnalyticsFailedOutcome(
                     **base, error_code="internal_error", message="The answer is unavailable.", retryable=True
                 )
             return _answer(base, state, material)
+        if (
+            kind == "failed" and "unsupported_request" in codes
+        ):  # the run's kind stays "failed"; the caller is told it is a refusal
+            return AnalyticsRefuseOutcome(
+                **base,
+                reason_code="unsupported_request",
+                explanation="This question is not one the certified analytics can answer.",
+                remediation="Ask about a certified metric or dimension, or contact the data owner.",
+            )
         if kind == "refused":
             return AnalyticsRefuseOutcome(
                 **base, reason_code="policy_restricted", explanation="The request was refused by policy or review."

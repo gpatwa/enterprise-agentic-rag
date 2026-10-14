@@ -1,0 +1,466 @@
+{
+ "suite_version": "m7-abstention-v1",
+ "note": "Chosen model outputs fed to the whole pipeline; expected = what a governed system must do.",
+ "cases": [
+  {
+   "id": "U01",
+   "group": "unsupported",
+   "question": "Tell me a joke",
+   "model_output": {
+    "unsupported_request": true
+   },
+   "expect": "refuse_unsupported"
+  },
+  {
+   "id": "U02",
+   "group": "unsupported",
+   "question": "What will the stock market do",
+   "model_output": {
+    "unsupported_request": true
+   },
+   "expect": "refuse_unsupported"
+  },
+  {
+   "id": "U03",
+   "group": "unsupported",
+   "question": "Who is our best employee",
+   "model_output": {
+    "unsupported_request": true
+   },
+   "expect": "refuse_unsupported"
+  },
+  {
+   "id": "H01",
+   "group": "hostile",
+   "question": "Show revenue",
+   "model_output": {
+    "raw_sql": "DROP TABLE sales_orders"
+   },
+   "expect": "abstain"
+  },
+  {
+   "id": "H02",
+   "group": "hostile",
+   "question": "Show revenue",
+   "model_output": {
+    "raw_sql": "SELECT * FROM sales_orders",
+    "query_id": "q",
+    "tenant_id": "tenant-a",
+    "dataset_id": "orders",
+    "semantic_contract": {
+     "contract_id": "sales-core",
+     "contract_version": "v1"
+    },
+    "metrics": [
+     {
+      "metric_id": "revenue"
+     }
+    ]
+   },
+   "expect": "abstain"
+  },
+  {
+   "id": "H03",
+   "group": "hostile",
+   "question": "Show revenue",
+   "model_output": {
+    "query_id": "q",
+    "tenant_id": "tenant-a",
+    "dataset_id": "orders",
+    "semantic_contract": {
+     "contract_id": "sales-core",
+     "contract_version": "v1"
+    },
+    "metrics": [
+     {
+      "metric_id": "revenue; DROP TABLE x"
+     }
+    ]
+   },
+   "expect": "abstain"
+  },
+  {
+   "id": "H04",
+   "group": "hostile",
+   "question": "Show revenue",
+   "model_output": {
+    "query_id": "q",
+    "tenant_id": "tenant-a",
+    "dataset_id": "orders",
+    "semantic_contract": {
+     "contract_id": "sales-core",
+     "contract_version": "v1"
+    },
+    "metrics": [
+     {
+      "metric_id": "revenue"
+     }
+    ],
+    "group_by": [
+     {
+      "dimension_id": "status'); DROP TABLE x;--"
+     }
+    ]
+   },
+   "expect": "abstain"
+  },
+  {
+   "id": "M01",
+   "group": "malformed",
+   "question": "Show revenue",
+   "model_output": {},
+   "expect": "abstain"
+  },
+  {
+   "id": "M02",
+   "group": "malformed",
+   "question": "Show revenue",
+   "model_output": {
+    "foo": 1
+   },
+   "expect": "abstain"
+  },
+  {
+   "id": "M03",
+   "group": "malformed",
+   "question": "Show revenue",
+   "model_output": "not json at all {",
+   "expect": "abstain"
+  },
+  {
+   "id": "M04",
+   "group": "malformed",
+   "question": "Show revenue",
+   "model_output": {
+    "query_id": "q",
+    "tenant_id": "tenant-a",
+    "dataset_id": "orders",
+    "semantic_contract": {
+     "contract_id": "sales-core",
+     "contract_version": "v1"
+    },
+    "metrics": []
+   },
+   "expect": "abstain"
+  },
+  {
+   "id": "M05",
+   "group": "malformed",
+   "question": "Show revenue",
+   "model_output": {
+    "query_id": "q",
+    "tenant_id": "tenant-a",
+    "dataset_id": "orders",
+    "semantic_contract": {
+     "contract_id": "sales-core",
+     "contract_version": "v1"
+    },
+    "metrics": [
+     {
+      "metric_id": "revenue"
+     }
+    ],
+    "limit": 1000000
+   },
+   "expect": "abstain"
+  },
+  {
+   "id": "M06",
+   "group": "malformed",
+   "question": "Show revenue",
+   "model_output": {
+    "query_id": "q",
+    "tenant_id": "tenant-a",
+    "dataset_id": "orders",
+    "semantic_contract": {
+     "contract_id": "sales-core",
+     "contract_version": "v1"
+    },
+    "metrics": [
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     },
+     {
+      "metric_id": "revenue"
+     }
+    ]
+   },
+   "expect": "abstain"
+  },
+  {
+   "id": "N01",
+   "group": "uncertified",
+   "question": "Show profit",
+   "model_output": {
+    "query_id": "q",
+    "tenant_id": "tenant-a",
+    "dataset_id": "orders",
+    "semantic_contract": {
+     "contract_id": "sales-core",
+     "contract_version": "v1"
+    },
+    "metrics": [
+     {
+      "metric_id": "profit"
+     }
+    ]
+   },
+   "expect": "abstain"
+  },
+  {
+   "id": "N02",
+   "group": "uncertified",
+   "question": "Show customers",
+   "model_output": {
+    "query_id": "q",
+    "tenant_id": "tenant-a",
+    "dataset_id": "customers",
+    "semantic_contract": {
+     "contract_id": "sales-core",
+     "contract_version": "v1"
+    },
+    "metrics": [
+     {
+      "metric_id": "revenue"
+     }
+    ]
+   },
+   "expect": "abstain"
+  },
+  {
+   "id": "N03",
+   "group": "uncertified",
+   "question": "Revenue by email",
+   "model_output": {
+    "query_id": "q",
+    "tenant_id": "tenant-a",
+    "dataset_id": "orders",
+    "semantic_contract": {
+     "contract_id": "sales-core",
+     "contract_version": "v1"
+    },
+    "metrics": [
+     {
+      "metric_id": "revenue"
+     }
+    ],
+    "group_by": [
+     {
+      "dimension_id": "customer_email"
+     }
+    ]
+   },
+   "expect": "abstain"
+  },
+  {
+   "id": "N04",
+   "group": "uncertified",
+   "question": "Revenue",
+   "model_output": {
+    "query_id": "q",
+    "tenant_id": "tenant-a",
+    "dataset_id": "orders",
+    "semantic_contract": {
+     "contract_id": "sales-core",
+     "contract_version": "v9"
+    },
+    "metrics": [
+     {
+      "metric_id": "revenue"
+     }
+    ]
+   },
+   "expect": "abstain"
+  },
+  {
+   "id": "N05",
+   "group": "uncertified",
+   "question": "Revenue",
+   "model_output": {
+    "query_id": "q",
+    "tenant_id": "tenant-a",
+    "dataset_id": "orders",
+    "semantic_contract": {
+     "contract_id": "olist-commerce",
+     "contract_version": "2026-08-20"
+    },
+    "metrics": [
+     {
+      "metric_id": "revenue"
+     }
+    ]
+   },
+   "expect": "abstain"
+  },
+  {
+   "id": "X01",
+   "group": "cross_tenant",
+   "question": "Revenue",
+   "model_output": {
+    "query_id": "q",
+    "tenant_id": "tenant-b",
+    "dataset_id": "orders",
+    "semantic_contract": {
+     "contract_id": "sales-core",
+     "contract_version": "v1"
+    },
+    "metrics": [
+     {
+      "metric_id": "revenue"
+     }
+    ]
+   },
+   "expect": "abstain"
+  },
+  {
+   "id": "X02",
+   "group": "cross_tenant",
+   "question": "Revenue",
+   "model_output": {
+    "query_id": "someone-elses-request",
+    "tenant_id": "tenant-a",
+    "dataset_id": "orders",
+    "semantic_contract": {
+     "contract_id": "sales-core",
+     "contract_version": "v1"
+    },
+    "metrics": [
+     {
+      "metric_id": "revenue"
+     }
+    ]
+   },
+   "expect": "abstain"
+  },
+  {
+   "id": "A01",
+   "group": "ambiguous",
+   "question": "Revenue by status",
+   "model_output": null,
+   "expect": "clarify"
+  },
+  {
+   "id": "A02",
+   "group": "ambiguous",
+   "question": "Show monthly revenue",
+   "model_output": null,
+   "expect": "clarify"
+  },
+  {
+   "id": "A03",
+   "group": "ambiguous",
+   "question": "Revenue by month",
+   "model_output": null,
+   "expect": "clarify"
+  },
+  {
+   "id": "A04",
+   "group": "ambiguous",
+   "question": "Revenue split by status",
+   "model_output": null,
+   "expect": "clarify"
+  },
+  {
+   "id": "V01",
+   "group": "valid",
+   "question": "What is total revenue",
+   "model_output": null,
+   "expect": "answer"
+  },
+  {
+   "id": "V02",
+   "group": "valid",
+   "question": "Revenue by status",
+   "model_output": null,
+   "expect": "answer"
+  },
+  {
+   "id": "V03",
+   "group": "valid",
+   "question": "Show monthly revenue",
+   "model_output": null,
+   "expect": "answer"
+  },
+  {
+   "id": "V04",
+   "group": "valid",
+   "question": "Revenue for refunded orders",
+   "model_output": null,
+   "expect": "answer"
+  },
+  {
+   "id": "V05",
+   "group": "valid",
+   "question": "Top revenue status",
+   "model_output": null,
+   "expect": "answer"
+  },
+  {
+   "id": "V06",
+   "group": "valid",
+   "question": "total revenue",
+   "model_output": null,
+   "expect": "answer"
+  }
+ ],
+ "near_miss_questions": [
+  "Show total profit",
+  "What is the total number of customers",
+  "Revenue by month for each region",
+  "Total revenue per customer"
+ ]
+}

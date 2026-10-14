@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from packages.platform_contracts.triage import FAULT_CATEGORIES, BasisKind, RootCause
 
 _POLICY_CODES = {"policy_denied"}
-_INTENT_PREFIXES = ("malformed_model_output", "intent_")
+_INTENT_PREFIXES = ("malformed_model_output", "intent_", "unsupported_request")
 _EXECUTION_CODES = {
     "result_invalid",
     "control_query_failed",

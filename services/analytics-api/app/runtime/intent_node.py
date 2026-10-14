@@ -30,6 +30,8 @@ def structured_intent_node(client: StructuredIntentClient, prompt_builder=None):
                 max_tokens=1_024,
             )
             value = json.loads(raw) if isinstance(raw, str) else raw
+            if isinstance(value, dict) and value == {"unsupported_request": True}:
+                return _failure(node_input, "unsupported_request", code="unsupported_request")
             intent = AnalyticalIntent.model_validate(value)
             if intent.query_id != node_input.request_id or intent.tenant_id != node_input.tenant_id:
                 return _failure(node_input, "intent_identity_mismatch")
@@ -65,13 +67,13 @@ def _prompt(request_text: str, context: ContextPack) -> str:
     )
 
 
-def _failure(node_input: NodeInput, reference: str) -> NodeOutput:
+def _failure(node_input: NodeInput, reference: str, *, code: str = "malformed_model_output") -> NodeOutput:
     fingerprint = hashlib.sha256(reference.encode()).hexdigest()
     return NodeOutput(
         run_id=node_input.run_id,
         node_id=node_input.node_id,
         status="failed",
-        error=RunError(code="malformed_model_output", message_reference=reference),
+        error=RunError(code=code, message_reference=reference),
         evidence=(
             EvidenceReference(
                 evidence_id=f"intent-error:{node_input.request_id or node_input.run_id}",

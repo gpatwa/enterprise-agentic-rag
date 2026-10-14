@@ -279,7 +279,7 @@ def test_there_is_no_proposal_endpoint_and_the_service_is_inert(tmp_path):
 
 def test_a_run_that_never_resolved_a_contract_yields_no_proposal_instead_of_an_error(tmp_path):
     stack, client, run = _run(tmp_path, question="Tell me a joke")
-    assert run["outcome"]["outcome"] == "failed"  # planning failed before any contract was chosen
+    assert run["outcome"]["outcome"] == "refuse"  # the model declared it unsupported before any contract was chosen
     result = _generate(stack, _triaged(stack, client, run, reason_code="wrong_metric"))
     assert result.proposal is None and result.reason == "category_not_applicable"
 
