@@ -23,6 +23,7 @@ from app.execution import DraftClaim
 from reference_stack import m7_corpus as corpus_module
 from reference_stack import poisoning_eval, rollout_eval
 from reference_stack import stack as stack_module
+from reference_stack.golden import canonical_rows
 from reference_stack.stack import build_stack
 
 HERE = Path(__file__).parent / "m7"
@@ -109,7 +110,7 @@ def _ask(root: Path, mode: str, question: str, *, key: str) -> dict[str, Any]:
     with mock.patch.object(stack_module, "ScriptedIntentClient", provider):
         response = stack.service().analyze(who, purpose=PURPOSE, idempotency_key=key, request_text=question)
     outcome = response.outcome
-    rows = [list(r) for r in outcome.result.rows] if getattr(outcome, "result", None) else None
+    rows = canonical_rows([list(r) for r in outcome.result.rows]) if getattr(outcome, "result", None) else None
     return {
         "mode": mode,
         "question": question,
@@ -166,7 +167,8 @@ def explainer_degradation(root: Path) -> list[dict[str, Any]]:
                 "kind": outcome.outcome,
                 "status": getattr(outcome, "explanation_status", None),
                 "claims_shown": len(getattr(outcome, "claims", []) or []),
-                "rows_correct": [list(r) for r in outcome.result.rows] == QUESTIONS["What is total revenue"],
+                "rows_correct": canonical_rows([list(r) for r in outcome.result.rows])
+                == QUESTIONS["What is total revenue"],
             }
         )
     return out
