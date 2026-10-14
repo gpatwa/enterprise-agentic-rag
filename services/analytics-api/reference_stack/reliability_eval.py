@@ -30,6 +30,7 @@ from app.runtime.analyze_service import ServiceError
 from app.runtime.control_store import ControlStore
 from reference_stack import m7_corpus as corpus_module
 from reference_stack import stack as stack_module
+from reference_stack.golden import canonical_rows
 from reference_stack.resilience_eval import QUESTION, _Clock
 from reference_stack.stack import build_stack
 
@@ -87,7 +88,8 @@ def _who(stack, user: str = "requester"):
 def _rows(response) -> list[list[str]] | None:
     outcome = getattr(response, "outcome", None)
     result = getattr(outcome, "result", None)
-    return [list(r) for r in result.rows] if result is not None else None
+    # DuckDB versions differ in whether a month bucket is a date or a midnight timestamp; the same value must compare equal.
+    return canonical_rows([list(r) for r in result.rows]) if result is not None else None
 
 
 def _classify(response, *, executions: int) -> dict[str, Any]:

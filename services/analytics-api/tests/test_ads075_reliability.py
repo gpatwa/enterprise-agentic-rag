@@ -127,3 +127,18 @@ def test_a_wrong_answer_fails_the_wrong_answer_gate(monkeypatch, tmp_path):
         and not report["gates"]["wrong_answers"]["meets"]
         and not report["ok"]
     )
+
+
+def test_a_month_bucket_returned_as_a_midnight_timestamp_is_still_the_correct_answer():
+    from types import SimpleNamespace
+
+    rows = [["2024-03-01T00:00:00", "1969"], ["2024-02-01T00:00:00", "1468"], ["2024-01-01T00:00:00", "563"]]
+    response = SimpleNamespace(
+        state="terminal", outcome=SimpleNamespace(outcome="answer", result=SimpleNamespace(rows=rows))
+    )
+    assert ev._classify(response, executions=1)["verdict"] == "correct_answer"
+    wrong = SimpleNamespace(
+        state="terminal",
+        outcome=SimpleNamespace(outcome="answer", result=SimpleNamespace(rows=[["2024-03-01T00:00:00", "1"]])),
+    )
+    assert ev._classify(wrong, executions=1)["verdict"] == "wrong_answer"
