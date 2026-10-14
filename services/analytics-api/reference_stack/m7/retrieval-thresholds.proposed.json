@@ -1,0 +1,42 @@
+{
+  "suite_version": "m7-retrieval-v1",
+  "corpus_sha256": "e1f69faf3609f3e3bacb1253d6fb501406c3e682a7212bde7e8c918b0566ec43",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Numbers are plan section 10 gates (top-3 recall 98%, token baseline -20%) plus zero-leak and 100% provenance/freshness gates chosen by the implementing agent. Not approved."
+  },
+  "gates": {
+    "certified_top3_recall": {
+      "op": ">=",
+      "value": 0.98
+    },
+    "uncertified_or_foreign_results": {
+      "op": "<=",
+      "value": 0
+    },
+    "provenance_coverage": {
+      "op": ">=",
+      "value": 1.0
+    },
+    "stale_detection_recall": {
+      "op": ">=",
+      "value": 1.0
+    },
+    "context_token_reduction": {
+      "op": ">=",
+      "value": 0.2
+    },
+    "pack_budget_overruns": {
+      "op": "<=",
+      "value": 0
+    }
+  },
+  "not_measured": {
+    "real_relevance_ranking": "the stand-in is term overlap, not BM25, analyzers, or embeddings; recall on a real OpenSearch index and a real catalogue size is untested",
+    "paraphrase_robustness": "queries are written against the catalogue's vocabulary and aliases; unseen customer wording is not measured",
+    "live_index": "no live OpenSearch validation was run (requires the user's explicit request)",
+    "baseline": "the token baseline is the whole certified catalogue, not the ADS-007 v1 baseline"
+  }
+}

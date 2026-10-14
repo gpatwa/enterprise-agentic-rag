@@ -62,6 +62,13 @@ def render_correctness(report: dict[str, Any]) -> str:
     return head + caveat + "\n## Scope and limits" + tail
 
 
+def _retrieval():
+    from reference_stack import retrieval_eval
+
+    return ("ADS-072-retrieval-report", retrieval_eval.run_retrieval, retrieval_eval.render_markdown)
+
+
 PACKETS = {
     "071": ("ADS-071-correctness-report", run_correctness, render_correctness),
 }
+PACKETS["072"] = _retrieval()

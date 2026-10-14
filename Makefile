@@ -258,6 +258,10 @@ analytics-operations-drill:
 analytics-m7-correctness:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack m7 071 --write-report ../../docs/execution/enterprise-analytics/reports
 
+# ADS-072 context/ontology retrieval, provenance, freshness, and token-efficiency evaluation (fakes only); thresholds are proposed.
+analytics-m7-retrieval:
+	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack m7 072 --write-report ../../docs/execution/enterprise-analytics/reports
+
 # M4 golden suite (fakes only); regenerates the report against the user-approved M4 thresholds.
 analytics-golden:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack golden --write-report ../../docs/execution/enterprise-analytics/reports
