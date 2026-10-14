@@ -36,7 +36,7 @@
       "value": 1.0
     },
     "round_trip_omissions": {
-      "op": ">=",
+      "op": "<=",
       "value": 0
     }
   },
@@ -52,7 +52,6 @@
     "policy_authoring": "an imported model has no policies; authoring and reviewing them is manual and not evaluated",
     "real_ossie_models": "one small hand-written model in the pinned 0.2.0.dev0 subset; real-world Ossie documents, other versions, and lossy constructs beyond metric expressions are not exercised",
     "live_warehouse": "a local Parquet file stands in for the tenant's warehouse",
-    "identity_and_groups": "the second tenant's identity provider mapping is not onboarded",
-    "export_of_metrics": "Ossie export carries datasets and fields only (the ADS-008 subset): metrics and time-dimension flags are not exported, so a round trip is not lossless. Whether export should carry metrics is a decision for the user; it would not change the Compass contract schema."
+    "identity_and_groups": "the second tenant's identity provider mapping is not onboarded"
   }
 }

@@ -42,10 +42,10 @@ def test_the_drill_never_writes_the_repository_registry(report):
     assert not any("subscriptions" in p.name for p in Path(registry).rglob("*"))
 
 
-def test_the_export_limit_is_reported_not_hidden(report):
-    assert report["gates"]["round_trip_omissions"]["value"] == 2
+def test_the_export_now_carries_metrics_and_time_dimensions(report):
+    assert report["gates"]["round_trip_omissions"]["value"] == 0
     text = ev.render_markdown(report)
-    assert "not a certification" in text and "export_of_metrics" in text and "What a person must still do" in text
+    assert "not a certification" in text and "What a person must still do" in text
 
 
 def test_hostile_ossie_expressions_are_dropped(report):

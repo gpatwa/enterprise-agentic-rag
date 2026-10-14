@@ -122,7 +122,7 @@ milestones:
     human_gate: security_and_operations_review
   M7:
     name: Final evaluation and pilot decision
-    status: planned
+    status: in_progress
     waves:
       - [ADS-070]
       - [ADS-071, ADS-072, ADS-073, ADS-074, ADS-075, ADS-076, ADS-077, ADS-078]
@@ -208,4 +208,4 @@ tasks:
   ADS-076: {milestone: M7, status: review, depends_on: [ADS-066]}
   ADS-077: {milestone: M7, status: review, depends_on: [ADS-057, ADS-070]}
   ADS-078: {milestone: M7, status: review, depends_on: [ADS-011, ADS-064]}
-  ADS-079: {milestone: M7, status: planned, depends_on: [ADS-071, ADS-072, ADS-073, ADS-074, ADS-075, ADS-076, ADS-077, ADS-078]}
+  ADS-079: {milestone: M7, status: review, depends_on: [ADS-071, ADS-072, ADS-073, ADS-074, ADS-075, ADS-076, ADS-077, ADS-078]}

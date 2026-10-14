@@ -9,26 +9,34 @@ from packages.platform_contracts.ossie import export_ossie, import_ossie
 def ossie_model():
     return {
         "version": "0.2.0.dev0",
-        "semantic_model": [{
-            "name": "commerce",
-            "owner": {"id": "team.data"},
-            "datasets": [{
-                "name": "orders", "source": "warehouse.orders", "description": "One row per order",
-                "primary_key": ["order_id"],
-                "fields": [
-                    {"name": "order_id", "data_type": "string"},
-                    {"name": "ordered_at", "data_type": "timestamp", "dimension": {"is_time": True}},
-                    {"name": "amount", "data_type": "decimal"},
+        "semantic_model": [
+            {
+                "name": "commerce",
+                "owner": {"id": "team.data"},
+                "datasets": [
+                    {
+                        "name": "orders",
+                        "source": "warehouse.orders",
+                        "description": "One row per order",
+                        "primary_key": ["order_id"],
+                        "fields": [
+                            {"name": "order_id", "data_type": "string"},
+                            {"name": "ordered_at", "data_type": "timestamp", "dimension": {"is_time": True}},
+                            {"name": "amount", "data_type": "decimal"},
+                        ],
+                    }
                 ],
-            }],
-            "metrics": [{"name": "revenue", "dataset": "orders", "expression": "SUM(amount)"}],
-        }],
+                "metrics": [{"name": "revenue", "dataset": "orders", "expression": "SUM(amount)"}],
+            }
+        ],
     }
 
 
 def test_ossie_import_is_draft_and_reports_supported_subset(ossie_model):
     document, report = import_ossie(
-        ossie_model, tenant_id="tenant-a", source_reference="file://model.json",
+        ossie_model,
+        tenant_id="tenant-a",
+        source_reference="file://model.json",
     )
 
     assert document.lifecycle == "draft"
@@ -55,3 +63,17 @@ def test_ossie_unknown_version_is_rejected(ossie_model):
     invalid["version"] = "9.0.0"
     with pytest.raises(ValueError, match="unsupported Ossie version"):
         import_ossie(invalid, tenant_id="tenant-a", source_reference="fixture")
+
+
+def test_export_carries_metrics_and_time_dimensions_so_a_round_trip_keeps_them(ossie_model):
+    document, _ = import_ossie(ossie_model, tenant_id="tenant-a", source_reference="fixture")
+    payload, report = export_ossie(document)
+    assert payload["semantic_model"][0]["metrics"] == [
+        {"name": "revenue", "dataset": "orders", "expression": "SUM(amount)"}
+    ]
+    assert any(f.get("dimension") == {"is_time": True} for f in payload["semantic_model"][0]["datasets"][0]["fields"])
+    again, _ = import_ossie(payload, tenant_id="tenant-a", source_reference="roundtrip")
+    assert [m.id for m in again.contract.metrics] == ["revenue"] and [
+        d.dimension_type for d in again.contract.dimensions
+    ] == ["temporal"]
+    assert "semantic_model.metrics" in report.supported_paths

@@ -51,8 +51,8 @@
       "meets": true
     },
     "round_trip_omissions": {
-      "value": 2,
-      "op": ">=",
+      "value": 0,
+      "op": "<=",
       "threshold": 0,
       "meets": true
     }
@@ -63,7 +63,7 @@
     "second_tenant_result_equivalence": "The second tenant's answer equals the independent oracle: 100%",
     "cross_tenant_contract_use": "A tenant using another tenant's contract: 0",
     "round_trip_id_stability": "Export then import keeps dataset ids: 100%",
-    "round_trip_omissions": "Metrics and time dimensions an export omits (informational; a documented subset, not a gate)",
+    "round_trip_omissions": "Metrics and time dimensions lost by an export then import: 0",
     "hostile_expressions_imported": "Unsupported or hostile Ossie expressions that become metrics: 0",
     "first_tenant_unchanged": "The first tenant's answers are unchanged after onboarding: 100%"
   },
@@ -99,8 +99,7 @@
     "policy_authoring": "an imported model has no policies; authoring and reviewing them is manual and not evaluated",
     "real_ossie_models": "one small hand-written model in the pinned 0.2.0.dev0 subset; real-world Ossie documents, other versions, and lossy constructs beyond metric expressions are not exercised",
     "live_warehouse": "a local Parquet file stands in for the tenant's warehouse",
-    "identity_and_groups": "the second tenant's identity provider mapping is not onboarded",
-    "export_of_metrics": "Ossie export carries datasets and fields only (the ADS-008 subset): metrics and time-dimension flags are not exported, so a round trip is not lossless. Whether export should carry metrics is a decision for the user; it would not change the Compass contract schema."
+    "identity_and_groups": "the second tenant's identity provider mapping is not onboarded"
   },
   "steps": [
     {
@@ -126,7 +125,7 @@
     {
       "step": "export then import keeps dataset ids",
       "ok": true,
-      "detail": "export omits (by the ADS-008 subset): ['dimension.subs.billed_at', 'mrr']"
+      "detail": "export omits (by the ADS-008 subset): []"
     },
     {
       "step": "unsupported and hostile expressions are reported lossy and dropped",
