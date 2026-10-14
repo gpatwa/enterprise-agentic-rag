@@ -23,6 +23,7 @@ from app.quotas import QuotaManager
 from app.quotas.simulation import FakeClock, simulate
 from packages.platform_contracts.quotas import QuotaPolicy
 from reference_stack import m7_corpus as corpus_module
+from reference_stack.golden import canonical_rows
 from reference_stack import stack as stack_module
 from reference_stack.stack import build_stack
 
@@ -87,7 +88,7 @@ def _ask(service, who, key: str, question: str) -> tuple[float, bool]:
     response = service.analyze(who, purpose=PURPOSE, idempotency_key=key, request_text=question)
     elapsed = time.perf_counter() - started
     outcome = response.outcome
-    rows = [list(r) for r in outcome.result.rows] if getattr(outcome, "result", None) else None
+    rows = canonical_rows([list(r) for r in outcome.result.rows]) if getattr(outcome, "result", None) else None
     return elapsed, rows == QUESTIONS[question]
 
 
