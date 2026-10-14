@@ -1,0 +1,1235 @@
+{
+  "packet": "ADS-075",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Gates chosen by the implementing agent: zero wrong answers, duplicate executions, unhandled errors, unsafe outcomes, and evidence breaks; a worker crash (stores intact) must always still end in a correct answer; a process crash and dependency failures must always end safely. The plan's availability number is not declared, so none is claimed. Not approved."
+  },
+  "ok": true,
+  "gates": {
+    "wrong_answers": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "duplicate_executions": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "unhandled_errors": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "unsafe_outcomes": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "evidence_chain_breaks": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "crash_recovery_same_process": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true
+    },
+    "crash_safe_ending_process_death": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true
+    },
+    "dependency_failures_handled": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true
+    },
+    "chaos_safe_ending_rate": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true
+    }
+  },
+  "gate_plan": {
+    "wrong_answers": "Answers whose rows differ from the independent oracle: 0",
+    "duplicate_executions": "A query executed more than once for one run: 0",
+    "unhandled_errors": "Errors that reach the caller untyped (a raw exception or HTTP 500): 0",
+    "unsafe_outcomes": "Runs that end in neither a correct answer nor a typed failure: 0",
+    "evidence_chain_breaks": "Evidence chains that no longer verify: 0",
+    "crash_recovery_same_process": "Worker-crash points that still end in a correct answer (stores intact)",
+    "crash_safe_ending_process_death": "Process-crash points that end safely: a correct answer or a typed failure",
+    "dependency_failures_handled": "Dependency failures that end in a typed failure or a degraded-but-correct answer",
+    "chaos_safe_ending_rate": "Chaos runs that end safely"
+  },
+  "samples": {
+    "crash_points": 26,
+    "dependency_faults": 7,
+    "chaos_runs": 40,
+    "seed": 20261013
+  },
+  "process_death": {
+    "recovered": [
+      "bootstrap-after",
+      "bootstrap-before",
+      "create-after",
+      "create-before",
+      "extract_intent-after",
+      "extract_intent-before",
+      "plan-after",
+      "plan-before",
+      "policy-after",
+      "policy-before",
+      "resolve-after",
+      "resolve-before",
+      "retrieve-after",
+      "retrieve-before",
+      "validate-after",
+      "validate-before"
+    ],
+    "failed_closed": [
+      "compile-after",
+      "compile-before",
+      "estimate-after",
+      "estimate-before",
+      "execute-after",
+      "execute-before",
+      "explain-after",
+      "explain-before",
+      "result_validate-after",
+      "result_validate-before"
+    ]
+  },
+  "chaos_mix": {
+    "dependency": 18,
+    "crash": 17,
+    "none": 5
+  },
+  "not_measured": {
+    "availability_percentage": "no availability target has been declared and no uptime was measured; these are mechanism tests",
+    "real_process_recovery": "compiled plans, policy values, and result rows are process-local, so a real process crash after the compile step fails closed (shown in the report); durable plan/result storage is not built",
+    "retry_after_failure": "a failed run is terminal and the same idempotency key returns the same failure; a client must use a new key to retry. No retry guidance beyond the `retryable` flag exists.",
+    "real_dependencies": "the warehouse, search, model, and explainer failures are simulated exceptions; timeouts, partial responses, slow dependencies, and network partitions are not modelled",
+    "concurrency": "crashes are injected one at a time; concurrent crashes and contention are covered only by the ADS-066 load simulator and the ADS-068 failover drill"
+  },
+  "same_process": [
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "create",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "create",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "bootstrap",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "bootstrap",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "retrieve",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "retrieve",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "extract_intent",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "extract_intent",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "resolve",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "resolve",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "plan",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "plan",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "validate",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "validate",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "policy",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "policy",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "compile",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "compile",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "estimate",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "estimate",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "execute",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "execute",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "result_validate",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "result_validate",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "explain",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "explain",
+      "when": "after",
+      "chain_ok": true
+    }
+  ],
+  "process_death_runs": [
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "create",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "create",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "bootstrap",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "bootstrap",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "retrieve",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "retrieve",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "extract_intent",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "extract_intent",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "resolve",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "resolve",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "plan",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "plan",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "validate",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "validate",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "policy",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "policy",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "internal_error",
+      "executions": 0,
+      "node": "compile",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "internal_error",
+      "executions": 0,
+      "node": "compile",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "executor_unavailable",
+      "executions": 0,
+      "node": "estimate",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "executor_unavailable",
+      "executions": 0,
+      "node": "estimate",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "executor_unavailable",
+      "executions": 0,
+      "node": "execute",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "executor_unavailable",
+      "executions": 1,
+      "node": "execute",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "internal_error",
+      "executions": 1,
+      "node": "result_validate",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "internal_error",
+      "executions": 1,
+      "node": "result_validate",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "internal_error",
+      "executions": 1,
+      "node": "explain",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "internal_error",
+      "executions": 1,
+      "node": "explain",
+      "when": "after",
+      "chain_ok": true
+    }
+  ],
+  "dependencies": [
+    {
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "executor_unavailable",
+      "executions": 1,
+      "fault": "warehouse_down",
+      "degraded": false,
+      "chain_ok": true
+    },
+    {
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "executor_unavailable",
+      "executions": 0,
+      "fault": "estimator_down",
+      "degraded": false,
+      "chain_ok": true
+    },
+    {
+      "verdict": "typed_failure",
+      "outcome": "refuse",
+      "code": "stale_metadata",
+      "executions": 0,
+      "fault": "context_search_down",
+      "degraded": false,
+      "chain_ok": true
+    },
+    {
+      "fault": "context_snapshot_down",
+      "verdict": "typed_failure",
+      "outcome": "service_error",
+      "code": "context_unavailable",
+      "executions": 0
+    },
+    {
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "fault": "explainer_down",
+      "degraded": true,
+      "chain_ok": true
+    },
+    {
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "planner_unavailable",
+      "executions": 0,
+      "fault": "model_timeout",
+      "degraded": false,
+      "chain_ok": true
+    },
+    {
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "query_timeout",
+      "executions": 0,
+      "fault": "deadline_already_passed",
+      "degraded": false,
+      "chain_ok": true
+    }
+  ],
+  "chaos": [
+    {
+      "index": 0,
+      "plan": {
+        "kind": "dependency",
+        "fault": "context_snapshot_down"
+      },
+      "fault": "context_snapshot_down",
+      "verdict": "typed_failure",
+      "outcome": "service_error",
+      "code": "context_unavailable",
+      "executions": 0
+    },
+    {
+      "index": 1,
+      "plan": {
+        "kind": "crash",
+        "node": "result_validate",
+        "when": "after",
+        "process_death": false
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "result_validate",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "index": 2,
+      "plan": {
+        "kind": "none"
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "chain_ok": true
+    },
+    {
+      "index": 3,
+      "plan": {
+        "kind": "dependency",
+        "fault": "model_timeout"
+      },
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "planner_unavailable",
+      "executions": 0,
+      "fault": "model_timeout",
+      "degraded": false,
+      "chain_ok": true
+    },
+    {
+      "index": 4,
+      "plan": {
+        "kind": "crash",
+        "node": "result_validate",
+        "when": "before",
+        "process_death": false
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "result_validate",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "index": 5,
+      "plan": {
+        "kind": "none"
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "chain_ok": true
+    },
+    {
+      "index": 6,
+      "plan": {
+        "kind": "crash",
+        "node": "result_validate",
+        "when": "before",
+        "process_death": false
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "result_validate",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "index": 7,
+      "plan": {
+        "kind": "dependency",
+        "fault": "context_snapshot_down"
+      },
+      "fault": "context_snapshot_down",
+      "verdict": "typed_failure",
+      "outcome": "service_error",
+      "code": "context_unavailable",
+      "executions": 0
+    },
+    {
+      "index": 8,
+      "plan": {
+        "kind": "crash",
+        "node": "result_validate",
+        "when": "before",
+        "process_death": true
+      },
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "internal_error",
+      "executions": 1,
+      "node": "result_validate",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "index": 9,
+      "plan": {
+        "kind": "dependency",
+        "fault": "context_snapshot_down"
+      },
+      "fault": "context_snapshot_down",
+      "verdict": "typed_failure",
+      "outcome": "service_error",
+      "code": "context_unavailable",
+      "executions": 0
+    },
+    {
+      "index": 10,
+      "plan": {
+        "kind": "crash",
+        "node": "estimate",
+        "when": "after",
+        "process_death": true
+      },
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "executor_unavailable",
+      "executions": 0,
+      "node": "estimate",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "index": 11,
+      "plan": {
+        "kind": "dependency",
+        "fault": "deadline_already_passed"
+      },
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "query_timeout",
+      "executions": 0,
+      "fault": "deadline_already_passed",
+      "degraded": false,
+      "chain_ok": true
+    },
+    {
+      "index": 12,
+      "plan": {
+        "kind": "dependency",
+        "fault": "estimator_down"
+      },
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "executor_unavailable",
+      "executions": 0,
+      "fault": "estimator_down",
+      "degraded": false,
+      "chain_ok": true
+    },
+    {
+      "index": 13,
+      "plan": {
+        "kind": "dependency",
+        "fault": "explainer_down"
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "fault": "explainer_down",
+      "degraded": true,
+      "chain_ok": true
+    },
+    {
+      "index": 14,
+      "plan": {
+        "kind": "crash",
+        "node": "policy",
+        "when": "after",
+        "process_death": true
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "policy",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "index": 15,
+      "plan": {
+        "kind": "dependency",
+        "fault": "context_snapshot_down"
+      },
+      "fault": "context_snapshot_down",
+      "verdict": "typed_failure",
+      "outcome": "service_error",
+      "code": "context_unavailable",
+      "executions": 0
+    },
+    {
+      "index": 16,
+      "plan": {
+        "kind": "dependency",
+        "fault": "warehouse_down"
+      },
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "executor_unavailable",
+      "executions": 1,
+      "fault": "warehouse_down",
+      "degraded": false,
+      "chain_ok": true
+    },
+    {
+      "index": 17,
+      "plan": {
+        "kind": "crash",
+        "node": "retrieve",
+        "when": "after",
+        "process_death": false
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "retrieve",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "index": 18,
+      "plan": {
+        "kind": "none"
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "chain_ok": true
+    },
+    {
+      "index": 19,
+      "plan": {
+        "kind": "dependency",
+        "fault": "context_search_down"
+      },
+      "verdict": "typed_failure",
+      "outcome": "refuse",
+      "code": "stale_metadata",
+      "executions": 0,
+      "fault": "context_search_down",
+      "degraded": false,
+      "chain_ok": true
+    },
+    {
+      "index": 20,
+      "plan": {
+        "kind": "dependency",
+        "fault": "estimator_down"
+      },
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "executor_unavailable",
+      "executions": 0,
+      "fault": "estimator_down",
+      "degraded": false,
+      "chain_ok": true
+    },
+    {
+      "index": 21,
+      "plan": {
+        "kind": "dependency",
+        "fault": "context_search_down"
+      },
+      "verdict": "typed_failure",
+      "outcome": "refuse",
+      "code": "stale_metadata",
+      "executions": 0,
+      "fault": "context_search_down",
+      "degraded": false,
+      "chain_ok": true
+    },
+    {
+      "index": 22,
+      "plan": {
+        "kind": "crash",
+        "node": "compile",
+        "when": "after",
+        "process_death": true
+      },
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "internal_error",
+      "executions": 0,
+      "node": "compile",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "index": 23,
+      "plan": {
+        "kind": "crash",
+        "node": "validate",
+        "when": "before",
+        "process_death": false
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "validate",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "index": 24,
+      "plan": {
+        "kind": "crash",
+        "node": "extract_intent",
+        "when": "before",
+        "process_death": true
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "extract_intent",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "index": 25,
+      "plan": {
+        "kind": "dependency",
+        "fault": "context_search_down"
+      },
+      "verdict": "typed_failure",
+      "outcome": "refuse",
+      "code": "stale_metadata",
+      "executions": 0,
+      "fault": "context_search_down",
+      "degraded": false,
+      "chain_ok": true
+    },
+    {
+      "index": 26,
+      "plan": {
+        "kind": "crash",
+        "node": "create",
+        "when": "before",
+        "process_death": true
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "create",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "index": 27,
+      "plan": {
+        "kind": "crash",
+        "node": "policy",
+        "when": "before",
+        "process_death": false
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "policy",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "index": 28,
+      "plan": {
+        "kind": "crash",
+        "node": "explain",
+        "when": "before",
+        "process_death": false
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "explain",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "index": 29,
+      "plan": {
+        "kind": "none"
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "chain_ok": true
+    },
+    {
+      "index": 30,
+      "plan": {
+        "kind": "crash",
+        "node": "compile",
+        "when": "before",
+        "process_death": false
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "compile",
+      "when": "before",
+      "chain_ok": true
+    },
+    {
+      "index": 31,
+      "plan": {
+        "kind": "dependency",
+        "fault": "explainer_down"
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "fault": "explainer_down",
+      "degraded": true,
+      "chain_ok": true
+    },
+    {
+      "index": 32,
+      "plan": {
+        "kind": "dependency",
+        "fault": "warehouse_down"
+      },
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "executor_unavailable",
+      "executions": 1,
+      "fault": "warehouse_down",
+      "degraded": false,
+      "chain_ok": true
+    },
+    {
+      "index": 33,
+      "plan": {
+        "kind": "none"
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "chain_ok": true
+    },
+    {
+      "index": 34,
+      "plan": {
+        "kind": "dependency",
+        "fault": "estimator_down"
+      },
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "executor_unavailable",
+      "executions": 0,
+      "fault": "estimator_down",
+      "degraded": false,
+      "chain_ok": true
+    },
+    {
+      "index": 35,
+      "plan": {
+        "kind": "dependency",
+        "fault": "estimator_down"
+      },
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "executor_unavailable",
+      "executions": 0,
+      "fault": "estimator_down",
+      "degraded": false,
+      "chain_ok": true
+    },
+    {
+      "index": 36,
+      "plan": {
+        "kind": "dependency",
+        "fault": "explainer_down"
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "fault": "explainer_down",
+      "degraded": true,
+      "chain_ok": true
+    },
+    {
+      "index": 37,
+      "plan": {
+        "kind": "crash",
+        "node": "execute",
+        "when": "after",
+        "process_death": true
+      },
+      "verdict": "typed_failure",
+      "outcome": "failed",
+      "code": "executor_unavailable",
+      "executions": 1,
+      "node": "execute",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "index": 38,
+      "plan": {
+        "kind": "crash",
+        "node": "create",
+        "when": "after",
+        "process_death": false
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "create",
+      "when": "after",
+      "chain_ok": true
+    },
+    {
+      "index": 39,
+      "plan": {
+        "kind": "crash",
+        "node": "extract_intent",
+        "when": "after",
+        "process_death": true
+      },
+      "verdict": "correct_answer",
+      "outcome": "answer",
+      "code": null,
+      "executions": 1,
+      "node": "extract_intent",
+      "when": "after",
+      "chain_ok": true
+    }
+  ]
+}

@@ -90,3 +90,12 @@ def _isolation():
 
 
 PACKETS["074"] = _isolation()
+
+
+def _reliability():
+    from reference_stack import reliability_eval
+
+    return ("ADS-075-reliability-report", reliability_eval.run_reliability, reliability_eval.render_markdown)
+
+
+PACKETS["075"] = _reliability()

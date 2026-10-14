@@ -251,6 +251,9 @@ Canonical task status is in
     questions (no intent-echo check exists); a real model or such a check is the user's decision. Packet: `ADS-073-abstention-evaluation.md`.
   - **ADS-074** isolation evaluation (`reference_stack/isolation_eval.py`, `m7/isolation-thresholds.proposed.json`, `make analytics-m7-isolation`): 24 hostile probes over REST and agent tools (other tenant, purposes, requester/automated/agent reviewing, bad tokens) + the
     ADS-067 corpus + ADS-070 protected cases; seven proposed gates met; each defence shown able to fail. Not an independent security review. Caveat: "automated" is recognised by id prefix/delegation claim only. Open findings F-02/F-03/F-05 listed. Packet: `ADS-074-isolation-evaluation.md`.
+  - **ADS-075** reliability evaluation (`reference_stack/reliability_eval.py`, `m7/reliability-thresholds.proposed.json`, `make analytics-m7-reliability`): worker crash before/after all 13 nodes x two models (stores intact; process death), 7 dependency faults, 40-run seeded chaos;
+    nine proposed gates met. **Found and fixed four defects** (query ran twice after a crash in the execute window; compile could not repeat after a crash; dead context provider -> HTTP 500; warehouse outage reported as non-retryable internal_error).
+    **Open:** a real process crash after compile fails closed (10 of 26 points; needs durable plans/results); no retry guidance after a terminal failure; no availability target declared. Packet: `ADS-075-reliability-evaluation.md`.
   - **Next:** PRs #25-#29 (ADS-055..059) are all merged to `main` (the last three on 2026-10-13). M5's packets are implemented
     and in `review`. **Wave 6A (M6) is implemented:** ADS-060, ADS-062, ADS-063 (all `review`); next is wave 6B (ADS-061 MCP adapter,
     ADS-064 customer-data-plane simulator, ADS-065 traces/metrics/redaction). Open user decisions: approve/amend the

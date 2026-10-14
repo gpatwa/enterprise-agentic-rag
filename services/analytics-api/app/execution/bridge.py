@@ -17,8 +17,16 @@ class ExecutionResultStore:
         self._lock = threading.Lock()
         self._results: dict[tuple[str, str, str], ExecutionResult] = {}
 
+    @staticmethod
+    def reference_for(tenant_id: str, run_id: str, plan_reference: str) -> str:
+        return hashlib.sha256(f"{tenant_id}:{run_id}:{plan_reference}:result".encode()).hexdigest()
+
+    def has(self, tenant_id: str, run_id: str, reference: str) -> bool:
+        with self._lock:
+            return (tenant_id, run_id, reference) in self._results
+
     def put(self, tenant_id: str, run_id: str, plan_reference: str, result: ExecutionResult) -> str:
-        reference = hashlib.sha256(f"{tenant_id}:{run_id}:{plan_reference}:result".encode()).hexdigest()
+        reference = self.reference_for(tenant_id, run_id, plan_reference)
         with self._lock:
             self._results[(tenant_id, run_id, reference)] = result
         return reference
@@ -47,6 +55,9 @@ class GatewayExecutor:
         self._limits = limits
 
     def execute(self, *, tenant_id: str, run_id: str, plan_reference: str) -> str:
+        reference = self._results.reference_for(tenant_id, run_id, plan_reference)
+        if self._results.has(tenant_id, run_id, reference):
+            return reference  # a resumed worker must not run the same query again: the earlier worker's result is kept
         plan = self._plans.get(tenant_id, run_id, plan_reference)
         result = _gateway_for(self._gateways, plan).execute(plan, limits=self._limits)
         return self._results.put(tenant_id, run_id, plan_reference, result)
