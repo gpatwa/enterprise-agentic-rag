@@ -203,7 +203,7 @@ tasks:
   ADS-071: {milestone: M7, status: review, depends_on: [ADS-070]}
   ADS-072: {milestone: M7, status: review, depends_on: [ADS-019, ADS-070]}
   ADS-073: {milestone: M7, status: review, depends_on: [ADS-039, ADS-070]}
-  ADS-074: {milestone: M7, status: planned, depends_on: [ADS-067, ADS-070]}
+  ADS-074: {milestone: M7, status: review, depends_on: [ADS-067, ADS-070]}
   ADS-075: {milestone: M7, status: planned, depends_on: [ADS-068]}
   ADS-076: {milestone: M7, status: planned, depends_on: [ADS-066]}
   ADS-077: {milestone: M7, status: planned, depends_on: [ADS-057, ADS-070]}

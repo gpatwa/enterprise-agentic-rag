@@ -1,0 +1,274 @@
+{
+  "packet": "ADS-074",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Plan section 10 requires zero policy and tenant-isolation violations; the other gates are the implementing agent's proposals. Not approved."
+  },
+  "ok": true,
+  "gates": {
+    "cross_tenant_leaks": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "purpose_violations": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "separation_of_duties_violations": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "unauthenticated_successes": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "probe_agreement": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true
+    },
+    "security_corpus_gates_met": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true
+    },
+    "protected_case_failures": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    }
+  },
+  "gate_plan": {
+    "cross_tenant_leaks": "Policy and tenant-isolation violations 0",
+    "purpose_violations": "Policy and tenant-isolation violations 0 (a purpose the caller lacks)",
+    "separation_of_duties_violations": "A requester or an agent decides a review: 0",
+    "unauthenticated_successes": "Forged, expired, wrong-audience, or missing tokens that succeed: 0",
+    "probe_agreement": "Every hostile probe is refused without leaking the victim's data",
+    "security_corpus_gates_met": "ADS-067 security corpus gates met",
+    "protected_case_failures": "ADS-070 policy-denied, tenant-isolation, and refusal cases that fail: 0"
+  },
+  "samples": {
+    "probes": 24,
+    "security_cases": 28,
+    "protected_case_runs": 48
+  },
+  "open_findings": [
+    "F-02: Run IDs were a plain hash of tenant, user, purpose, and a client-chosen key, so a colleague could compute and read another person's run",
+    "F-03: Small cohorts and exact differencing: aggregates can reveal individual values",
+    "F-05: Any caller in the same tenant with the run's purpose and the run ID can read its status and evidence"
+  ],
+  "not_measured": {
+    "independent_security_review": "required by the plan before any pilot; this matrix is not one",
+    "live_identity_provider": "tokens are signed by a local issuer; a real IdP's behaviour (key rotation, group claims, token exchange) is not exercised",
+    "automated_actor_naming": "a caller is treated as automated only if its user id has a known prefix (system:, model:, agent:, service:) or carries a delegation claim; an automated actor with an ordinary-looking id would be treated as a human reviewer. Identity-provider configuration must enforce the convention.",
+    "network_and_infrastructure": "no network boundary, storage encryption, or deployment isolation is tested",
+    "data_plane_boundary": "the VPC simulator (ADS-064) is covered by its own tests, not this matrix"
+  },
+  "probes": [
+    {
+      "name": "read a run of another tenant",
+      "surface": "rest",
+      "group": "cross_tenant",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "feedback on a run of another tenant",
+      "surface": "rest",
+      "group": "cross_tenant",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "clarify a run of another tenant",
+      "surface": "rest",
+      "group": "cross_tenant",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "decide a review of another tenant",
+      "surface": "rest",
+      "group": "cross_tenant",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "re-submit the same idempotency key as another tenant",
+      "surface": "rest",
+      "group": "cross_tenant",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "read a run under a purpose the caller lacks",
+      "surface": "rest",
+      "group": "purpose",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "read a run under a different purpose than it was made with",
+      "surface": "rest",
+      "group": "purpose",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "analyze under a purpose the caller lacks",
+      "surface": "rest",
+      "group": "purpose",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "the requester approves their own review",
+      "surface": "rest",
+      "group": "duties",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "an automated caller approves a review",
+      "surface": "rest",
+      "group": "duties",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "approve with a stale plan fingerprint",
+      "surface": "rest",
+      "group": "duties",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "forged signature token reads a run",
+      "surface": "rest",
+      "group": "auth",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "forged signature token asks a question",
+      "surface": "rest",
+      "group": "auth",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "expired token reads a run",
+      "surface": "rest",
+      "group": "auth",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "expired token asks a question",
+      "surface": "rest",
+      "group": "auth",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "wrong audience token reads a run",
+      "surface": "rest",
+      "group": "auth",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "wrong audience token asks a question",
+      "surface": "rest",
+      "group": "auth",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "wrong issuer token reads a run",
+      "surface": "rest",
+      "group": "auth",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "wrong issuer token asks a question",
+      "surface": "rest",
+      "group": "auth",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "no token reads a run",
+      "surface": "rest",
+      "group": "auth",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "malformed bearer token",
+      "surface": "rest",
+      "group": "auth",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "analytics.status on a run of another tenant",
+      "surface": "tools",
+      "group": "cross_tenant",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "analytics.evidence on a run of another tenant",
+      "surface": "tools",
+      "group": "cross_tenant",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "a delegated agent decides a review",
+      "surface": "tools",
+      "group": "duties",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    }
+  ]
+}
