@@ -274,6 +274,10 @@ analytics-m7-isolation:
 analytics-m7-reliability:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack m7 075 --write-report ../../docs/execution/enterprise-analytics/reports
 
+# ADS-076 latency, concurrency, token, warehouse, and cost evaluation (fakes only); thresholds and prices are proposed placeholders.
+analytics-m7-performance:
+	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack m7 076 --write-report ../../docs/execution/enterprise-analytics/reports
+
 # M4 golden suite (fakes only); regenerates the report against the user-approved M4 thresholds.
 analytics-golden:
 	cd services/analytics-api && PYTHONPATH=.:../.. python3 -m reference_stack golden --write-report ../../docs/execution/enterprise-analytics/reports

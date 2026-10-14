@@ -254,6 +254,8 @@ Canonical task status is in
   - **ADS-075** reliability evaluation (`reference_stack/reliability_eval.py`, `m7/reliability-thresholds.proposed.json`, `make analytics-m7-reliability`): worker crash before/after all 13 nodes x two models (stores intact; process death), 7 dependency faults, 40-run seeded chaos;
     nine proposed gates met. **Found and fixed four defects** (query ran twice after a crash in the execute window; compile could not repeat after a crash; dead context provider -> HTTP 500; warehouse outage reported as non-retryable internal_error).
     **Open:** a real process crash after compile fails closed (10 of 26 points; needs durable plans/results); no retry guidance after a terminal failure; no availability target declared. Packet: `ADS-075-reliability-evaluation.md`.
+  - **ADS-076** performance and cost (`reference_stack/performance_eval.py`, `m7/performance-thresholds.proposed.json`, `make analytics-m7-performance`): warm p95 ~44 ms, 8-way concurrent p95 ~0.55 s, compile/policy overhead ~0.5 ms, ~110 in / 118 out tokens per intent,
+    fairness holds under overload; **one proposed gate does NOT meet: `answers_per_tenant_day` 92 < 100** (uncalibrated cost units 25-263 vs the proposed 10,000-unit daily budget) - left unmet, a decision for the user. Prices are placeholders; real model/warehouse not measured. Packet: `ADS-076-performance-cost-evaluation.md`.
   - **Next:** PRs #25-#29 (ADS-055..059) are all merged to `main` (the last three on 2026-10-13). M5's packets are implemented
     and in `review`. **Wave 6A (M6) is implemented:** ADS-060, ADS-062, ADS-063 (all `review`); next is wave 6B (ADS-061 MCP adapter,
     ADS-064 customer-data-plane simulator, ADS-065 traces/metrics/redaction). Open user decisions: approve/amend the

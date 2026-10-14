@@ -99,3 +99,12 @@ def _reliability():
 
 
 PACKETS["075"] = _reliability()
+
+
+def _performance():
+    from reference_stack import performance_eval
+
+    return ("ADS-076-performance-report", performance_eval.run_performance, performance_eval.render_markdown)
+
+
+PACKETS["076"] = _performance()
