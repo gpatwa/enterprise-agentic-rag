@@ -41,6 +41,9 @@ def main(argv: list[str] | None = None) -> int:
     poisoning.add_argument("--write-report", metavar="DIR")
     security = sub.add_parser("security", help="run the ADS-067 security corpus and print or write the report")
     security.add_argument("--write-report", metavar="DIR")
+    m7 = sub.add_parser("m7", help="run an M7 final-evaluation packet (ADS-071..078) and print or write the report")
+    m7.add_argument("packet", help="packet number, for example 071")
+    m7.add_argument("--write-report", metavar="DIR")
     operations = sub.add_parser("operations", help="run the ADS-069 seeded-failure operations drill")
     operations.add_argument("--write-report", metavar="DIR")
     resilience = sub.add_parser("resilience", help="run the ADS-068 restore and failover drills and print or write the report")
@@ -67,6 +70,27 @@ def main(argv: list[str] | None = None) -> int:
             if report["cross_dialect_rows_identical"] is not None:
                 print(f"cross-dialect rows identical: {report['cross_dialect_rows_identical']}")
             print("RESULT:", "PASS" if report["ok"] else "FAIL")
+        return 0 if report["ok"] else 1
+
+    if args.command == "m7":
+        from pathlib import Path
+
+        from reference_stack.m7_eval import PACKETS
+
+        if args.packet not in PACKETS:
+            print(f"unknown packet {args.packet}; choose from {', '.join(sorted(PACKETS))}")
+            return 2
+        stem, run, render = PACKETS[args.packet]
+        report = run()
+        markdown = render(report)
+        if args.write_report:
+            target = Path(args.write_report)
+            target.mkdir(parents=True, exist_ok=True)
+            (target / f"{stem}.md").write_text(markdown)
+            (target / f"{stem}.json").write_text(json.dumps(report, indent=2, default=str) + "\n")
+        else:
+            print(markdown)
+        print(f"ok: {report['ok']}")
         return 0 if report["ok"] else 1
 
     if args.command == "operations":

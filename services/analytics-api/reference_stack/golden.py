@@ -315,7 +315,7 @@ def run_golden(
         "meets_thresholds": all(g["meets"] for g in gates.values()),
         "gates": gates,
         "gate_definitions": thresholds["gates"],
-        "not_measured_at_m4": thresholds["not_measured_at_m4"],
+        "not_measured_at_m4": thresholds.get("not_measured_at_m4", thresholds.get("not_measured", {})),
         "samples": {"latency": len(obs.latencies), "overhead": len(obs.overheads_ms), "answered_runs": obs.answered},
         "cases": [asdict(r) for r in obs.cases],
     }
