@@ -1,0 +1,788 @@
+{
+  "packet": "ADS-077",
+  "approval": {
+    "status": "proposed",
+    "approved_by": null,
+    "approved_at": null,
+    "note": "Gates chosen by the implementing agent: zero wrong answers, equivalent wire formats agree, non-conforming output and a down provider end safely and without a retry storm, ungrounded claims never shown, pinned prompts reproduce, and the ADS-057/059 gates stay met (unreviewed correction promotions 0 is a plan section 10 gate). Not approved."
+  },
+  "ok": true,
+  "gates": {
+    "provider_wrong_answers": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "equivalent_provider_agreement": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true
+    },
+    "nonconforming_provider_safe_rate": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true
+    },
+    "model_calls_per_failing_run_max": {
+      "value": 1,
+      "op": "<=",
+      "threshold": 1,
+      "meets": true
+    },
+    "degraded_mode_unsafe_outcomes": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "ungrounded_claims_shown": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "prompt_version_reproducibility": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true
+    },
+    "rollout_and_rollback_gates_met": {
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 1.0,
+      "meets": true
+    },
+    "unreviewed_correction_promotions": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    }
+  },
+  "gate_plan": {
+    "provider_wrong_answers": "A provider's output yields rows that differ from the oracle: 0",
+    "equivalent_provider_agreement": "The same intent in a different wire format gives the same result fingerprint: 100%",
+    "nonconforming_provider_safe_rate": "A non-conforming provider output ends in a typed failure with no query run: 100%",
+    "model_calls_per_failing_run_max": "Provider failure is bounded: no retry storm (calls per failing run)",
+    "degraded_mode_unsafe_outcomes": "With the provider down, every request ends in a typed failure with no query run: 0 exceptions",
+    "ungrounded_claims_shown": "An ungrounded explainer's claims reach the caller: 0",
+    "prompt_version_reproducibility": "The same pinned prompt gives identical result fingerprints on re-run, and after a rollback: 100%",
+    "rollout_and_rollback_gates_met": "ADS-057 rollout gates (including bad-candidate rollback) met",
+    "unreviewed_correction_promotions": "Unreviewed correction promotions: 0 (ADS-059 gates met)"
+  },
+  "samples": {
+    "provider_runs": 66,
+    "modes": 11,
+    "flaky_runs": 6,
+    "degraded": {
+      "requests": 12,
+      "seconds": 0.60825658403337,
+      "unsafe": 0,
+      "codes": [
+        "planner_unavailable"
+      ],
+      "max_calls": 1
+    },
+    "reproducibility": {
+      "rate": 1.0,
+      "questions": 6,
+      "comparisons": 4
+    }
+  },
+  "explainers": [
+    {
+      "case": "ungrounded_number",
+      "kind": "answer",
+      "status": "evidence_only",
+      "claims_shown": 0,
+      "rows_correct": true
+    },
+    {
+      "case": "uncited_claim",
+      "kind": "answer",
+      "status": "evidence_only",
+      "claims_shown": 0,
+      "rows_correct": true
+    },
+    {
+      "case": "claim_cites_nothing_real",
+      "kind": "answer",
+      "status": "evidence_only",
+      "claims_shown": 0,
+      "rows_correct": true
+    }
+  ],
+  "not_measured": {
+    "real_provider_behaviour": "real providers differ in ways not modelled here: token limits, safety refusals, partial streams, rate limits, latency tails, silent model updates",
+    "valid_but_wrong_intent": "a well-formed intent for the wrong question (for example a status breakdown for a monthly question) is answered; no intent-echo check exists (open gap from ADS-073)",
+    "prompt_effect": "the scripted model ignores prompt text, so reproducibility across prompt versions shows the pipeline adds no nondeterminism, not that a prompt change leaves a real model's behaviour unchanged",
+    "runtime_wiring": "the runtime does not read the prompt registry or rollout pointer; rollback is evaluated on the rollout controller (ADS-057) and pinned prompt templates, not on a live pointer",
+    "retry_and_circuit_breaking": "there is no retry and no circuit breaker: each run makes one model call and fails, which bounds a failure but means a flaky provider is never retried automatically"
+  },
+  "runs": [
+    {
+      "mode": "baseline",
+      "question": "What is total revenue",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "dcf07bec3e538bf7bbdd5efff51f640ba61af7b8d4ff3cdb58755f161931ad05",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "baseline",
+      "question": "Revenue by status",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "efb331e5f4c722a28ecbde7e6995bff0ac393e8f5a70691b32dac0760ccf9949",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "baseline",
+      "question": "Show monthly revenue",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "d9077fa74b3fc15ca49a6a312e460a15c1980572dc5b67085730a44dbaaff020",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "baseline",
+      "question": "Monthly revenue for all statuses",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "0b533a5e339fd3dbfef0a2d8f3fe390952fa41a76693ba60468c06036452c18d",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "baseline",
+      "question": "Revenue for refunded orders",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "f12f279290608ed778ce44b800063337a15e42b8202e996ba31bf03440e0d555",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "baseline",
+      "question": "Top revenue status",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "52d0f4bb67a4ad687e47999a5c67b8b8396a2afd26bf1ea5cd183054bf1dca0a",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "reordered_keys",
+      "question": "What is total revenue",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "dcf07bec3e538bf7bbdd5efff51f640ba61af7b8d4ff3cdb58755f161931ad05",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "reordered_keys",
+      "question": "Revenue by status",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "efb331e5f4c722a28ecbde7e6995bff0ac393e8f5a70691b32dac0760ccf9949",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "reordered_keys",
+      "question": "Show monthly revenue",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "d9077fa74b3fc15ca49a6a312e460a15c1980572dc5b67085730a44dbaaff020",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "reordered_keys",
+      "question": "Monthly revenue for all statuses",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "0b533a5e339fd3dbfef0a2d8f3fe390952fa41a76693ba60468c06036452c18d",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "reordered_keys",
+      "question": "Revenue for refunded orders",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "f12f279290608ed778ce44b800063337a15e42b8202e996ba31bf03440e0d555",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "reordered_keys",
+      "question": "Top revenue status",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "52d0f4bb67a4ad687e47999a5c67b8b8396a2afd26bf1ea5cd183054bf1dca0a",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "json_string",
+      "question": "What is total revenue",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "dcf07bec3e538bf7bbdd5efff51f640ba61af7b8d4ff3cdb58755f161931ad05",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "json_string",
+      "question": "Revenue by status",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "efb331e5f4c722a28ecbde7e6995bff0ac393e8f5a70691b32dac0760ccf9949",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "json_string",
+      "question": "Show monthly revenue",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "d9077fa74b3fc15ca49a6a312e460a15c1980572dc5b67085730a44dbaaff020",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "json_string",
+      "question": "Monthly revenue for all statuses",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "0b533a5e339fd3dbfef0a2d8f3fe390952fa41a76693ba60468c06036452c18d",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "json_string",
+      "question": "Revenue for refunded orders",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "f12f279290608ed778ce44b800063337a15e42b8202e996ba31bf03440e0d555",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "json_string",
+      "question": "Top revenue status",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "52d0f4bb67a4ad687e47999a5c67b8b8396a2afd26bf1ea5cd183054bf1dca0a",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "pretty_json_string",
+      "question": "What is total revenue",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "dcf07bec3e538bf7bbdd5efff51f640ba61af7b8d4ff3cdb58755f161931ad05",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "pretty_json_string",
+      "question": "Revenue by status",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "efb331e5f4c722a28ecbde7e6995bff0ac393e8f5a70691b32dac0760ccf9949",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "pretty_json_string",
+      "question": "Show monthly revenue",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "d9077fa74b3fc15ca49a6a312e460a15c1980572dc5b67085730a44dbaaff020",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "pretty_json_string",
+      "question": "Monthly revenue for all statuses",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "0b533a5e339fd3dbfef0a2d8f3fe390952fa41a76693ba60468c06036452c18d",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "pretty_json_string",
+      "question": "Revenue for refunded orders",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "f12f279290608ed778ce44b800063337a15e42b8202e996ba31bf03440e0d555",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "pretty_json_string",
+      "question": "Top revenue status",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "52d0f4bb67a4ad687e47999a5c67b8b8396a2afd26bf1ea5cd183054bf1dca0a",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "extra_field",
+      "question": "What is total revenue",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "extra_field",
+      "question": "Revenue by status",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "extra_field",
+      "question": "Show monthly revenue",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "extra_field",
+      "question": "Monthly revenue for all statuses",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "extra_field",
+      "question": "Revenue for refunded orders",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "extra_field",
+      "question": "Top revenue status",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "markdown_fence",
+      "question": "What is total revenue",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "markdown_fence",
+      "question": "Revenue by status",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "markdown_fence",
+      "question": "Show monthly revenue",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "markdown_fence",
+      "question": "Monthly revenue for all statuses",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "markdown_fence",
+      "question": "Revenue for refunded orders",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "markdown_fence",
+      "question": "Top revenue status",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "truncated_json",
+      "question": "What is total revenue",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "truncated_json",
+      "question": "Revenue by status",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "truncated_json",
+      "question": "Show monthly revenue",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "truncated_json",
+      "question": "Monthly revenue for all statuses",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "truncated_json",
+      "question": "Revenue for refunded orders",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "truncated_json",
+      "question": "Top revenue status",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "wrong_type",
+      "question": "What is total revenue",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "wrong_type",
+      "question": "Revenue by status",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "wrong_type",
+      "question": "Show monthly revenue",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "wrong_type",
+      "question": "Monthly revenue for all statuses",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "wrong_type",
+      "question": "Revenue for refunded orders",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "wrong_type",
+      "question": "Top revenue status",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "empty_reply",
+      "question": "What is total revenue",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "empty_reply",
+      "question": "Revenue by status",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "empty_reply",
+      "question": "Show monthly revenue",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "empty_reply",
+      "question": "Monthly revenue for all statuses",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "empty_reply",
+      "question": "Revenue for refunded orders",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "empty_reply",
+      "question": "Top revenue status",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "flaky_first_call",
+      "question": "What is total revenue",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "flaky_first_call",
+      "question": "Revenue by status",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "flaky_first_call",
+      "question": "Show monthly revenue",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "flaky_first_call",
+      "question": "Monthly revenue for all statuses",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "flaky_first_call",
+      "question": "Revenue for refunded orders",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "flaky_first_call",
+      "question": "Top revenue status",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "uppercase_metric",
+      "question": "What is total revenue",
+      "kind": "answer",
+      "code": null,
+      "correct": true,
+      "fingerprint": "dcf07bec3e538bf7bbdd5efff51f640ba61af7b8d4ff3cdb58755f161931ad05",
+      "executions": 1,
+      "calls": 1
+    },
+    {
+      "mode": "uppercase_metric",
+      "question": "Revenue by status",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "uppercase_metric",
+      "question": "Show monthly revenue",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "uppercase_metric",
+      "question": "Monthly revenue for all statuses",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "uppercase_metric",
+      "question": "Revenue for refunded orders",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    },
+    {
+      "mode": "uppercase_metric",
+      "question": "Top revenue status",
+      "kind": "failed",
+      "code": "planner_unavailable",
+      "correct": null,
+      "fingerprint": null,
+      "executions": 0,
+      "calls": 1
+    }
+  ]
+}
