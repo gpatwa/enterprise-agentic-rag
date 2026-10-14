@@ -252,7 +252,9 @@ def test_a_candidate_prompt_that_changes_behaviour_is_caught_by_the_suites(world
     record = evaluator.evaluate("prompt_candidate", subject, tenant_id="tenant-a")
     assert record.verdict == "failed" and record.reason == "suite_failed:golden"
     targeted = next(o for o in record.outcomes if o.scope == "targeted")
-    assert {"G01", "R01"} <= set(targeted.failed)  # a monthly answer changed and an unsupported request got answered
+    assert (
+        "G01" in set(targeted.failed)
+    )  # R01 (an unsupported request answered) is now also refused by the intent-echo check, so a candidate cannot change it
     assert not evaluator.passed("prompt_candidate", subject, entry.content_fingerprint, tenant_id="tenant-a")
 
 

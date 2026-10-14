@@ -2,15 +2,15 @@
 
 **Result: DOES NOT MEET the proposed thresholds.** The thresholds are PROPOSED and NOT APPROVED. Measured on a scripted model, local DuckDB, an emulated PostgreSQL, and a SQLite control store: **these numbers say nothing about a real model or warehouse**, and the plan requires latency and cost to be re-baselined for the staging stack.
 
-200 warm requests, 320 concurrent requests (8 workers per engine), throughput {'duckdb': 41.4, 'postgres': 45.7} requests/s, warehouse cost units per answer 25 to 263 (uncalibrated, per dialect) against a proposed daily budget of 10000; warm latency p50 33 ms, p95 44 ms, p99 61 ms; mean tokens per intent 110 in / 118 out; peak RSS 214.5 MB.
+200 warm requests, 320 concurrent requests (8 workers per engine), throughput {'duckdb': 10.2, 'postgres': 12.9} requests/s, warehouse cost units per answer 25 to 263 (uncalibrated, per dialect) against a proposed daily budget of 10000; warm latency p50 47 ms, p95 82 ms, p99 187 ms; mean tokens per intent 110 in / 118 out; peak RSS 211.6 MB.
 
 ## Metrics
 
 | Metric | Measured | Gate | Meets | Plan gate |
 |---|---:|---:|:---:|---|
-| `p95_warm_latency_seconds` | 0.04371 | <= 8.0 | yes | P95 warm answer latency, local reference data <= 8 seconds |
-| `p95_concurrent_latency_seconds` | 0.5487 | <= 8.0 | yes | P95 at target concurrency <= 8 seconds |
-| `p95_compile_policy_overhead_ms` | 0.5002 | <= 250.0 | yes | P95 deterministic compile/policy overhead <= 250 ms |
+| `p95_warm_latency_seconds` | 0.08196 | <= 8.0 | yes | P95 warm answer latency, local reference data <= 8 seconds |
+| `p95_concurrent_latency_seconds` | 2.486 | <= 8.0 | yes | P95 at target concurrency <= 8 seconds |
+| `p95_compile_policy_overhead_ms` | 3.26 | <= 250.0 | yes | P95 deterministic compile/policy overhead <= 250 ms |
 | `concurrent_errors_or_wrong_rows` | 0 | <= 0 | yes | No errors or wrong rows under concurrency: 0 |
 | `prompt_tokens_per_intent_max` | 110 | <= 2000 | yes | Context tokens per intent stay within the run's context budget |
 | `cost_per_answer_usd` | 0.05623 | <= 0.25 | yes | Unit economics: assumed cost per answered question within the proposed ceiling |

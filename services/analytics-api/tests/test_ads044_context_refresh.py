@@ -480,6 +480,7 @@ def _resolve(registry, snapshot_id, *, tenant="tenant-a", metric="sales"):
         purpose="analysis",
         node_id="resolve",
         state_version=1,
+        request_text="Show sales",  # the intent-echo check needs the question; "sales" is a certified alias of revenue
         context_snapshot_id=snapshot_id,
         payload={"intent": intent.model_dump(mode="json")},
         remaining_budget=RunBudget(deadline=START + timedelta(hours=1)),

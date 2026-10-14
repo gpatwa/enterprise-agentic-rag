@@ -5,7 +5,7 @@ Suite `m7-abstention-v1`, corpus `dc21ae598a65`. **Result: MEETS the proposed th
 ## Scope and limits
 
 - Each case replaces the model's output with a chosen one (unsupported, hostile, malformed, uncertified, cross-tenant, ambiguous) and runs the whole governed pipeline on DuckDB.
-- **Open gap (not a pass):** 4 of 4 near-miss questions were answered by the scripted keyword model with a certified metric. The scripted keyword model answers a question that asks for something uncertified with a certified metric. A real model, or an intent-echo check, must close this; it is not measured here.
+- **Near-miss questions:** 0 of 4 were answered with a certified metric after the intent-echo check. The scripted keyword model answers a question that asks for something uncertified with a certified metric. The deterministic intent-echo check (M7-H2) is meant to refuse these; it is lexical and conservative, so it can also refuse an unusual phrasing of a valid question (see false_abstention_rate), and it does not understand meaning.
 
 ## Metrics
 
@@ -16,6 +16,7 @@ Suite `m7-abstention-v1`, corpus `dc21ae598a65`. **Result: MEETS the proposed th
 | `unsupported_reason_precision` | 1 | >= 1.0 | yes | An unsupported request is reported as unsupported, not as a retryable outage |
 | `clarify_recall` | 1 | >= 0.95 | yes | Ambiguous request clarify-or-review recall >= 95% |
 | `false_abstention_rate` | 0 | <= 0.05 | yes | Valid certified questions answered (false abstention <= 5%) |
+| `near_miss_answered` | 0 | <= 0 | yes | A question about something uncertified is answered with a certified metric (intent-echo check): 0 |
 | `executed_queries_on_abstention` | 0 | <= 0 | yes | No query runs for a case that abstains |
 | `uncalibrated_confidence_claims` | 0 | <= 0 | yes | No confidence value is claimed (none is calibrated) |
 
@@ -58,4 +59,4 @@ Suite `m7-abstention-v1`, corpus `dc21ae598a65`. **Result: MEETS the proposed th
 
 - **real_model_abstention**: the model is replaced by chosen outputs; a real model's tendency to guess is not measured
 - **calibration**: no model confidence exists to calibrate; the system claims none, and calibration of a real model's confidence is not evaluated
-- **near_miss_questions**: see the open gap in the report: the scripted keyword model answers some
+- **near_miss_questions**: the intent-echo check is lexical: it compares the question's words with certified terms, so a near-miss that reuses certified words can still pass, and an unusual phrasing of a valid question can be refused; it does not understand meaning

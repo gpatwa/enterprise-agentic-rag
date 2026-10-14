@@ -1,0 +1,97 @@
+{
+  "packet": "M7-H4",
+  "ok": true,
+  "checks": [
+    {
+      "check": "a known scale and offset are recovered",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "too few samples are refused",
+      "ok": true,
+      "detail": "too_few_samples:d"
+    },
+    {
+      "check": "constant estimates are refused",
+      "ok": true,
+      "detail": "estimates_do_not_vary:d"
+    },
+    {
+      "check": "estimates that do not predict cost are refused",
+      "ok": true,
+      "detail": "estimates_do_not_predict_cost:d"
+    },
+    {
+      "check": "a proposed calibration is not applied",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "an approved but non-production calibration is not applied",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "an approved production calibration is applied for its own dialect only",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "approval without a named person is refused",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "local_measurement": {
+    "duckdb": [
+      {
+        "question": "What is total revenue",
+        "estimated_units": 200.0,
+        "median_ms": 7.915749680250883
+      },
+      {
+        "question": "Revenue by status",
+        "estimated_units": 263.0,
+        "median_ms": 7.299957796931267
+      },
+      {
+        "question": "Show monthly revenue",
+        "estimated_units": 40.0,
+        "median_ms": 7.465916220098734
+      },
+      {
+        "question": "Top revenue status",
+        "estimated_units": 263.0,
+        "median_ms": 15.041291248053312
+      }
+    ],
+    "postgres": [
+      {
+        "question": "What is total revenue",
+        "estimated_units": 25.0,
+        "median_ms": 9.47933318093419
+      },
+      {
+        "question": "Revenue by status",
+        "estimated_units": 25.0,
+        "median_ms": 9.032917208969593
+      },
+      {
+        "question": "Show monthly revenue",
+        "estimated_units": 25.0,
+        "median_ms": 10.737292002886534
+      },
+      {
+        "question": "Top revenue status",
+        "estimated_units": 25.0,
+        "median_ms": 11.257000267505646
+      }
+    ]
+  },
+  "limits": [
+    "This is not a warehouse calibration. Real warehouse samples (estimated units and the observed cost in the chosen unit) are needed, and a person must approve the fitted calibration.",
+    "Local DuckDB over 100 rows and an emulated PostgreSQL do not stand in for the target warehouse.",
+    "No calibration is applied anywhere by default; the quota gate answers_per_tenant_day in ADS-076 is therefore unchanged."
+  ]
+}

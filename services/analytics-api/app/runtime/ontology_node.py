@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import re
 
+from app.runtime.intent_echo import echo_problems
 from packages.platform_contracts.agent_runtime import EvidenceReference, NodeInput, NodeOutput, RunError
 from packages.platform_contracts.analytics_intent import AnalyticalIntent
 from packages.platform_contracts.analytics_planning import AnalyticsAmbiguity
@@ -118,7 +119,7 @@ class SnapshotOntologyProvider:
         return snapshot.ontology.model_copy(update={"snapshot_id": snapshot.snapshot_id})
 
 
-def ontology_resolution_node(contracts, ontologies):
+def ontology_resolution_node(contracts, ontologies, *, echo_check: bool = True):
     """Create a handler whose lookups are exact, tenant-scoped snapshot reads."""
 
     def handle(node_input: NodeInput) -> NodeOutput:
@@ -134,6 +135,7 @@ def ontology_resolution_node(contracts, ontologies):
             resolved = resolve_certified_intent(proposed, contract, ontology)
             if resolved.tenant_id != node_input.tenant_id:
                 raise IntentResolutionError("tenant_scope_mismatch")
+            echo = echo_problems(node_input.request_text, resolved, ontology) if echo_check else []
         except IntentResolutionError as exc:
             if exc.candidates and exc.code == "ambiguous_semantic_alias":
                 previous = node_input.payload.get("clarification_state") or {}
@@ -197,6 +199,21 @@ def ontology_resolution_node(contracts, ontologies):
                         evidence_id=f"ontology-error:{node_input.run_id}",
                         kind="error",
                         fingerprint=fingerprint,
+                    ),
+                ),
+            )
+        if echo:
+            reference = ";".join(echo)[:250]
+            return NodeOutput(
+                run_id=node_input.run_id,
+                node_id=node_input.node_id,
+                status="failed",
+                error=RunError(code="intent_echo_mismatch", message_reference=reference),
+                evidence=(
+                    EvidenceReference(
+                        evidence_id=f"intent-echo:{node_input.run_id}",
+                        kind="error",
+                        fingerprint=hashlib.sha256(reference.encode()).hexdigest(),
                     ),
                 ),
             )

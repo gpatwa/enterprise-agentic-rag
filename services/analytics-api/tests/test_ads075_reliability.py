@@ -31,21 +31,24 @@ def test_a_worker_crash_at_every_node_before_or_after_still_ends_in_one_correct_
     assert all(r["verdict"] == "correct_answer" and r["executions"] == 1 and r["chain_ok"] for r in runs)
 
 
-def test_a_process_crash_either_recovers_or_fails_closed_and_never_returns_a_wrong_answer(report):
+def test_a_process_crash_at_any_node_still_ends_in_one_correct_answer(report):
     runs = report["process_death_runs"]
-    assert {r["verdict"] for r in runs} <= {"correct_answer", "typed_failure"}
-    assert "policy-after" in report["process_death"]["recovered"]  # before the plan exists a new process can continue
-    assert "execute-after" in report["process_death"]["failed_closed"]  # after it, process-local plans are gone
-    assert all(r["executions"] <= 1 for r in runs)
-
-
-def test_the_report_states_the_process_crash_limit_and_what_is_not_measured(report):
-    text = ev.render_markdown(report)
-    assert (
-        "fail closed" in text
-        and "Durable plan and result storage is not built" in text
-        and "availability_percentage" in text
+    assert len(runs) == 26 and all(
+        r["verdict"] == "correct_answer" and r["executions"] <= 2 and r["chain_ok"] for r in runs
     )
+    assert report["process_death"]["failed_closed"] == []
+    # a crash after the query ran loses the process-local rows, so the stored plan runs again (at most once more)
+    assert all(r["executions"] == 1 for r in runs if not ev._in_rebuild_window(r))
+    assert all(
+        r["executions"] == 2
+        for r in runs
+        if (r["node"], r["when"]) in {("result_validate", "before"), ("explain", "before")}
+    )
+
+
+def test_the_report_states_what_is_stored_and_what_is_not_measured(report):
+    text = ev.render_markdown(report)
+    assert "stored durably" in text and "never stored" in text and "availability_percentage" in text
 
 
 def test_each_dependency_fails_into_a_typed_outcome(report):

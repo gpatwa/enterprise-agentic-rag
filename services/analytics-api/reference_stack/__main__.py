@@ -44,11 +44,21 @@ def main(argv: list[str] | None = None) -> int:
     m7 = sub.add_parser("m7", help="run an M7 final-evaluation packet (ADS-071..078) and print or write the report")
     m7.add_argument("packet", help="packet number, for example 071")
     m7.add_argument("--write-report", metavar="DIR")
+    calibration = sub.add_parser(
+        "calibration", help="check the cost-calibration mechanism (M7-H4) and print or write the report"
+    )
+    calibration.add_argument("--write-report", metavar="DIR")
     operations = sub.add_parser("operations", help="run the ADS-069 seeded-failure operations drill")
     operations.add_argument("--write-report", metavar="DIR")
-    resilience = sub.add_parser("resilience", help="run the ADS-068 restore and failover drills and print or write the report")
+    resilience = sub.add_parser(
+        "resilience", help="run the ADS-068 restore and failover drills and print or write the report"
+    )
     resilience.add_argument("--write-report", metavar="DIR")
-    resilience.add_argument("--write-fixtures", action="store_true", help="regenerate the pinned checkpoint fixtures (a compatibility decision)")
+    resilience.add_argument(
+        "--write-fixtures",
+        action="store_true",
+        help="regenerate the pinned checkpoint fixtures (a compatibility decision)",
+    )
     up = sub.add_parser("up", help="serve the v2 API locally with this stack (loopback only)")
     up.add_argument("--engine", choices=["duckdb", "postgres"], default="duckdb")
     up.add_argument("--port", type=int, default=8095)
@@ -93,6 +103,22 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ok: {report['ok']}")
         return 0 if report["ok"] else 1
 
+    if args.command == "calibration":
+        from pathlib import Path
+
+        from reference_stack import calibration_eval
+
+        report = calibration_eval.run_calibration()
+        markdown = calibration_eval.render_markdown(report)
+        if args.write_report:
+            target = Path(args.write_report)
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "M7-H4-cost-calibration-report.md").write_text(markdown)
+            (target / "M7-H4-cost-calibration-report.json").write_text(json.dumps(report, indent=2, default=str) + "\n")
+        else:
+            print(markdown)
+        return 0 if report["ok"] else 1
+
     if args.command == "operations":
         from pathlib import Path
 
@@ -129,7 +155,9 @@ def main(argv: list[str] | None = None) -> int:
             target = Path(args.write_report)
             target.mkdir(parents=True, exist_ok=True)
             (target / "ADS-068-resilience-report.md").write_text(markdown)
-            payload = {name: {"result": d["result"].model_dump(), "measured": d["measured"]} for name, d in drills.items()}
+            payload = {
+                name: {"result": d["result"].model_dump(), "measured": d["measured"]} for name, d in drills.items()
+            }
             (target / "ADS-068-resilience-report.json").write_text(json.dumps(payload, indent=2, default=str) + "\n")
         else:
             print(markdown)

@@ -1,6 +1,6 @@
 # ADS-071: End-to-End Correctness and Dialect Equivalence (M7 reference corpus)
 
-Generated 2026-10-13 08:26 UTC by `make analytics-m7-correctness`. Suite `m7-reference-v1`, corpus `d0d2cce4529e`, engines: duckdb, postgres.
+Generated 2026-10-13 16:31 UTC by `make analytics-m7-correctness`. Suite `m7-reference-v1`, corpus `d0d2cce4529e`, engines: duckdb, postgres.
 
 **Result: MEETS the proposed thresholds.** The thresholds are PROPOSED and NOT APPROVED. This is not an approval of anything and does not imply one; no packet has had independent review.
 
@@ -26,8 +26,8 @@ Generated 2026-10-13 08:26 UTC by `make analytics-m7-correctness`. Suite `m7-ref
 | `replay_fingerprint_equivalence` | 1 | >= 1.0 | yes | Replay fingerprint equivalence 100% |
 | `dialect_result_equivalence` | 1 | >= 1.0 | yes | PostgreSQL/DuckDB portable-subset result equivalence 100% |
 | `budget_overruns` | 0 | <= 0 | yes | Runs exceeding loop/transition budget 0 |
-| `p95_answer_latency_seconds` | 0.0479 | <= 8.0 | yes | P95 warm answer latency, local reference data <= 8 seconds |
-| `p95_compile_policy_overhead_ms` | 0.5326 | <= 250.0 | yes | P95 deterministic compile/policy overhead <= 250 ms |
+| `p95_answer_latency_seconds` | 0.2105 | <= 8.0 | yes | P95 warm answer latency, local reference data <= 8 seconds |
+| `p95_compile_policy_overhead_ms` | 5.816 | <= 250.0 | yes | P95 deterministic compile/policy overhead <= 250 ms |
 
 ## Cases
 

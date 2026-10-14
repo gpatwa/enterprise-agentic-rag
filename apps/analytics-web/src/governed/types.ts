@@ -72,6 +72,8 @@ export interface FailedOutcome extends OutcomeBase {
   error_code: string;
   message: string;
   retryable: boolean;
+  /** A failed run is terminal: retry under a NEW idempotency key (the client's Try again already does). */
+  retry_guidance?: 'resubmit_with_new_idempotency_key' | null;
 }
 
 export type Outcome = AnswerOutcome | ClarifyOutcome | ReviewOutcome | RefuseOutcome | FailedOutcome;

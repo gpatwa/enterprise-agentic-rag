@@ -298,9 +298,23 @@ class GovernedAnalyzeService:
                 material = None
             if material is None:
                 return AnalyticsFailedOutcome(
-                    **base, error_code="internal_error", message="The answer is unavailable.", retryable=True
+                    **base,
+                    error_code="internal_error",
+                    message="The answer is unavailable.",
+                    retryable=True,
+                    retry_guidance="resubmit_with_new_idempotency_key",
                 )
             return _answer(base, state, material)
+        if kind == "failed" and "intent_echo_mismatch" in codes:
+            from app.runtime.intent_echo import explain
+
+            reference = next(e.message_reference for e in state.errors if e.code == "intent_echo_mismatch")
+            return AnalyticsRefuseOutcome(
+                **base,
+                reason_code="unsupported_request",
+                explanation=explain(reference.split(";")),
+                remediation="Rephrase the question using certified metrics and dimensions, or ask the data owner to add the concept.",
+            )
         if (
             kind == "failed" and "unsupported_request" in codes
         ):  # the run's kind stays "failed"; the caller is told it is a refusal
@@ -322,7 +336,13 @@ class GovernedAnalyzeService:
                 remediation="Resubmit the request.",
             )
         code, message, retryable = _failure(codes, kind)
-        return AnalyticsFailedOutcome(**base, error_code=code, message=message, retryable=retryable)
+        return AnalyticsFailedOutcome(
+            **base,
+            error_code=code,
+            message=message,
+            retryable=retryable,
+            retry_guidance="resubmit_with_new_idempotency_key" if retryable else None,
+        )
 
 
 def _answer(base: dict[str, Any], state: AgentRunState, material: AnswerMaterial) -> AnalyticsAnswerOutcome:

@@ -23,7 +23,7 @@ Depends on: ADS-061 to ADS-066
   model and explainer, identity, delegation, tenancy, run IDs, SQL, runaway queries, wrong results, time, inference, data plane, evidence, telemetry,
   audit, the learning loop, availability, tool surface, prompt registry), each with its controls, **its verification (test file::name pairs)**,
   and its residual risk. A test checks that every referenced test exists, so the table cannot silently go stale.
-- A 28-case pinned corpus (`reference_stack/security/security-corpus-v1.json`) and `make analytics-security-eval` (report in `reports/`).
+- A 31-case pinned corpus (28 original + 3 intent-echo cases, M7-H2; the other cases run with the echo off so it cannot mask the defence under test) (`reference_stack/security/security-corpus-v1.json`) and `make analytics-security-eval` (report in `reports/`).
 - **Hardening that came out of it** (each tied to a finding and a test):
   - *F-01* the compiler refuses grouping by an unbucketed temporal dimension and grouping by a metric's grain key;
   - *F-02* optional `GovernedAnalyzeService(run_id_key=...)` makes run IDs an HMAC (`run_id_for`; wrappers use it);
@@ -51,7 +51,7 @@ Depends on: ADS-061 to ADS-066
   inference cases); a wrong expectation or a changed corpus is detected; **every verification reference in the threat model exists**; the compiler
   refuses row-level groupings; the minimum cohort is validated, bounds the SQL, and suppression is a warning while a fanout still blocks; an empty
   result is valid; keyed run IDs cannot be derived; the session time zone is UTC; and nothing mounts the evaluation.
-- `make analytics-security-eval`: 28/28 cases and all seven proposed gates are met.
+- `make analytics-security-eval`: 31/31 cases and all seven proposed gates are met.
 
 ## Decisions that belong to people
 

@@ -110,5 +110,13 @@ def test_a_changed_corpus_is_refused_until_the_digest_is_updated(monkeypatch, tm
 
 def test_the_report_states_the_open_gap_and_what_is_not_measured(report):
     text = ev.render_markdown(report)
-    assert report["open_gap"]["answered_by_scripted_model"] >= 1 and "Open gap (not a pass)" in text
+    assert report["open_gap"]["answered_by_scripted_model"] == 0 and "Near-miss questions" in text
     assert "NOT APPROVED" in text and "real_model_abstention" in text
+
+
+def test_without_the_intent_echo_check_the_near_miss_questions_are_answered(monkeypatch, tmp_path):
+    import app.runtime.ontology_node as node
+
+    monkeypatch.setattr(node, "echo_problems", lambda *args, **kwargs: [])
+    report = ev.run_abstention(workdir=tmp_path)
+    assert report["gates"]["near_miss_answered"]["value"] == len(CORPUS["near_miss_questions"]) and not report["ok"]

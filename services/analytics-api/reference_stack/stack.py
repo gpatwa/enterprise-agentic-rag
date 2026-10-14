@@ -126,6 +126,8 @@ class ReferenceStack:
     prompt_template: str | None = None
     min_cohort: int | None = None
     run_id_key: bytes | None = None
+    cost_calibration: object | None = None
+    intent_echo: bool = True
     executed_sql: list = field(default_factory=list)
     compiled_sql: set = field(default_factory=set)
     timings: list = field(default_factory=list)  # (node_id, seconds) for policy/compile
@@ -167,7 +169,7 @@ class ReferenceStack:
             "extract_intent": structured_intent_node(
                 ScriptedIntentClient(request.request_id, ambiguous=self.ambiguous), self._prompt_builder()
             ),
-            "resolve": ontology_resolution_node(self.contracts, OntologyProvider(ontology)),
+            "resolve": ontology_resolution_node(self.contracts, OntologyProvider(ontology), echo_check=self.intent_echo),
             "clarify": clarification_node(),
             "plan": analytics_plan_node(self.contracts),
             "validate": certified_intent_node(self.contracts),
@@ -175,7 +177,7 @@ class ReferenceStack:
             "compile": compile_node(self.compiler, self.plans, self.policy_values),
             "estimate": estimate_node(
                 self.plans,
-                GatewayCostEstimator(gateways),
+                self._estimator(gateways),
                 approval_threshold=self.review_threshold,
                 review_store=store,
                 requested_by=identity.user_id,
@@ -195,6 +197,12 @@ class ReferenceStack:
         for name in ("policy", "compile"):
             handlers[name] = self._timed(name, handlers[name])
         return handlers
+
+    def _estimator(self, gateways):
+        from app.execution.calibration import CalibratedCostEstimator
+
+        raw = GatewayCostEstimator(gateways)
+        return CalibratedCostEstimator(raw, self.cost_calibration) if self.cost_calibration is not None else raw
 
     def _prompt_builder(self):
         """A sandbox prompt for evaluating a candidate; None keeps the runtime's own prompt."""
@@ -357,6 +365,8 @@ def build_stack(
     contract_metadata: dict | None = None,
     min_cohort: int | None = None,
     run_id_key: bytes | None = None,
+    cost_calibration: object | None = None,
+    intent_echo: bool = True,
 ) -> ReferenceStack:
     """Create the seeded data, migrated control store, gateway, and compiler for one dialect."""
     workdir = Path(workdir or tempfile.mkdtemp(prefix="analytics-reference-"))
@@ -401,6 +411,9 @@ def build_stack(
 
     compiler.compile = recording_compile
     return ReferenceStack(
+        plans=CompiledPlanStore(sql_engine),
+        results=ExecutionResultStore(sql_engine),
+        policy_values=PolicyValueStore(sql_engine),
         engine=engine,
         workdir=workdir,
         control=ControlStore(sql_engine),
@@ -416,6 +429,8 @@ def build_stack(
         compiled_sql=compiled_sql,
         min_cohort=min_cohort,
         run_id_key=run_id_key,
+        cost_calibration=cost_calibration,
+        intent_echo=intent_echo,
     )
 
 

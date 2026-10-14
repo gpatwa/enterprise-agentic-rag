@@ -41,7 +41,7 @@ def test_the_security_corpus_meets_its_proposed_thresholds_and_stays_unapproved(
     failed = [(c["case_id"], c["detail"]) for c in report["cases"] if not c["passed"]]
     assert not failed, failed
     unmet = {name: gate for name, gate in report["gates"].items() if not gate["meets"]}
-    assert report["meets_thresholds"] and not unmet and len(report["cases"]) == 28, unmet
+    assert report["meets_thresholds"] and not unmet and len(report["cases"]) == 31, unmet
     assert report["approval"]["status"] == "proposed" and report["approval"]["approved_by"] is None
     markdown = security_eval.render_markdown(report)
     assert "PROPOSED and NOT APPROVED" in markdown and "not an independent security review" in markdown

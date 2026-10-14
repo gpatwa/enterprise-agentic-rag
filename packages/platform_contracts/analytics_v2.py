@@ -152,6 +152,8 @@ class AnalyticsFailedOutcome(AnalyticsOutcomeBase):
     ]
     message: str = Field(min_length=1, max_length=2_000)
     retryable: bool
+    # A failed run is terminal: the same idempotency key returns the same failure, so a retry needs a new key.
+    retry_guidance: Literal["resubmit_with_new_idempotency_key"] | None = None
 
 
 AnalyticsV2Outcome = Annotated[

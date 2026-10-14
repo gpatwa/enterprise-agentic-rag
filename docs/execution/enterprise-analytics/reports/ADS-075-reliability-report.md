@@ -9,18 +9,21 @@
 | Metric | Measured | Gate | Meets | Plan gate |
 |---|---:|---:|:---:|---|
 | `wrong_answers` | 0 | <= 0 | yes | Answers whose rows differ from the independent oracle: 0 |
-| `duplicate_executions` | 0 | <= 0 | yes | A query executed more than once for one run: 0 |
+| `duplicate_executions` | 0 | <= 0 | yes | A query executed more than once for one run, other than after a process crash: 0 |
+| `reexecution_outside_window` | 0 | <= 0 | yes | After a process crash, a query run again although the rows had not been produced yet: 0 |
+| `max_executions_per_run` | 2 | <= 2 | yes | Executions per run never exceed the one original plus one rebuild after a process crash |
 | `unhandled_errors` | 0 | <= 0 | yes | Errors that reach the caller untyped (a raw exception or HTTP 500): 0 |
 | `unsafe_outcomes` | 0 | <= 0 | yes | Runs that end in neither a correct answer nor a typed failure: 0 |
 | `evidence_chain_breaks` | 0 | <= 0 | yes | Evidence chains that no longer verify: 0 |
 | `crash_recovery_same_process` | 1 | >= 1.0 | yes | Worker-crash points that still end in a correct answer (stores intact) |
+| `crash_recovery_process_death` | 1 | >= 1.0 | yes | Process-crash points (fresh process, same database) that still end in a correct answer |
 | `crash_safe_ending_process_death` | 1 | >= 1.0 | yes | Process-crash points that end safely: a correct answer or a typed failure |
 | `dependency_failures_handled` | 1 | >= 1.0 | yes | Dependency failures that end in a typed failure or a degraded-but-correct answer |
 | `chaos_safe_ending_rate` | 1 | >= 1.0 | yes | Chaos runs that end safely |
 
-## What a real process crash does today
+## A real process crash
 
-With fresh in-memory stores on the same database, 16 of 26 crash points still finish with a correct answer and 10 **fail closed with a typed failure** (never a wrong answer): compile-after, compile-before, estimate-after, estimate-before, execute-after, execute-before, explain-after, explain-before, result_validate-after, result_validate-before. Compiled plans, policy values, and result rows are process-local, so a run that crashed after they were created cannot continue in a new process. Durable plan and result storage is not built.
+With fresh in-memory stores on the same database, 26 of 26 crash points finish with a correct answer. Compiled plans and policy values are stored durably (M7-H1) so another process can continue the run; result rows are never stored, and a result missing after a crash is rebuilt by running the stored plan again while the run is in flight.
 
 ## Dependency failures
 
@@ -37,7 +40,8 @@ With fresh in-memory stores on the same database, 16 of 26 crash points still fi
 ## Not measured
 
 - **availability_percentage**: no availability target has been declared and no uptime was measured; these are mechanism tests
-- **real_process_recovery**: compiled plans, policy values, and result rows are process-local, so a real process crash after the compile step fails closed (shown in the report); durable plan/result storage is not built
+- **real_process_recovery**: the process crash is simulated by a second stack object on the same database; a real process crash in a deployed environment (separate hosts, a real PostgreSQL, lease expiry on wall-clock time) is not exercised. Result rows are rebuilt by running the stored plan again, so a rebuilt answer reflects the data at rebuild time.
 - **retry_after_failure**: a failed run is terminal and the same idempotency key returns the same failure; a client must use a new key to retry. No retry guidance beyond the `retryable` flag exists.
 - **real_dependencies**: the warehouse, search, model, and explainer failures are simulated exceptions; timeouts, partial responses, slow dependencies, and network partitions are not modelled
 - **concurrency**: crashes are injected one at a time; concurrent crashes and contention are covered only by the ADS-066 load simulator and the ADS-068 failover drill
+- **at_least_once_reads**: after a process crash that follows the query, the stored plan runs again once to rebuild the rows (reads are idempotent but cost twice); exactly-once execution across processes would need result rows to be stored, which was not chosen.

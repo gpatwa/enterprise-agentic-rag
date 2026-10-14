@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
+import json
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any, Protocol
 from uuid import uuid4
+
+from sqlalchemy import text
 
 from app.compiler.service import CertifiedIntentCompiler
 from app.security.authorization import authorize
@@ -17,40 +22,119 @@ from packages.platform_contracts.security import AnalyticsIdentity
 
 
 class CompiledPlanStore:
-    """Process-local demo store; production durable plan storage belongs to ADS-040+."""
+    """Run-scoped compiled plans. With an engine they are also stored durably, so another process can continue the run.
 
-    def __init__(self) -> None:
+    A durable plan is SQL text plus bound parameters (the same values the process-local copy holds); no rows are stored.
+    """
+
+    def __init__(self, engine: Any = None) -> None:
         self._lock = threading.Lock()
         self._plans: dict[tuple[str, str, str], Any] = {}
+        self._engine = engine
 
     def put(self, tenant_id: str, run_id: str, plan: Any) -> str:
         sql = getattr(plan, "sql", repr(plan))
         reference = hashlib.sha256(f"{tenant_id}:{run_id}:{sql}".encode()).hexdigest()
         with self._lock:
             self._plans[(tenant_id, run_id, reference)] = plan
+        if self._engine is not None and dataclasses.is_dataclass(plan):
+            _insert_once(
+                self._engine,
+                "analytics_run_plans",
+                {"tenant_id": tenant_id, "run_id": run_id, "reference": reference},
+                {"plan": _encode(dataclasses.asdict(plan))},
+            )
         return reference
 
     def get(self, tenant_id: str, run_id: str, reference: str) -> Any:
         with self._lock:
-            try:
-                return self._plans[(tenant_id, run_id, reference)]
-            except KeyError as exc:
-                raise LookupError("compiled plan reference is not scoped to this run") from exc
+            plan = self._plans.get((tenant_id, run_id, reference))
+        if plan is not None:
+            return plan
+        stored = _load(self._engine, "analytics_run_plans", "plan", tenant_id, run_id, reference)
+        if stored is None:
+            raise LookupError("compiled plan reference is not scoped to this run")
+        from app.compiler.postgres import CompiledQuery
+
+        value = _decode(stored)
+        plan = CompiledQuery(
+            sql=value["sql"],
+            parameters=value["parameters"],
+            applied_filter_ids=tuple(value.get("applied_filter_ids", ())),
+            dialect=value.get("dialect", "postgres"),
+        )
+        with self._lock:
+            self._plans[(tenant_id, run_id, reference)] = plan
+        return plan
+
+
+def _encode(value: Any) -> str:
+    """JSON that keeps datetime, date, and Decimal parameters exact (a plain `default=str` would rebind them as text)."""
+
+    def default(item: Any) -> Any:
+        if isinstance(item, datetime):
+            return {"__type__": "datetime", "value": item.isoformat()}
+        if isinstance(item, date):
+            return {"__type__": "date", "value": item.isoformat()}
+        if isinstance(item, Decimal):
+            return {"__type__": "decimal", "value": str(item)}
+        raise TypeError(f"cannot store a {type(item).__name__} durably")
+
+    return json.dumps(value, default=default)
+
+
+def _decode(raw: Any) -> Any:
+    def hook(item: dict[str, Any]) -> Any:
+        kind = item.get("__type__")
+        if kind == "datetime":
+            return datetime.fromisoformat(item["value"])
+        if kind == "date":
+            return date.fromisoformat(item["value"])
+        if kind == "decimal":
+            return Decimal(item["value"])
+        return item
+
+    return json.loads(raw, object_hook=hook) if isinstance(raw, str) else raw
+
+
+def _insert_once(engine: Any, table: str, key: dict[str, str], values: dict[str, str]) -> None:
+    columns = {**key, **values}
+    names = ", ".join(columns)
+    binds = ", ".join(f":{name}" for name in columns)
+    where = " AND ".join(f"{name} = :{name}" for name in key)
+    with engine.begin() as connection:
+        exists = connection.execute(text(f"SELECT 1 FROM {table} WHERE {where}"), key).first()
+        if not exists:
+            connection.execute(text(f"INSERT INTO {table} ({names}) VALUES ({binds})"), columns)
+
+
+def _load(engine: Any, table: str, column: str, tenant_id: str, run_id: str, reference: str) -> Any:
+    if engine is None:
+        return None
+    key_column = "result_reference" if table == "analytics_run_result_links" else "reference"
+    with engine.connect() as connection:
+        row = connection.execute(
+            text(f"SELECT {column} FROM {table} WHERE tenant_id = :t AND run_id = :r AND {key_column} = :ref"),
+            {"t": tenant_id, "r": run_id, "ref": reference},
+        ).first()
+    return row[0] if row else None
 
 
 class PolicyValueStore:
-    """Short-lived local handoff for sensitive policy values; values never enter run state.
+    """Short-lived handoff for sensitive policy values; values never enter run state.
 
     Reads do not consume the entry: a worker that crashes after compiling but before its transition is committed must be able to
     compile again on resume. The compiled-plan store already keeps the same values as bound parameters, so this adds no retention;
-    the store is bounded and drops its oldest entries first.
+    the in-memory copy is bounded and drops its oldest entries first. With an engine the values are also stored durably so another
+    process can continue the run; they are small filter literals and identity claims, never rows.
     """
 
     MAX_ENTRIES = 10_000
 
-    def __init__(self) -> None:
+    def __init__(self, engine: Any = None) -> None:
         self._lock = threading.Lock()
         self._values: dict[tuple[str, str, str], dict[str, Any]] = {}
+        self._engine = engine
 
     def put(self, tenant_id: str, run_id: str, values: dict[str, Any]) -> str:
         reference = uuid4().hex
@@ -58,18 +142,34 @@ class PolicyValueStore:
             self._values[(tenant_id, run_id, reference)] = dict(values)
             while len(self._values) > self.MAX_ENTRIES:
                 self._values.pop(next(iter(self._values)))
+        if self._engine is not None:
+            _insert_once(
+                self._engine,
+                "analytics_run_policy_values",
+                {"tenant_id": tenant_id, "run_id": run_id, "reference": reference},
+                {"policy_values": _encode(values)},
+            )
         return reference
 
     def get(self, tenant_id: str, run_id: str, reference: str) -> dict[str, Any]:
         with self._lock:
-            try:
-                return dict(self._values[(tenant_id, run_id, reference)])
-            except KeyError as exc:
-                raise LookupError("policy values are not scoped to this run") from exc
+            found = self._values.get((tenant_id, run_id, reference))
+        if found is not None:
+            return dict(found)
+        stored = _load(self._engine, "analytics_run_policy_values", "policy_values", tenant_id, run_id, reference)
+        if stored is None:
+            raise LookupError("policy values are not scoped to this run")
+        return dict(_decode(stored))
 
     def discard(self, tenant_id: str, run_id: str, reference: str) -> None:
         with self._lock:
             self._values.pop((tenant_id, run_id, reference), None)
+        if self._engine is not None:
+            with self._engine.begin() as connection:
+                connection.execute(
+                    text("DELETE FROM analytics_run_policy_values WHERE tenant_id=:t AND run_id=:r AND reference=:ref"),
+                    {"t": tenant_id, "r": run_id, "ref": reference},
+                )
 
 
 class CostEstimator(Protocol):

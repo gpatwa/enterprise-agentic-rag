@@ -65,3 +65,7 @@ Depends on: ADS-005, ADS-065
 - PostgreSQL was not used; the backup code is dialect-neutral SQL but untested against a server, and an inconsistent multi-table snapshot under concurrent writes
   (PostgreSQL needs `REPEATABLE READ`) is not handled.
 - Rolling upgrade across two *code versions* was simulated with differently built handler sets and pinned fixtures, not two real releases.
+
+## Update (M7-H1)
+
+Compiled plans and policy values are now stored durably (`analytics_run_plans`, `analytics_run_policy_values`, `analytics_run_result_links`; migration `0012_durable_run_material`), and these tables are part of the logical backup. A run paused for review therefore survives a restart or restore: the reviewer's decision decides it and an approval runs the stored plan once. Result rows are still never stored, so a status read of an old answered run still says the answer is unavailable (and never runs a query). The earlier statement above that a paused review fails closed after a restart no longer holds.

@@ -73,7 +73,7 @@ def test_a_backup_captures_every_durable_table_but_not_leases_and_restores_ident
     assert (
         manifest.tables["analytics_agent_runs"].rows == 3 and manifest.tables["analytics_evidence_envelopes"].rows == 3
     )
-    assert manifest.schema_revision == "0011_rollouts" and manifest.object_count > 100
+    assert manifest.schema_revision == "0012_durable_run_material" and manifest.object_count > 100
     assert verify_backup_files(tmp_path / "backup") == manifest
     assert json.loads((tmp_path / "backup/manifest.json").read_text())["digest"] == manifest.digest
     target = build_stack("duckdb", tmp_path / "target")
@@ -108,7 +108,9 @@ def test_a_restored_database_is_a_working_one(tmp_path):
             lambda d: (d / "manifest.json").write_text(
                 (d / "manifest.json")
                 .read_text()
-                .replace('"schema_revision": "0011_rollouts"', '"schema_revision": "0010_candidate_evaluations"')
+                .replace(
+                    '"schema_revision": "0012_durable_run_material"', '"schema_revision": "0010_candidate_evaluations"'
+                )
             ),
             "backup_manifest_tampered",
         ),
@@ -247,20 +249,33 @@ def test_a_restored_service_answers_honestly_about_old_answers_and_never_execute
     old = restored.service().status(_who(restored), purpose=PURPOSE, run_id=runs[0].run_id)
     assert old.state == "terminal" and old.outcome.outcome == "failed" and old.outcome.error_code == "internal_error"
     assert "unavailable" in old.outcome.message
-    # 2. a run paused for review: after a restart its compiled plan is gone, so the decision fails closed
+    # 2. a run paused for review: its compiled plan is durable (M7-H1), so after a restore the decision still decides it
     revived = build_stack("duckdb", tmp_path / "r2", review_threshold=1e-9)
     restore_control_store(tmp_path / "backup2", revived.control.engine)
     review = revived.control.get_review(pending.outcome.review_id, tenant_id="tenant-a", purpose=PURPOSE)
-    decided = revived.service().decide_review(
+    assert revived.executed_sql == []  # nothing runs until a person decides
+    rejected = revived.service().decide_review(
         _who(revived, "reviewer"),
+        purpose=PURPOSE,
+        run_id=pending.run_id,
+        decision="rejected",
+        plan_fingerprint=review.plan_fingerprint,
+        note=None,
+    )
+    assert rejected.state == "terminal" and rejected.outcome.outcome != "answer"
+    assert revived.executed_sql == []  # a rejection executes nothing
+    approving = build_stack("duckdb", tmp_path / "r3", review_threshold=1e-9)
+    restore_control_store(tmp_path / "backup2", approving.control.engine)
+    decided = approving.service().decide_review(
+        _who(approving, "reviewer"),
         purpose=PURPOSE,
         run_id=pending.run_id,
         decision="approved",
         plan_fingerprint=review.plan_fingerprint,
         note=None,
     )
-    assert decided.state == "terminal" and decided.outcome.outcome != "answer"
-    assert revived.executed_sql == []  # nothing executed on a plan that no longer exists
+    assert decided.state == "terminal" and decided.outcome.outcome == "answer"  # the approved plan runs, once
+    assert len(approving.executed_sql) == 1
 
 
 def test_the_failover_drill_takes_over_after_the_lease_runs_the_query_once_and_fences_the_zombie(tmp_path):

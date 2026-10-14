@@ -373,6 +373,56 @@
         "min_cohort": 5
       },
       "finding": "F-03"
+    },
+    {
+      "id": "EC01",
+      "name": "a_model_that_groups_differently_from_the_question_runs_nothing",
+      "group": "intent_echo",
+      "kind": "control",
+      "op": "hostile_model",
+      "expect": "no_execution",
+      "text": "Show monthly revenue",
+      "intent": {
+        "group_by": [
+          {
+            "dimension_id": "status"
+          }
+        ]
+      },
+      "stack": {
+        "intent_echo": true
+      }
+    },
+    {
+      "id": "EC02",
+      "name": "a_question_about_an_uncertified_metric_is_not_answered_with_revenue",
+      "group": "intent_echo",
+      "kind": "control",
+      "op": "request_text",
+      "expect": "no_execution",
+      "text": "Show total profit",
+      "stack": {
+        "intent_echo": true
+      }
+    },
+    {
+      "id": "EC03",
+      "name": "a_matching_question_and_intent_still_answer",
+      "group": "intent_echo",
+      "kind": "control",
+      "op": "hostile_model",
+      "expect": "answered",
+      "text": "Revenue by status",
+      "intent": {
+        "group_by": [
+          {
+            "dimension_id": "status"
+          }
+        ]
+      },
+      "stack": {
+        "intent_echo": true
+      }
     }
   ],
   "findings": [

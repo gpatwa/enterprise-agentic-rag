@@ -4,8 +4,8 @@ Each case feeds the whole governed pipeline a chosen model output (the model is 
 make the "model" unsure, wrong, hostile, or malformed on demand) and checks the pipeline abstains instead of guessing. Valid controls
 check it does not abstain from what it can answer. Thresholds are PROPOSED until the user approves them.
 
-What this does NOT show: whether a real model abstains. The scripted keyword model happily answers some near-miss questions with a
-certified metric ("Show total profit" -> total revenue); those are counted separately and reported as an open gap, not as a pass.
+What this does NOT show: whether a real model abstains. The scripted keyword model happily answers near-miss questions with a
+certified metric ("Show total profit" -> total revenue); the deterministic intent-echo check (M7-H2) is what stops them, and they are gated.
 """
 
 from __future__ import annotations
@@ -100,6 +100,7 @@ GATE_PLAN = {
     "clarify_recall": "Ambiguous request clarify-or-review recall >= 95%",
     "false_abstention_rate": "Valid certified questions answered (false abstention <= 5%)",
     "executed_queries_on_abstention": "No query runs for a case that abstains",
+    "near_miss_answered": "A question about something uncertified is answered with a certified metric (intent-echo check): 0",
     "uncalibrated_confidence_claims": "No confidence value is claimed (none is calibrated)",
 }
 
@@ -223,6 +224,7 @@ def run_abstention(
         "clarify_recall": clarify_ok / clarify if clarify else 0.0,
         "false_abstention_rate": valid_refused / valid if valid else 1.0,
         "executed_queries_on_abstention": executed_on_abstain,
+        "near_miss_answered": near_answered,
         "uncalibrated_confidence_claims": confident,
     }
     gates = {
@@ -245,7 +247,7 @@ def run_abstention(
         "open_gap": {
             "near_miss_questions": len(corpus["near_miss_questions"]),
             "answered_by_scripted_model": near_answered,
-            "note": "The scripted keyword model answers a question that asks for something uncertified with a certified metric. A real model, or an intent-echo check, must close this; it is not measured here.",
+            "note": "The scripted keyword model answers a question that asks for something uncertified with a certified metric. The deterministic intent-echo check (M7-H2) is meant to refuse these; it is lexical and conservative, so it can also refuse an unusual phrasing of a valid question (see false_abstention_rate), and it does not understand meaning.",
         },
         "not_measured": thresholds["not_measured"],
         "cases": rows,
@@ -264,7 +266,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         "## Scope and limits",
         "",
         "- Each case replaces the model's output with a chosen one (unsupported, hostile, malformed, uncertified, cross-tenant, ambiguous) and runs the whole governed pipeline on DuckDB.",
-        f"- **Open gap (not a pass):** {gap['answered_by_scripted_model']} of {gap['near_miss_questions']} near-miss questions were answered by the scripted keyword model with a certified metric. {gap['note']}",
+        f"- **Near-miss questions:** {gap['answered_by_scripted_model']} of {gap['near_miss_questions']} were answered with a certified metric after the intent-echo check. {gap['note']}",
         "",
         "## Metrics",
         "",
