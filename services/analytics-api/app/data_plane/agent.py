@@ -87,10 +87,12 @@ class DataPlaneAgent:
         clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
         handle_ttl: timedelta = timedelta(minutes=10),
         replay_window: timedelta = timedelta(minutes=5),
+        min_cohort: int | None = None,
     ) -> None:
         self._connections, self._secrets, self._contracts = dict(connections), secrets_provider, contracts
         self._compilers, self._resolver, self._key = dict(compilers), client_resolver, channel_key
         self._clock, self._ttl, self._window = clock, handle_ttl, replay_window
+        self._min_cohort = min_cohort
         self._gateways: dict[str, Any] = {}
         self._results: dict[str, _Stored] = {}
         self._seen: dict[str, datetime] = {}
@@ -167,7 +169,9 @@ class DataPlaneAgent:
                 if intent.group_by
                 else {}
             )
-            report = validate_result(result, plan, intent, contract, control_totals=totals)
+            report = validate_result(
+                result, plan, intent, contract, control_totals=totals, min_cohort=self._min_cohort
+            )
         except _Refusal as exc:
             return ExecuteResponse(message_id=request.message_id, status="error", error_code=exc.code)
         except ExecutionError as exc:

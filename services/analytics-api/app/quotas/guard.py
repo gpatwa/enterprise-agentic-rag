@@ -67,7 +67,7 @@ class QuotaGuardedService:
         return float(spent), self._dialect
 
     def analyze(self, identity, *, purpose, idempotency_key, request_text):
-        run_id = GovernedAnalyzeService.derive_run_id(identity, purpose, idempotency_key)
+        run_id = self._service.run_id_for(identity, purpose, idempotency_key)
         return self._metered(
             identity,
             purpose,

@@ -80,6 +80,10 @@ def plan_fingerprint(plan: Any) -> str:
     )
 
 
+class ControlCohortEmpty(ValueError):
+    """The control query returned no row: with a minimum cohort enforced, the whole population is too small to report."""
+
+
 def control_intent(intent: AnalyticalIntent) -> AnalyticalIntent:
     """The same question with no grouping: its single row is the ground truth for totals."""
     return intent.model_copy(update={"group_by": [], "sort": [], "limit": 1})
@@ -100,6 +104,8 @@ def run_control_totals(
     """
     plan = compile_plan(control_intent(intent), contract)
     result = gateway.execute(plan, limits=limits)
+    if result.row_count == 0:
+        raise ControlCohortEmpty("the whole cohort is below the minimum size")
     if result.row_count != 1 or len(result.rows[0]) != len(intent.metrics):
         raise ValueError("control query did not return exactly one row of metrics")
     return {metric.metric_id: value for metric, value in zip(intent.metrics, result.rows[0], strict=True)}
@@ -114,6 +120,7 @@ def validate_result(
     control_totals: Mapping[str, Any] | None = None,
     require_control_totals: bool = True,
     expected_fingerprint: str | None = None,
+    min_cohort: int | None = None,
 ) -> ResultValidationReport:
     issues: list[ResultIssue] = []
     checks: list[str] = []
@@ -157,7 +164,10 @@ def validate_result(
         metrics = _metric_specs(intent, contract)
         invalid_metrics = _check_metric_values(result, group_count, metrics, block)
         checks.append("grain")
-        _check_grain(result, group_count, block)
+        if min_cohort and result.row_count == 0 and not result.truncated:
+            block("cohort_too_small", "every group or the whole cohort is below the minimum size")
+        else:
+            _check_grain(result, group_count, block)
         checks.append("sort")
         _check_sort(result, intent, group_count, block)
         checks.append("reconciliation")
@@ -171,6 +181,7 @@ def validate_result(
             block,
             warn,
             skip=invalid_metrics,
+            suppression=bool(min_cohort),
         )
 
     blocking = any(issue.severity == "blocking" for issue in issues)
@@ -258,7 +269,7 @@ def _check_sort(result, intent, group_count, block) -> None:
 
 
 def _check_reconciliation(
-    result, intent, group_count, metrics, totals, required, block, warn, *, skip=frozenset()
+    result, intent, group_count, metrics, totals, required, block, warn, *, skip=frozenset(), suppression=False
 ) -> None:
     if not group_count:
         return  # a single aggregate row is its own total
@@ -268,6 +279,8 @@ def _check_reconciliation(
     for offset, (metric_id, aggregation) in enumerate(metrics):
         if aggregation == "ratio" or metric_id in skip:
             continue
+        if result.row_count == 0 and totals is not None and metric_id in totals and totals[metric_id] is None:
+            continue  # no rows and an empty total agree: "no data" is an answer, not a failure
         if totals is None or metric_id not in totals or totals[metric_id] is None:
             if required:
                 block("reconciliation_missing", f"no control total for metric {metric_id}")
@@ -282,23 +295,28 @@ def _check_reconciliation(
             block("invalid_total", f"control total for metric {metric_id} is not a finite number")
             continue
         values = [_decimal(row[group_count + offset]) for row in result.rows if row[group_count + offset] is not None]
+        # When small groups are suppressed on purpose, a shortfall against the control total is expected and only a
+        # warning; a surplus (a fanout) never is.
+        shortfall = warn if suppression else block
         if aggregation in _ADDITIVE:
             observed = sum(values, Decimal(0))
             if _differs(observed, total):
                 if observed > total:
                     block("fanout_suspected", f"groups of {metric_id} add up to more than the control total")
+                elif suppression:
+                    warn("groups_suppressed", f"groups of {metric_id} below the minimum size were withheld")
                 else:
                     block("missing_groups_suspected", f"groups of {metric_id} add up to less than the control total")
         elif not values:
-            block("missing_groups_suspected", f"metric {metric_id} has a control total but no group values")
+            shortfall("groups_suppressed" if suppression else "missing_groups_suspected", f"metric {metric_id} has no group values")
         elif aggregation == "max" and _differs(max(values), total):
-            block("invalid_total", f"largest group maximum of {metric_id} differs from the control maximum")
+            shortfall("groups_suppressed" if suppression else "invalid_total", f"largest group maximum of {metric_id} differs from the control maximum")
         elif aggregation == "min" and _differs(min(values), total):
-            block("invalid_total", f"smallest group minimum of {metric_id} differs from the control minimum")
+            shortfall("groups_suppressed" if suppression else "invalid_total", f"smallest group minimum of {metric_id} differs from the control minimum")
         elif aggregation == "average" and not (min(values) - _slack(total) <= total <= max(values) + _slack(total)):
-            block("invalid_total", f"control average of {metric_id} lies outside the range of group averages")
+            shortfall("groups_suppressed" if suppression else "invalid_total", f"control average of {metric_id} lies outside the range of group averages")
         elif aggregation == "count_distinct" and not (max(values) <= total <= sum(values, Decimal(0))):
-            block("invalid_total", f"control distinct count of {metric_id} is outside the bounds implied by its groups")
+            shortfall("groups_suppressed" if suppression else "invalid_total", f"control distinct count of {metric_id} is outside the bounds implied by its groups")
 
 
 def _decimal(value: Any) -> Decimal:
