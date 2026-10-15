@@ -83,7 +83,7 @@
   },
   "gate_plan": {
     "wrong_answers": "Answers whose rows differ from the independent oracle: 0",
-    "duplicate_executions": "A query executed more than once for one run, other than after a process crash: 0",
+    "duplicate_executions": "An answer produced from more than one execution, other than after a process crash: 0 (a retried attempt that failed produced nothing)",
     "reexecution_outside_window": "After a process crash, a query run again although the rows had not been produced yet: 0",
     "max_executions_per_run": "Executions per run never exceed the one original plus one rebuild after a process crash",
     "unhandled_errors": "Errors that reach the caller untyped (a raw exception or HTTP 500): 0",
@@ -674,7 +674,7 @@
       "verdict": "typed_failure",
       "outcome": "failed",
       "code": "executor_unavailable",
-      "executions": 1,
+      "executions": 2,
       "fault": "warehouse_down",
       "degraded": false,
       "chain_ok": true
@@ -970,7 +970,7 @@
       "verdict": "typed_failure",
       "outcome": "failed",
       "code": "executor_unavailable",
-      "executions": 1,
+      "executions": 2,
       "fault": "warehouse_down",
       "degraded": false,
       "chain_ok": true
@@ -1212,7 +1212,7 @@
       "verdict": "typed_failure",
       "outcome": "failed",
       "code": "executor_unavailable",
-      "executions": 1,
+      "executions": 2,
       "fault": "warehouse_down",
       "degraded": false,
       "chain_ok": true

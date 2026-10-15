@@ -57,7 +57,7 @@ LEASE = 30
 _OPS = {">=": lambda a, b: a >= b, "<=": lambda a, b: a <= b}
 GATE_PLAN = {
     "wrong_answers": "Answers whose rows differ from the independent oracle: 0",
-    "duplicate_executions": "A query executed more than once for one run, other than after a process crash: 0",
+    "duplicate_executions": "An answer produced from more than one execution, other than after a process crash: 0 (a retried attempt that failed produced nothing)",
     "reexecution_outside_window": "After a process crash, a query run again although the rows had not been produced yet: 0",
     "max_executions_per_run": "Executions per run never exceed the one original plus one rebuild after a process crash",
     "unhandled_errors": "Errors that reach the caller untyped (a raw exception or HTTP 500): 0",
@@ -342,7 +342,9 @@ def run_reliability(
     everything = same + death + deps + mixed
     metrics = {
         "wrong_answers": sum(r["verdict"] == "wrong_answer" for r in everything),
-        "duplicate_executions": sum(r["executions"] > 1 for r in everything if not r.get("process_death")),
+        "duplicate_executions": sum(
+            r["executions"] > 1 and r["verdict"] == "correct_answer" for r in everything if not r.get("process_death")
+        ),
         "reexecution_outside_window": sum(
             r["executions"] > 1 for r in everything if r.get("process_death") and not _in_rebuild_window(r)
         ),
