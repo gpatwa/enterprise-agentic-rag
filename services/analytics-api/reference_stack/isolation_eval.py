@@ -331,21 +331,29 @@ def run_matrix(root: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def run_isolation(*, thresholds: dict[str, Any] | None = None, root: Path | None = None) -> dict[str, Any]:
+def run_isolation(
+    *,
+    thresholds: dict[str, Any] | None = None,
+    root: Path | None = None,
+    security: dict[str, Any] | None = None,
+    protected_cases: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """`security` is an ADS-067 corpus report and `protected_cases` the case rows of an ADS-071 run; both are run here when not given."""
     thresholds = thresholds or json.loads(THRESHOLDS.read_text())
     root = root or Path(tempfile.mkdtemp(prefix="analytics-isolation-"))
     rows = run_matrix(root)
-    security = security_eval.run_corpus(root / "security")
-    suite, golden_thresholds = golden.load_suite(
-        corpus_module.CORPUS, Path(__file__).parent / "m7" / "e2e-thresholds.proposed.json"
-    )
-    obs = golden.Observations()
-    protected_ids = {
-        c["id"] for c in suite["cases"] if c["kind"] in {"policy_denied", "tenant_isolation", "refuse_no_execution"}
-    }
-    for engine in ("duckdb", "postgres"):
-        golden.run_engine(engine, suite, obs, only=protected_ids)
-    protected = [r for r in obs.cases if r.case_id in protected_ids]
+    security = security if security is not None else security_eval.run_corpus(root / "security")
+    kinds = {"policy_denied", "tenant_isolation", "refuse_no_execution"}
+    if protected_cases is None:
+        suite, _ = golden.load_suite(
+            corpus_module.CORPUS, Path(__file__).parent / "m7" / "e2e-thresholds.proposed.json"
+        )
+        obs = golden.Observations()
+        protected_ids = {c["id"] for c in suite["cases"] if c["kind"] in kinds}
+        for engine in ("duckdb", "postgres"):
+            golden.run_engine(engine, suite, obs, only=protected_ids)
+        protected_cases = [{"passed": r.passed, "kind": r.kind} for r in obs.cases if r.case_id in protected_ids]
+    protected = [c for c in protected_cases if c["kind"] in kinds]
     by_group = lambda group: [r for r in rows if r["group"] == group]  # noqa: E731
     metrics = {
         "cross_tenant_leaks": sum(r["leaked"] or not r["denied"] for r in by_group("cross_tenant")),
@@ -354,7 +362,7 @@ def run_isolation(*, thresholds: dict[str, Any] | None = None, root: Path | None
         "unauthenticated_successes": sum(r["leaked"] or not r["denied"] for r in by_group("auth")),
         "probe_agreement": sum(r["passed"] for r in rows) / len(rows),
         "security_corpus_gates_met": 1.0 if security["meets_thresholds"] else 0.0,
-        "protected_case_failures": sum(not r.passed for r in protected),
+        "protected_case_failures": sum(not c["passed"] for c in protected),
     }
     gates = {
         name: {

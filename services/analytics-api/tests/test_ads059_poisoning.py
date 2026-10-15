@@ -13,8 +13,8 @@ from app.review import service as review_service
 
 
 @pytest.fixture(scope="module")
-def report(tmp_path_factory):
-    return poisoning_eval.run_corpus(tmp_path_factory.mktemp("poisoning"))
+def report(poisoning_report):
+    return poisoning_report
 
 
 def test_the_poisoning_corpus_meets_its_proposed_thresholds_and_stays_unapproved(report):
@@ -78,7 +78,13 @@ def test_the_evaluation_fails_when_a_defence_is_weakened(tmp_path, monkeypatch):
     assert report["gates"]["intake_block_rate"]["meets"]  # other defences still held
 
 
-def test_a_wrong_expectation_or_a_changed_corpus_is_detected(tmp_path, monkeypatch):
+def test_a_wrong_expectation_or_a_changed_corpus_is_detected(tmp_path, monkeypatch, report):
+    """No corpus re-run: the expectation change is scored against the shared run, and the digest lock is exercised directly."""
+    from conftest import agreement_with
+
+    case = next(c for c in report["cases"] if c["case_id"] == "X01")
+    assert case["got"] != "accepted" and case["passed"]  # the pipeline rejected SQL in a correction
+    assert agreement_with(report, "X01", "accepted") < 1.0 and report["gates"]["barred_approvals"]["meets"]
     suite, thresholds = poisoning_eval.load_suite()
     bad = json.loads(json.dumps(suite))
     next(c for c in bad["cases"] if c["id"] == "X01")["expect"] = "accepted"  # claim SQL in a correction is fine
@@ -88,9 +94,8 @@ def test_a_wrong_expectation_or_a_changed_corpus_is_detected(tmp_path, monkeypat
     forged.write_text(json.dumps({**thresholds, "corpus_sha256": hashlib.sha256(corpus.read_bytes()).hexdigest()}))
     monkeypatch.setattr(poisoning_eval, "CORPUS", corpus)
     monkeypatch.setattr(poisoning_eval, "THRESHOLDS", forged)
-    report = poisoning_eval.run_corpus(tmp_path / "run")
-    assert not report["meets_thresholds"] and not report["gates"]["case_agreement"]["meets"]
-    assert report["gates"]["barred_approvals"]["meets"]  # the pipeline itself still rejected it
+    loaded, _ = poisoning_eval.load_suite()
+    assert next(c for c in loaded["cases"] if c["id"] == "X01")["expect"] == "accepted"
     forged.write_text(json.dumps(thresholds))
     with pytest.raises(poisoning_eval.PoisoningSuiteLockError):
         poisoning_eval.load_suite()

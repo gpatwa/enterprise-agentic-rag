@@ -12,8 +12,10 @@ THRESHOLDS = json.loads(ev.THRESHOLDS.read_text())
 
 
 @pytest.fixture(scope="module")
-def report(tmp_path_factory):
-    return ev.run_provider_evaluation(root=tmp_path_factory.mktemp("provider"))
+def report(tmp_path_factory, rollout_report, poisoning_report):
+    return ev.run_provider_evaluation(
+        root=tmp_path_factory.mktemp("provider"), rollout=rollout_report, poisoning=poisoning_report
+    )
 
 
 def test_every_gate_is_met_and_the_thresholds_are_proposed(report):

@@ -5,7 +5,9 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
+import shutil
 import tempfile
+import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -169,7 +171,9 @@ class ReferenceStack:
             "extract_intent": structured_intent_node(
                 ScriptedIntentClient(request.request_id, ambiguous=self.ambiguous), self._prompt_builder()
             ),
-            "resolve": ontology_resolution_node(self.contracts, OntologyProvider(ontology), echo_check=self.intent_echo),
+            "resolve": ontology_resolution_node(
+                self.contracts, OntologyProvider(ontology), echo_check=self.intent_echo
+            ),
             "clarify": clarification_node(),
             "plan": analytics_plan_node(self.contracts),
             "validate": certified_intent_node(self.contracts),
@@ -370,12 +374,19 @@ def build_stack(
 ) -> ReferenceStack:
     """Create the seeded data, migrated control store, gateway, and compiler for one dialect."""
     workdir = Path(workdir or tempfile.mkdtemp(prefix="analytics-reference-"))
-    parquet = seed_lake(workdir)
     database = f"sqlite:///{workdir / 'control.db'}"
     config = Config(str(SERVICE_ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(SERVICE_ROOT / "alembic"))
+    template = _template_dir(config)
+    workdir.mkdir(parents=True, exist_ok=True)
+    parquet = workdir / "sales_orders.parquet"
+    if not parquet.exists():
+        shutil.copyfile(template / "sales_orders.parquet", parquet)
     config.set_main_option("sqlalchemy.url", database)
-    _upgrade(config, database)
+    if (workdir / "control.db").exists():
+        _upgrade(config, database)  # an existing database (a restarted process) is brought to head as before
+    else:
+        shutil.copyfile(template / "control.db", workdir / "control.db")
     sql_engine = create_engine(database)
     if engine == "duckdb":
         gateway = DuckDBGateway({"sales_orders": parquet}, allowed_root=workdir)
@@ -432,6 +443,31 @@ def build_stack(
         cost_calibration=cost_calibration,
         intent_echo=intent_echo,
     )
+
+
+_TEMPLATE_LOCK = threading.Lock()
+_TEMPLATE: dict[str, Path] = {}
+
+
+def _template_dir(config: Config) -> Path:
+    """A migrated, empty control database and the seeded Parquet file, built once per process and per migration head.
+
+    Every `build_stack` used to run all Alembic migrations and rebuild the Parquet file; hundreds of stacks per test run made that
+    the main fixed cost. Copying the finished files gives an identical starting state. A workdir that already holds a database
+    (a "restarted process" on the same data) still goes through `_upgrade`.
+    """
+    from alembic.script import ScriptDirectory
+
+    head = ScriptDirectory.from_config(config).get_current_head() or "base"
+    with _TEMPLATE_LOCK:
+        if head not in _TEMPLATE:
+            directory = Path(tempfile.mkdtemp(prefix=f"analytics-template-{head[:12]}-"))
+            database = f"sqlite:///{directory / 'control.db'}"
+            config.set_main_option("sqlalchemy.url", database)
+            _upgrade(config, database)
+            seed_lake(directory)
+            _TEMPLATE[head] = directory
+        return _TEMPLATE[head]
 
 
 def _upgrade(config: Config, database: str) -> None:
