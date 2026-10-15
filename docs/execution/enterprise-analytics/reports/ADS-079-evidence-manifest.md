@@ -1,6 +1,6 @@
 # ADS-079: Final Evidence Manifest (input to the human go/no-go review)
 
-Manifest `ads-079-v1`, digest `ed63b63b1341eb62`, generated at `139a3525cb96` on `claude/m7-gates-and-hardening`.
+Manifest `ads-079-v1`, digest `e9406cf2e2ec2a61`, generated at `e62269c249fa` on `claude/m7-gap-fixes`.
 
 **Decision: `pending_human_review`.** This document does not decide and is not signed. Product, engineering, data owner, security, and operations must each sign against the digest, and a person records the go/no-go.
 
@@ -41,7 +41,7 @@ Manifest `ads-079-v1`, digest `ed63b63b1341eb62`, generated at `139a3525cb96` on
 
 ## Linked artifacts
 
-- **code**: 178 files
+- **code**: 179 files
 - **contracts**: 40 files
 - **semantic_registry**: 2 files
 - **prompts**: 4 files

@@ -9,7 +9,7 @@
 | Metric | Measured | Gate | Meets | Plan gate |
 |---|---:|---:|:---:|---|
 | `wrong_answers` | 0 | <= 0 | yes | Answers whose rows differ from the independent oracle: 0 |
-| `duplicate_executions` | 0 | <= 0 | yes | A query executed more than once for one run, other than after a process crash: 0 |
+| `duplicate_executions` | 0 | <= 0 | yes | An answer produced from more than one execution, other than after a process crash: 0 (a retried attempt that failed produced nothing) |
 | `reexecution_outside_window` | 0 | <= 0 | yes | After a process crash, a query run again although the rows had not been produced yet: 0 |
 | `max_executions_per_run` | 2 | <= 2 | yes | Executions per run never exceed the one original plus one rebuild after a process crash |
 | `unhandled_errors` | 0 | <= 0 | yes | Errors that reach the caller untyped (a raw exception or HTTP 500): 0 |
@@ -29,7 +29,7 @@ With fresh in-memory stores on the same database, 26 of 26 crash points finish w
 
 | Fault | Verdict | Outcome | Code | Queries run |
 |---|---|---|---|---:|
-| warehouse_down | typed_failure | failed | executor_unavailable | 1 |
+| warehouse_down | typed_failure | failed | executor_unavailable | 2 |
 | estimator_down | typed_failure | failed | executor_unavailable | 0 |
 | context_search_down | typed_failure | refuse | stale_metadata | 0 |
 | context_snapshot_down | typed_failure | service_error | context_unavailable | 0 |

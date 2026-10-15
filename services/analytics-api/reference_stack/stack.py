@@ -35,6 +35,7 @@ from app.execution import (
 )
 from app.prompt_registry import ExampleCandidateService, PromptRegistry
 from app.proposals import DbtProject, DbtProposalService, ProposalService, ProposalStore
+from app.resilience.retry import CircuitBreaker, ResilientGateway, ResilientModelClient
 from app.review import ReviewService, ReviewStore, SubjectResolver
 from app.rollout import RolloutController, RolloutStore
 from app.runtime import (
@@ -93,6 +94,10 @@ REFERENCE_MAX_COST_UNITS = 10_000.0
 ISSUER, AUDIENCE, KEY_ID = "https://reference.local", "analytics", "reference"
 
 
+def _no_sleep(_seconds: float) -> None:
+    """The reference stack's fakes fail instantly; a real deployment keeps the policy's backoff."""
+
+
 class RecordingGateway:
     """Delegates to a gateway and records the SQL of every executed plan."""
 
@@ -130,6 +135,8 @@ class ReferenceStack:
     run_id_key: bytes | None = None
     cost_calibration: object | None = None
     intent_echo: bool = True
+    model_breaker: CircuitBreaker = field(default_factory=lambda: CircuitBreaker("model"))
+    warehouse_breaker: CircuitBreaker = field(default_factory=lambda: CircuitBreaker("warehouse"))
     executed_sql: list = field(default_factory=list)
     compiled_sql: set = field(default_factory=set)
     timings: list = field(default_factory=list)  # (node_id, seconds) for policy/compile
@@ -159,7 +166,11 @@ class ReferenceStack:
     def nodes(self, identity: AnalyticsIdentity, request: BootstrapRequest, review_store=None) -> dict:
         store = review_store or self.control
         context, ontology = build_context(self.contracts.document, ambiguous=self.ambiguous, omit=self.omit_context_ids)
-        gateways = {self.gateway.dialect: RecordingGateway(self.gateway, self.executed_sql)}
+        gateways = {
+            self.gateway.dialect: ResilientGateway(
+                RecordingGateway(self.gateway, self.executed_sql), breaker=self.warehouse_breaker, sleep=_no_sleep
+            )
+        }
 
         def go(ni, nxt):
             return NodeOutput(run_id=ni.run_id, node_id=ni.node_id, status="completed", next_node=nxt)
@@ -169,7 +180,12 @@ class ReferenceStack:
             "bootstrap": identity_bootstrap_node(request),
             "retrieve": context_retrieval_node(SnapshotProvider(context), SearchProvider()),
             "extract_intent": structured_intent_node(
-                ScriptedIntentClient(request.request_id, ambiguous=self.ambiguous), self._prompt_builder()
+                ResilientModelClient(
+                    ScriptedIntentClient(request.request_id, ambiguous=self.ambiguous),
+                    breaker=self.model_breaker,
+                    sleep=_no_sleep,
+                ),
+                self._prompt_builder(),
             ),
             "resolve": ontology_resolution_node(
                 self.contracts, OntologyProvider(ontology), echo_check=self.intent_echo

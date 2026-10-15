@@ -39,14 +39,17 @@ QUESTIONS = {
 }
 _OPS = {">=": lambda a, b: a >= b, "<=": lambda a, b: a <= b}
 EQUIVALENT = ("reordered_keys", "json_string", "pretty_json_string")
-NONCONFORMING = ("extra_field", "markdown_fence", "truncated_json", "wrong_type", "empty_reply", "flaky_first_call")
+NONCONFORMING = ("extra_field", "markdown_fence", "truncated_json", "wrong_type", "empty_reply")
+# A transient provider failure is retried once (M7-H5), so a provider that fails only its first call still answers.
+RECOVERED = ("flaky_first_call",)
 # A changed label case is resolved against the certified ontology by design (ADS-034), so it may answer; it must never answer wrongly.
 TOLERATED = ("uppercase_metric",)
 GATE_PLAN = {
     "provider_wrong_answers": "A provider's output yields rows that differ from the oracle: 0",
     "equivalent_provider_agreement": "The same intent in a different wire format gives the same result fingerprint: 100%",
     "nonconforming_provider_safe_rate": "A non-conforming provider output ends in a typed failure with no query run: 100%",
-    "model_calls_per_failing_run_max": "Provider failure is bounded: no retry storm (calls per failing run)",
+    "model_calls_per_failing_run_max": "Provider failure is bounded: at most one retry, and only for a transient error (calls per failing run)",
+    "transient_failure_recovered_rate": "A provider that fails once transiently is retried and answers correctly",
     "degraded_mode_unsafe_outcomes": "With the provider down, every request ends in a typed failure with no query run: 0 exceptions",
     "ungrounded_claims_shown": "An ungrounded explainer's claims reach the caller: 0",
     "prompt_version_reproducibility": "The same pinned prompt gives identical result fingerprints on re-run, and after a rollback: 100%",
@@ -125,7 +128,7 @@ def _ask(root: Path, mode: str, question: str, *, key: str) -> dict[str, Any]:
 
 def provider_variance(root: Path) -> list[dict[str, Any]]:
     runs = []
-    for mode in ("baseline", *EQUIVALENT, *NONCONFORMING, *TOLERATED):
+    for mode in ("baseline", *EQUIVALENT, *NONCONFORMING, *TOLERATED, *RECOVERED):
         for index, question in enumerate(QUESTIONS):
             runs.append(_ask(root / mode / str(index), mode, question, key=f"prov-{mode[:8]}-{index:04d}"))
     return runs
@@ -224,7 +227,7 @@ def run_provider_evaluation(
     baseline = {r["question"]: r["fingerprint"] for r in runs if r["mode"] == "baseline"}
     equivalent = [r for r in runs if r["mode"] in EQUIVALENT]
     nonconforming = [r for r in runs if r["mode"] in NONCONFORMING]
-    flaky = [r for r in nonconforming if r["mode"] == "flaky_first_call"]
+    flaky = [r for r in runs if r["mode"] in RECOVERED]
     degraded = degraded_mode(root / "degraded")
     explainers = explainer_degradation(root / "explainer")
     reproducibility = prompt_reproducibility(root / "prompts")
@@ -239,6 +242,7 @@ def run_provider_evaluation(
         "nonconforming_provider_safe_rate": sum(r["kind"] == "failed" and r["executions"] == 0 for r in nonconforming)
         / len(nonconforming),
         "model_calls_per_failing_run_max": max(r["calls"] for r in nonconforming + [{"calls": degraded["max_calls"]}]),
+        "transient_failure_recovered_rate": sum(r["correct"] is True and r["calls"] == 2 for r in flaky) / len(flaky),
         "degraded_mode_unsafe_outcomes": degraded["unsafe"],
         "ungrounded_claims_shown": sum(e["claims_shown"] for e in explainers)
         + sum(not e["rows_correct"] for e in explainers),
