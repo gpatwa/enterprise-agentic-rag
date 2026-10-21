@@ -33,6 +33,11 @@ def test_the_same_intent_in_a_different_wire_format_gives_the_same_fingerprint(r
         )
 
 
+def test_a_transient_provider_failure_is_retried_once_and_answers(report):
+    runs = [r for r in report["runs"] if r["mode"] in ev.RECOVERED]
+    assert runs and all(r["correct"] and r["calls"] == 2 for r in runs)
+
+
 def test_nonconforming_provider_output_ends_in_a_typed_failure_with_no_query_and_one_call(report):
     for mode in ev.NONCONFORMING:
         runs = [r for r in report["runs"] if r["mode"] == mode]
@@ -51,7 +56,9 @@ def test_a_changed_label_case_never_answers_wrongly(report):
 
 def test_a_provider_that_is_down_fails_every_request_safely_and_quickly(report):
     degraded = report["samples"]["degraded"]
-    assert degraded["unsafe"] == 0 and degraded["codes"] == ["planner_unavailable"] and degraded["max_calls"] == 1
+    assert (
+        degraded["unsafe"] == 0 and degraded["codes"] == ["planner_unavailable"] and degraded["max_calls"] == 2
+    )  # one retry
     assert degraded["seconds"] < 30
 
 
@@ -100,5 +107,5 @@ def test_a_provider_output_that_gets_answered_wrongly_is_counted_as_a_wrong_answ
 
 def test_a_retry_storm_would_fail_the_bounded_failure_gate(report):
     gate = THRESHOLDS["gates"]["model_calls_per_failing_run_max"]
-    assert report["gates"]["model_calls_per_failing_run_max"]["value"] == 1
+    assert report["gates"]["model_calls_per_failing_run_max"]["value"] == 2  # one try plus one retry
     assert not ev._OPS[gate["op"]](3, gate["value"])  # a client that retried twice (3 calls) would not meet the gate
