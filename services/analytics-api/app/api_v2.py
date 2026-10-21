@@ -7,6 +7,7 @@ or OIDC verifier every call returns 503, so nothing activates a production path 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Response
 
@@ -29,6 +30,7 @@ class V2Runtime:
     verifier: OIDCVerifier | None = None
     feedback: FeedbackService | None = None
     resolver: IdentityResolver | None = None  # when set, it replaces the bare verifier (groups, delegation)
+    briefs: Any = None  # a ReviewBriefService; reviewers and the review assistant read briefs through it
 
 
 def build_v2_router(runtime: V2Runtime, api_key_dependency) -> APIRouter:
@@ -101,6 +103,30 @@ def build_v2_router(runtime: V2Runtime, api_key_dependency) -> APIRouter:
             ),
             response,
         )
+
+    @router.get("/reviews/pending")
+    def pending_reviews(purpose: str, who: AnalyticsIdentity = Depends(identity)):
+        """Read-only: reviews waiting for a decision, for a reviewer or the review assistant."""
+        if runtime.briefs is None:
+            raise HTTPException(503, "review_brief_not_configured")
+        from app.decision_support.brief import BriefError
+
+        try:
+            return {"reviews": runtime.briefs.pending(who, purpose=purpose)}
+        except BriefError as exc:
+            raise HTTPException(exc.status, exc.code) from exc
+
+    @router.get("/runs/{run_id}/review-brief")
+    def review_brief(run_id: str, purpose: str, who: AnalyticsIdentity = Depends(identity)):
+        """Read-only: the facts of a paused review for a reviewer or the review assistant. It decides nothing."""
+        if runtime.briefs is None:
+            raise HTTPException(503, "review_brief_not_configured")
+        from app.decision_support.brief import BriefError
+
+        try:
+            return runtime.briefs.brief(who, purpose=purpose, run_id=run_id)
+        except BriefError as exc:
+            raise HTTPException(exc.status, exc.code) from exc
 
     @router.post("/runs/{run_id}/feedback", response_model=FeedbackReceipt, status_code=201)
     def feedback(

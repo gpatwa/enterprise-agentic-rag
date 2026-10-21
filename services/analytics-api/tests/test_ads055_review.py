@@ -472,13 +472,18 @@ def test_approval_changes_nothing_else_and_there_is_no_review_endpoint(world):
     assert proposal.status == "proposed" and stack.contracts.get_certified("sales-core", "v1").lifecycle == "certified"
     assert [hashlib.sha256(p.read_bytes()).hexdigest() for p in protected] == before
     paths = set(client.get("/openapi.json").json()["paths"])
-    assert paths == {  # the review workflow added no endpoint (the run-level `/review` is ADS-045's, unrelated)
-        "/api/v2/analytics/analyze",
-        "/api/v2/analytics/runs/{run_id}",
-        "/api/v2/analytics/runs/{run_id}/clarify",
-        "/api/v2/analytics/runs/{run_id}/review",
-        "/api/v2/analytics/runs/{run_id}/feedback",
-    }
+    assert (
+        paths
+        == {  # the review workflow added no endpoint (the run-level `/review` is ADS-045's, unrelated)
+            "/api/v2/analytics/analyze",
+            "/api/v2/analytics/runs/{run_id}",
+            "/api/v2/analytics/runs/{run_id}/clarify",
+            "/api/v2/analytics/runs/{run_id}/review",
+            "/api/v2/analytics/runs/{run_id}/feedback",
+            "/api/v2/analytics/runs/{run_id}/review-brief",  # the run-level reviewer brief (decision support), not the candidate review
+            "/api/v2/analytics/reviews/pending",  # the run-level pending list, read-only
+        }
+    )
     runtime = [p.name for p in (SERVICE / "app/runtime").glob("*.py") if "app.review" in p.read_text()]
     assert runtime == []  # nothing in the runtime depends on reviews
 

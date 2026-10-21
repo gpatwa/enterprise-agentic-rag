@@ -23,6 +23,7 @@ from sqlalchemy import create_engine
 from app.api_v2 import V2Runtime, build_v2_router
 from app.compiler import DuckDBCompilerAdapter, PostgreSQLCompilerAdapter
 from app.compiler.service import CertifiedIntentCompiler
+from app.decision_support import REVIEW_ASSISTANT_GROUP, ReviewBriefService
 from app.evaluation_gate import EvaluationService, EvaluationStore
 from app.execution import (
     DuckDBGateway,
@@ -147,7 +148,13 @@ class ReferenceStack:
 
     def token(self, user: str, *, purposes=(PURPOSE,), ttl_minutes: int = 60, tenant: str = TENANT, groups=None) -> str:
         if groups is None:  # the reference "reviewer" user is in the reviewer group; everyone else is a plain analyst
-            groups = ("analyst", REVIEWER_GROUP) if user.startswith("reviewer") else ("analyst",)
+            groups = (
+                ("analyst", REVIEWER_GROUP)
+                if user.startswith("reviewer")
+                else ("analyst", REVIEW_ASSISTANT_GROUP)
+                if user.startswith("assistant")
+                else ("analyst",)
+            )
         claims = {
             "iss": ISSUER,
             "aud": AUDIENCE,
@@ -370,7 +377,12 @@ class ReferenceStack:
         async def no_api_key() -> None:
             return None
 
-        runtime = V2Runtime(service=self.service(), verifier=self.verifier(), feedback=self.feedback_service())
+        runtime = V2Runtime(
+            service=self.service(),
+            verifier=self.verifier(),
+            feedback=self.feedback_service(),
+            briefs=ReviewBriefService(self.control, self.plans),
+        )
         application.include_router(build_v2_router(runtime, no_api_key))
         return application
 

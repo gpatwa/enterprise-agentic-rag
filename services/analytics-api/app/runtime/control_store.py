@@ -312,6 +312,26 @@ class ControlStore:
                 raise ControlStoreError("review must reference an active scoped run")
             _insert_review(connection, review)
 
+    def list_pending_reviews(
+        self, *, tenant_id: str, purpose: str, now: datetime | None = None, limit: int = 50
+    ) -> list[DurableReviewDecision]:
+        """Pending, unexpired reviews for one tenant and purpose, oldest first. Read-only: nothing is expired or changed here."""
+        with self.engine.connect() as connection:
+            rows = (
+                connection.execute(
+                    text(
+                        "SELECT * FROM analytics_run_reviews WHERE tenant_id=:tenant_id AND purpose=:purpose AND state='pending' "
+                        "ORDER BY created_at ASC"
+                    ),
+                    {"tenant_id": tenant_id, "purpose": purpose},
+                )
+                .mappings()
+                .all()
+            )
+        current = now or datetime.now(timezone.utc)
+        reviews = [_review_from_row(row) for row in rows]
+        return [r for r in reviews if r.expires_at > current][: max(1, min(limit, 200))]
+
     def get_review(self, review_id: str, *, tenant_id: str, purpose: str) -> DurableReviewDecision:
         with self.engine.begin() as connection:
             lock = " FOR UPDATE" if connection.dialect.name == "postgresql" else ""

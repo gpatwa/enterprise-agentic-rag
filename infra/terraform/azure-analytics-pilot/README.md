@@ -47,7 +47,7 @@ registrations if `create_entra_app = true`), the state storage account from `../
    (`npx @azure/static-web-apps-cli deploy dist --deployment-token ...`), or run the workflow below.
 8. Entra ID: assign users the `Analytics.Analyst` (and reviewers `Analytics.Reviewer`) app roles on the
    `<prefix>-<env>-analytics-api` enterprise application. A user gets a token with
-   `az account get-access-token --scope <entra_audience>/.default --query accessToken -o tsv` and pastes it in the web UI.
+   `az account get-access-token --scope <entra_audience>/.default --query accessToken -o tsv` (people only; an application identity with the `Analytics.ReviewAssistant` role may read reviews but the API gives it no purposes and never lets it decide) and pastes it in the web UI.
 9. Check: `curl <api_url>/health` returns `ready` or `degraded` (the v1 LLM settings are not used by v2); ask a question in the
    web UI; `az containerapp logs show -n <app> -g <rg>`.
 
@@ -63,3 +63,10 @@ Container App, and deploys the web app.
   off.
 - `min_cohort = 10` follows the security persona's recommendation for finding F-03; changing it is the security owner's decision.
 - Backups: PostgreSQL point-in-time restore (7 days). The logical backup and restore drill (ADS-068) can also be run against it.
+
+## The review assistant (optional)
+
+`python -m app.decision_support.agent --api <api_url> --token <token> --api-key <api_key>` lists pending reviews and prints one note per
+review. Give its identity (for example a user-assigned managed identity) the `Analytics.ReviewAssistant` app role only. It is read-only
+by construction: the API strips every other role from application tokens, and the decision endpoint needs the reviewer group and a
+human caller. Never assign `Analytics.Reviewer` or `Analytics.Analyst` to an application.

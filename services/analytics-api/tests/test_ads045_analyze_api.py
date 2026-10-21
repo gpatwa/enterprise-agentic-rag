@@ -352,6 +352,8 @@ def test_openapi_documents_the_endpoints_and_strict_bodies(tmp_path, monkeypatch
         "/api/v2/analytics/runs/{run_id}/clarify",
         "/api/v2/analytics/runs/{run_id}/review",
         "/api/v2/analytics/runs/{run_id}/feedback",
+        "/api/v2/analytics/runs/{run_id}/review-brief",  # read-only, reviewers and the review assistant
+        "/api/v2/analytics/reviews/pending",  # read-only, reviewers and the review assistant
     }
     assert "post" in paths["/api/v2/analytics/analyze"] and "get" in paths["/api/v2/analytics/runs/{run_id}"]
     schemas = spec["components"]["schemas"]
