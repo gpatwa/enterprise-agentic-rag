@@ -26,7 +26,7 @@ from typing import Any
 from unittest import mock
 
 from app.runtime import AgentGraphRunner, BootstrapRequest, governed_graph_v2
-from app.runtime.analyze_service import ServiceError
+from app.runtime.analyze_service import ServiceError, request_id_for
 from app.runtime.control_store import ControlStore
 from reference_stack import m7_corpus as corpus_module
 from reference_stack import stack as stack_module
@@ -120,7 +120,9 @@ def _crash(root: Path, node: str, when: str, *, process_death: bool) -> dict[str
     store = ControlStore(stack.control.engine, lease_seconds=LEASE)
     stack.control = store
     who = _who(stack)
-    request = BootstrapRequest(request_id=f"crash-{node}-{when}", request_text=QUESTION, identity=who)
+    request = BootstrapRequest(
+        request_id=request_id_for(who, f"crash-{node}-{when}"), request_text=QUESTION, identity=who
+    )
     state = stack.new_state(request, f"crash-run-{node}-{when}-{int(process_death)}", PURPOSE)
     armed = {"crashed": False}
 

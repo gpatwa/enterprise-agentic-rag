@@ -8,6 +8,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from app.execution.gateway import ExecutionGateway, ExecutionLimits, ExecutionResult
+from app.runtime.bounded import BoundedDict
 
 
 class ExecutionResultStore:
@@ -19,9 +20,15 @@ class ExecutionResultStore:
 
     def __init__(self, engine: Any = None) -> None:
         self._lock = threading.Lock()
-        self._results: dict[tuple[str, str, str], ExecutionResult] = {}
+        self._results: BoundedDict = BoundedDict()
         self._engine = engine
-        self.rebuilder: Any = None  # callable(tenant_id, run_id, plan_reference) -> ExecutionResult
+        # tenant id -> callable(tenant_id, run_id, plan_reference) -> ExecutionResult. Keyed by tenant so a rebuild can only run on
+        # the gateways of the tenant whose run it is (a single shared hook could run one tenant's SQL on another's warehouse).
+        self._rebuilders: dict[str, Any] = {}
+
+    def register_rebuilder(self, tenant_id: str, rebuild: Any) -> None:
+        with self._lock:
+            self._rebuilders[tenant_id] = rebuild
 
     @staticmethod
     def reference_for(tenant_id: str, run_id: str, plan_reference: str) -> str:
@@ -58,7 +65,9 @@ class ExecutionResultStore:
         try:
             return self.get(tenant_id, run_id, reference)
         except LookupError:
-            if self._engine is None or self.rebuilder is None:
+            with self._lock:
+                rebuild = self._rebuilders.get(tenant_id)
+            if self._engine is None or rebuild is None:
                 raise
             from app.runtime.governed_stages import _load
 
@@ -67,7 +76,7 @@ class ExecutionResultStore:
             )
             if plan_reference is None:
                 raise
-            result = self.rebuilder(tenant_id, run_id, plan_reference)
+            result = rebuild(tenant_id, run_id, plan_reference)
             with self._lock:
                 self._results[(tenant_id, run_id, reference)] = result
             return result
@@ -82,13 +91,15 @@ class GatewayExecutor:
         gateways: Mapping[str, ExecutionGateway],
         results: ExecutionResultStore,
         limits: ExecutionLimits,
+        *,
+        tenant_id: str | None = None,
     ) -> None:
         self._plans = plans
         self._gateways = dict(gateways)
         self._results = results
         self._limits = limits
-        if hasattr(results, "rebuilder"):
-            results.rebuilder = self._rebuild
+        if tenant_id is not None and hasattr(results, "register_rebuilder"):
+            results.register_rebuilder(tenant_id, self._rebuild)
 
     def _rebuild(self, tenant_id: str, run_id: str, plan_reference: str) -> ExecutionResult:
         plan = self._plans.get(tenant_id, run_id, plan_reference)

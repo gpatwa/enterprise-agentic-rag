@@ -190,11 +190,14 @@ def test_a_human_reviewer_decides_and_the_requester_cannot_approve_their_own_run
     stack, surface, requester, run_id, fingerprint = _paused(tmp_path)
     decision = dict(purpose=PURPOSE, run_id=run_id, decision="approved", plan_fingerprint=fingerprint)
     own = _call(surface, requester, "analytics.review", **decision)
-    assert (own.error.code, own.error.status) == ("review_not_permitted", 403)
+    assert (own.error.code, own.error.status) == ("reviewer_role_required", 403)  # the requester is not a reviewer
     stale = _call(surface, _who(stack, "reviewer"), "analytics.review", **{**decision, "plan_fingerprint": "0" * 64})
     assert (stale.error.code, stale.error.status) == ("review_stale", 409)
     approved = _call(surface, _who(stack, "reviewer"), "analytics.review", **decision)
-    assert approved.ok and approved.run.outcome.outcome == "answer"
+    assert approved.ok and approved.run.state == "terminal"
+    assert approved.run.outcome.reason_code == "unauthorized"  # the reviewer never receives the requester's rows
+    mine = _call(surface, requester, "analytics.status", purpose=PURPOSE, run_id=run_id)
+    assert mine.ok and mine.run.outcome.outcome == "answer"
     again = _call(surface, _who(stack, "reviewer"), "analytics.review", **decision)
     assert again.error.code == "run_not_awaiting_review"
 

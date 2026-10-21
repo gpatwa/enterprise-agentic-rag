@@ -44,6 +44,9 @@ def fit_calibration(
         if slope <= 0:
             raise CalibrationError(f"estimates_do_not_predict_cost:{dialect}")
         offset = mean_y - slope * mean_x
+        if offset < 0:
+            # A negative intercept turns small estimates into zero cost, which would skip the cost-review threshold.
+            raise CalibrationError(f"negative_intercept:{dialect}")
         total = sum((y - mean_y) ** 2 for y in ys)
         residual = sum((y - (slope * x + offset)) ** 2 for x, y in zip(xs, ys, strict=True))
         r_squared = 1.0 if total == 0 else max(0.0, 1.0 - residual / total)

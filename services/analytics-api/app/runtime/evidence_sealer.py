@@ -10,6 +10,7 @@ from __future__ import annotations
 import threading
 from typing import Any
 
+from app.runtime.bounded import BoundedDict
 from app.runtime.evidence_store import EvidenceStore, record_terminal_evidence
 from packages.platform_contracts.agent_runtime import AgentRunState
 from packages.platform_contracts.evidence import EvidenceEnvelope
@@ -20,7 +21,7 @@ class ValidationReportStore:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._reports: dict[tuple[str, str], Any] = {}
+        self._reports: BoundedDict = BoundedDict()
 
     def put(self, tenant_id: str, run_id: str, report: Any) -> None:
         with self._lock:

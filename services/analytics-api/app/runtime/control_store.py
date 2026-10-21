@@ -45,6 +45,17 @@ def _payload(value: Any) -> Any:
     return json.loads(value) if isinstance(value, str) else value
 
 
+def _as_utc(value: Any) -> datetime:
+    """A stored timestamp as an aware UTC datetime. PostgreSQL returns datetimes, SQLite returns ISO text; never compare them as strings."""
+    if isinstance(value, datetime):
+        moment = value
+    else:
+        moment = datetime.fromisoformat(str(value).replace(" ", "T"))
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc)
+
+
 def _timestamp(value: datetime) -> str:
     if value.tzinfo is None:
         raise ValueError("control-store timestamps must be timezone-aware")
@@ -121,9 +132,13 @@ class ControlStore:
                 .mappings()
                 .first()
             )
-            if existing is not None and str(existing["expires_at"]) > _timestamp(current):
+            if existing is not None and _as_utc(existing["expires_at"]) > current.astimezone(timezone.utc):
                 raise LeaseUnavailable("run lease is held by a live worker")
-            fencing = int(existing["fencing_seq"]) + 1 if existing is not None else 1
+            # Fencing never goes backwards over a run's life, even after a pause released (deleted) the lease row.
+            previous = max(
+                int(existing["fencing_seq"]) if existing is not None else 0, int(run["lease_fencing_seq"] or 0)
+            )
+            fencing = previous + 1
             params = {
                 "run_id": run_id,
                 "tenant_id": tenant_id,
@@ -153,6 +168,32 @@ class ControlStore:
                 {"run_id": run_id, "fencing_seq": fencing},
             )
         return Lease(run_id, tenant_id, purpose, owner_id, lease_token, fencing, expires)
+
+    def renew_lease(self, lease: Lease, *, now: datetime | None = None) -> Lease:
+        """Extend a held lease (a heartbeat). Fails with `StaleWorkerError` if another worker has taken the run over."""
+        current = now or datetime.now(timezone.utc)
+        expires = current + timedelta(seconds=self.lease_seconds)
+        with self.engine.begin() as connection:
+            result = connection.execute(
+                text("""UPDATE analytics_run_leases SET expires_at=:expires_at, renewed_at=:now
+                WHERE run_id=:run_id AND tenant_id=:tenant_id AND purpose=:purpose AND owner_id=:owner_id
+                AND lease_token=:lease_token AND fencing_seq=:fencing_seq"""),
+                {
+                    "run_id": lease.run_id,
+                    "tenant_id": lease.tenant_id,
+                    "purpose": lease.purpose,
+                    "owner_id": lease.owner_id,
+                    "lease_token": lease.lease_token,
+                    "fencing_seq": lease.fencing_seq,
+                    "expires_at": _timestamp(expires),
+                    "now": _timestamp(current),
+                },
+            )
+            if result.rowcount != 1:
+                raise StaleWorkerError("lease was taken over by another worker")
+        return Lease(
+            lease.run_id, lease.tenant_id, lease.purpose, lease.owner_id, lease.lease_token, lease.fencing_seq, expires
+        )
 
     def load_latest_checkpoint(self, *, run_id: str, tenant_id: str, purpose: str) -> AgentRunState:
         with self.engine.connect() as connection:

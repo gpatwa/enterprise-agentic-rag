@@ -19,6 +19,7 @@ from fastapi.testclient import TestClient
 from jose import jwt
 
 from app.agent_tools import AgentToolSurface
+from packages.platform_contracts.review import REVIEWER_GROUP
 from reference_stack import golden, security_eval
 from reference_stack import m7_corpus as corpus_module
 from reference_stack.stack import AUDIENCE, ISSUER, KEY_ID, build_stack
@@ -32,6 +33,7 @@ GATE_PLAN = {
     "cross_tenant_leaks": "Policy and tenant-isolation violations 0",
     "purpose_violations": "Policy and tenant-isolation violations 0 (a purpose the caller lacks)",
     "separation_of_duties_violations": "A requester or an agent decides a review: 0",
+    "same_tenant_overreach": "A colleague in the same tenant reads another person's run or rows, or decides a review without the role: 0",
     "unauthenticated_successes": "Forged, expired, wrong-audience, or missing tokens that succeed: 0",
     "probe_agreement": "Every hostile probe is refused without leaking the victim's data",
     "security_corpus_gates_met": "ADS-067 security corpus gates met",
@@ -234,9 +236,72 @@ def run_matrix(root: Path) -> list[dict[str, Any]]:
             review,
             f"/runs/{paused['run_id']}/review",
             {"purpose": PURPOSE, "decision": "approved", "plan_fingerprint": paused["outcome"]["plan_fingerprint"]},
-            review.token("agent:svc-bot"),
+            review.token("agent:svc-bot", groups=("analyst", REVIEWER_GROUP)),  # even with the reviewer role
         ),
         victim_review,
+    )
+    check(
+        "a colleague without the reviewer role approves a review",
+        "duties",
+        "rest",
+        post(
+            "review",
+            review,
+            f"/runs/{paused['run_id']}/review",
+            {"purpose": PURPOSE, "decision": "approved", "plan_fingerprint": paused["outcome"]["plan_fingerprint"]},
+            review.token("colleague"),
+        ),
+        victim_review,
+    )
+    check(
+        "the requester holding the reviewer role approves their own review",
+        "duties",
+        "rest",
+        post(
+            "review",
+            review,
+            f"/runs/{paused['run_id']}/review",
+            {"purpose": PURPOSE, "decision": "approved", "plan_fingerprint": paused["outcome"]["plan_fingerprint"]},
+            review.token("requester", groups=("analyst", REVIEWER_GROUP)),
+        ),
+        victim_review,
+    )
+    # the same tenant and purpose: a colleague must not read another person's run or rows (F-05)
+    check(
+        "a colleague reads another person's answered run",
+        "same_tenant",
+        "rest",
+        post(
+            "main",
+            main,
+            f"/runs/{answered['run_id']}",
+            None,
+            main.token("colleague"),
+            method="get",
+            params={"purpose": PURPOSE},
+        ),
+        victim_main,
+    )
+    reviewer_read = post(
+        "main",
+        main,
+        f"/runs/{answered['run_id']}",
+        None,
+        main.token("reviewer"),
+        method="get",
+        params={"purpose": PURPOSE},
+    )
+    withheld = (
+        reviewer_read.status_code >= 400
+        or (reviewer_read.json().get("outcome") or {}).get("reason_code") == "unauthorized"
+    )
+    _probe(
+        rows,
+        "a reviewer reads another person's answer rows",
+        "rest",
+        "same_tenant",
+        withheld,
+        _leaked(reviewer_read.text, {"markers": ["5050"]}),
     )
     check(
         "approve with a stale plan fingerprint",
@@ -360,6 +425,7 @@ def run_isolation(
         "purpose_violations": sum(r["leaked"] or not r["denied"] for r in by_group("purpose")),
         "separation_of_duties_violations": sum(r["leaked"] or not r["denied"] for r in by_group("duties")),
         "unauthenticated_successes": sum(r["leaked"] or not r["denied"] for r in by_group("auth")),
+        "same_tenant_overreach": sum(r["leaked"] or not r["denied"] for r in by_group("same_tenant")),
         "probe_agreement": sum(r["passed"] for r in rows) / len(rows),
         "security_corpus_gates_met": 1.0 if security["meets_thresholds"] else 0.0,
         "protected_case_failures": sum(not c["passed"] for c in protected),

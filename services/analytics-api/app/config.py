@@ -15,9 +15,7 @@ class Settings(BaseSettings):
     ENV: str = "dev"
     ANALYTICS_DB_URL: str | None = None
     ANALYTICS_CONTROL_DB_URL: str | None = None
-    ANALYTICS_SEMANTIC_REGISTRY_PATH: str = str(
-        Path(__file__).resolve().parent.parent / "semantic_registry"
-    )
+    ANALYTICS_SEMANTIC_REGISTRY_PATH: str = str(Path(__file__).resolve().parent.parent / "semantic_registry")
     DATABASE_URL: str | None = None
     ANALYTICS_QUERY_TIMEOUT: int = 10
     ANALYTICS_MAX_ROWS: int = 1_000
@@ -29,6 +27,8 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str | None = None
 
     ANALYTICS_API_KEY: str | None = None
+    # The legacy v1 query endpoint runs model-written SQL without an identity. Off in production unless explicitly enabled.
+    ANALYTICS_V1_ENABLED: bool | None = None
     ANALYTICS_CORS_ORIGINS: str = "http://localhost:5174"
     ANALYTICS_OPENSEARCH_URL: str | None = None
     ANALYTICS_CONTEXT_INDEX: str = "context-v1"
@@ -54,11 +54,7 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> list[str]:
-        return [
-            origin.strip()
-            for origin in self.ANALYTICS_CORS_ORIGINS.split(",")
-            if origin.strip()
-        ]
+        return [origin.strip() for origin in self.ANALYTICS_CORS_ORIGINS.split(",") if origin.strip()]
 
     @property
     def opensearch_url(self) -> str | None:
@@ -83,3 +79,7 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
+
+
+def v1_enabled(config: "Settings") -> bool:
+    return config.ANALYTICS_V1_ENABLED if config.ANALYTICS_V1_ENABLED is not None else config.ENV != "prod"

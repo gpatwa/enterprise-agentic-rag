@@ -53,10 +53,11 @@ def test_plans_and_values_are_scoped_to_the_tenant_and_run(tmp_path):
 def test_no_rows_are_stored_in_the_durable_tables(tmp_path):
     stack, _, _ = _run(tmp_path)
     with stack.control.engine.connect() as connection:
-        dump = " ".join(
-            str(row)
+        dump = " ".join(  # full values: a Row's repr truncates long strings
+            str(value)
             for table in ("analytics_run_plans", "analytics_run_policy_values", "analytics_run_result_links")
             for row in connection.execute(text(f"SELECT * FROM {table}")).all()
+            for value in row
         )
     assert "SELECT" in dump  # the plan is there
     for forbidden in ("1969", "1468", "563", "2024-03-01"):
@@ -92,7 +93,6 @@ def test_resume_rebuilds_a_missing_result_only_for_a_stored_plan_and_only_throug
 
 
 def test_a_store_without_an_engine_behaves_as_before(tmp_path):
-    assert ExecutionResultStore().rebuilder is None
     with pytest.raises(LookupError):
         ExecutionResultStore().resume("t", "r", "x")
     with pytest.raises(LookupError):

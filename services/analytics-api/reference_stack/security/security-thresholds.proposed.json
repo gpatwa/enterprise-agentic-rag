@@ -1,7 +1,7 @@
 {
   "suite_version": "security-corpus-v1",
   "rules_version": "security-rules-v1",
-  "corpus_sha256": "80b3629a7d24b6c2d2d0205d2dbd638250f5f83251240e03b0cab9988d4b7030",
+  "corpus_sha256": "d07d87c40b3029d4092759818dd038ffb63ad94b6fc05381f4ba9fdb188e6dea",
   "approval": {
     "status": "proposed",
     "approved_by": null,

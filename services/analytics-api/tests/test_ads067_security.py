@@ -91,8 +91,9 @@ def test_every_finding_cites_evidence_and_no_critical_or_high_finding_is_unresol
 
 
 def test_the_documented_gaps_stay_true(report):
+    # GAP01 closed with F-05: a colleague who derives a run ID is refused; the other two gaps stay documented.
     assert [c["got"] for c in _cases(report, "GAP01", "GAP02", "GAP03")] == [
-        "readable",
+        "not_run_requester",
         "row_level_value_returned",
         "differencing_possible",
     ]
@@ -269,3 +270,14 @@ def test_the_data_plane_agent_accepts_a_minimum_cohort():
 def test_nothing_mounts_the_security_evaluation_yet():
     for path in (SERVICE / "app/main.py", SERVICE / "app/api_v2.py"):
         assert "security_eval" not in path.read_text(), path.name
+
+
+def test_a_deployment_that_requires_a_run_id_key_refuses_to_start_without_a_strong_one(tmp_path):
+    from app.runtime.analyze_service import GovernedAnalyzeService
+
+    stack = build_stack("duckdb", tmp_path)
+    kwargs = dict(runner_factory=stack.runner, state_factory=stack.new_state, answers=stack)
+    for key in (None, b"short"):
+        with pytest.raises(ValueError, match="run_id_key"):
+            GovernedAnalyzeService(stack.control, run_id_key=key, require_run_id_key=True, **kwargs)
+    GovernedAnalyzeService(stack.control, run_id_key=b"k" * 32, require_run_id_key=True, **kwargs)

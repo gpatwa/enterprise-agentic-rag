@@ -71,6 +71,7 @@ from app.semantic_registry import SemanticRegistry
 from app.triage import TriageService, TriageStore
 from packages.platform_contracts.agent_runtime import NodeOutput, RunBudget
 from packages.platform_contracts.prompt_registry import render as render_prompt
+from packages.platform_contracts.review import REVIEWER_GROUP
 from packages.platform_contracts.security import AnalyticsIdentity
 from packages.platform_contracts.semantic import SemanticPolicy, SemanticRegistryDocument
 from reference_stack.fakes import (
@@ -144,9 +145,9 @@ class ReferenceStack:
 
     # ---- identity (locally signed; never accepted by any other service) ----
 
-    def token(
-        self, user: str, *, purposes=(PURPOSE,), ttl_minutes: int = 60, tenant: str = TENANT, groups=("analyst",)
-    ) -> str:
+    def token(self, user: str, *, purposes=(PURPOSE,), ttl_minutes: int = 60, tenant: str = TENANT, groups=None) -> str:
+        if groups is None:  # the reference "reviewer" user is in the reviewer group; everyone else is a plain analyst
+            groups = ("analyst", REVIEWER_GROUP) if user.startswith("reviewer") else ("analyst",)
         claims = {
             "iss": ISSUER,
             "aud": AUDIENCE,
@@ -203,7 +204,9 @@ class ReferenceStack:
                 requested_by=identity.user_id,
             ),
             "approve": review_decision_node(self.control),
-            "execute": fake_execution_node(GatewayExecutor(self.plans, gateways, self.results, ExecutionLimits())),
+            "execute": fake_execution_node(
+                GatewayExecutor(self.plans, gateways, self.results, ExecutionLimits(), tenant_id=identity.tenant_id)
+            ),
             "result_validate": result_validation_node(
                 self.plans,
                 self.results,

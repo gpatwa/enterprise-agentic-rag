@@ -23,7 +23,7 @@ from app.resilience import (
 )
 from app.resilience import backup as backup_module
 from app.runtime import AgentGraphRunner, BootstrapRequest, ControlStore, governed_graph_v2
-from app.runtime.analyze_service import GovernedAnalyzeService
+from app.runtime.analyze_service import GovernedAnalyzeService, request_id_for
 from app.runtime.graph_runner import GraphRunError
 from packages.platform_contracts.agent_runtime import AgentRunState
 from packages.platform_contracts.resilience import ControlBackupManifest, ResilienceObjectives
@@ -274,7 +274,9 @@ def test_a_restored_service_answers_honestly_about_old_answers_and_never_execute
         plan_fingerprint=review.plan_fingerprint,
         note=None,
     )
-    assert decided.state == "terminal" and decided.outcome.outcome == "answer"  # the approved plan runs, once
+    assert decided.state == "terminal" and decided.outcome.reason_code == "unauthorized"  # the reviewer gets no rows
+    mine = approving.service().status(_who(approving), purpose=PURPOSE, run_id=pending.run_id)
+    assert mine.outcome.outcome == "answer"  # the approved plan ran, once, and the requester sees the answer
     assert len(approving.executed_sql) == 1
 
 
@@ -405,8 +407,9 @@ def test_a_run_started_by_one_worker_is_finished_by_a_differently_built_worker_a
         plan_fingerprint=review.plan_fingerprint,
         note=None,
     )
-    assert done.state == "terminal" and done.outcome.outcome == "answer" and "execute" in seen and "create" not in seen
-    request = BootstrapRequest(request_id="x-request-1", request_text=QUESTION, identity=who)
+    assert done.state == "terminal" and "execute" in seen and "create" not in seen
+    assert service.status(who, purpose=PURPOSE, run_id=paused.run_id).outcome.outcome == "answer"
+    request = BootstrapRequest(request_id=request_id_for(who, "x-request-1"), request_text=QUESTION, identity=who)
     runner = AgentGraphRunner(stack.control, governed_graph_v2(stack.nodes(who, request)))
     foreign = stack.new_state(request, "foreign-run-0001", PURPOSE).model_copy(update={"graph_version": "graph-v9"})
     with pytest.raises(GraphRunError):

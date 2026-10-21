@@ -14,6 +14,7 @@ from uuid import uuid4
 from sqlalchemy import text
 
 from app.compiler.service import CertifiedIntentCompiler
+from app.runtime.bounded import BoundedDict
 from app.security.authorization import authorize
 from packages.platform_contracts.agent_runtime import EvidenceReference, NodeInput, NodeOutput, RunError
 from packages.platform_contracts.analytics_intent import AnalyticalIntent
@@ -29,12 +30,15 @@ class CompiledPlanStore:
 
     def __init__(self, engine: Any = None) -> None:
         self._lock = threading.Lock()
-        self._plans: dict[tuple[str, str, str], Any] = {}
+        self._plans: BoundedDict = BoundedDict()
         self._engine = engine
 
     def put(self, tenant_id: str, run_id: str, plan: Any) -> str:
         sql = getattr(plan, "sql", repr(plan))
-        reference = hashlib.sha256(f"{tenant_id}:{run_id}:{sql}".encode()).hexdigest()
+        # The bound values are part of the plan: a reviewer's cost approval binds this reference, so it must cover them too.
+        parameters = getattr(plan, "parameters", None)
+        material = f"{tenant_id}:{run_id}:{sql}" + (f"\n{_encode(parameters)}" if parameters else "")
+        reference = hashlib.sha256(material.encode()).hexdigest()
         with self._lock:
             self._plans[(tenant_id, run_id, reference)] = plan
         if self._engine is not None and dataclasses.is_dataclass(plan):
@@ -80,7 +84,7 @@ def _encode(value: Any) -> str:
             return {"__type__": "decimal", "value": str(item)}
         raise TypeError(f"cannot store a {type(item).__name__} durably")
 
-    return json.dumps(value, default=default)
+    return json.dumps(value, default=default, sort_keys=True)
 
 
 def _decode(raw: Any) -> Any:

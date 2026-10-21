@@ -18,7 +18,7 @@ from sqlalchemy import text
 
 from app.resilience import backup_control_store, restore_control_store
 from app.runtime import AgentGraphRunner, BootstrapRequest, ControlStore, governed_graph_v2
-from app.runtime.analyze_service import ServiceError
+from app.runtime.analyze_service import ServiceError, request_id_for
 from app.runtime.control_store import LeaseUnavailable, StaleWorkerError
 from packages.platform_contracts.feedback import FeedbackSubmission
 from packages.platform_contracts.operations import DrillResult
@@ -147,7 +147,9 @@ def drill_failover(root: Path, objectives: ResilienceObjectives) -> dict[str, An
     store = RecordingControlStore(stack.control.engine, lease_seconds=int(objectives.lease_seconds))
     stack.control = store
     who = _who(stack)
-    request = BootstrapRequest(request_id="failover-request-1", request_text=QUESTION, identity=who)
+    request = BootstrapRequest(
+        request_id=request_id_for(who, "failover-request-1"), request_text=QUESTION, identity=who
+    )
     state = stack.new_state(request, "failover-run-0001", PURPOSE)
     crashed = {"done": False}
 

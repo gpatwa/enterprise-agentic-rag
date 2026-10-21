@@ -2,7 +2,7 @@
 
 **Result: MEETS the proposed thresholds.** The thresholds are PROPOSED and NOT APPROVED. This is a test matrix over a local reference stack, **not an independent security review**; zero violations here is not a statement that none exist.
 
-24 hostile probes (REST and agent tools), the 31-case ADS-067 corpus, and 48 protected-case runs from the ADS-070 corpus.
+28 hostile probes (REST and agent tools), the 31-case ADS-067 corpus, and 48 protected-case runs from the ADS-070 corpus.
 
 ## Metrics
 
@@ -11,6 +11,7 @@
 | `cross_tenant_leaks` | 0 | <= 0 | yes | Policy and tenant-isolation violations 0 |
 | `purpose_violations` | 0 | <= 0 | yes | Policy and tenant-isolation violations 0 (a purpose the caller lacks) |
 | `separation_of_duties_violations` | 0 | <= 0 | yes | A requester or an agent decides a review: 0 |
+| `same_tenant_overreach` | 0 | <= 0 | yes | A colleague in the same tenant reads another person's run or rows, or decides a review without the role: 0 |
 | `unauthenticated_successes` | 0 | <= 0 | yes | Forged, expired, wrong-audience, or missing tokens that succeed: 0 |
 | `probe_agreement` | 1 | >= 1.0 | yes | Every hostile probe is refused without leaking the victim's data |
 | `security_corpus_gates_met` | 1 | >= 1.0 | yes | ADS-067 security corpus gates met |
@@ -30,6 +31,10 @@
 | purpose | rest | analyze under a purpose the caller lacks | yes | no |
 | duties | rest | the requester approves their own review | yes | no |
 | duties | rest | an automated caller approves a review | yes | no |
+| duties | rest | a colleague without the reviewer role approves a review | yes | no |
+| duties | rest | the requester holding the reviewer role approves their own review | yes | no |
+| same_tenant | rest | a colleague reads another person's answered run | yes | no |
+| same_tenant | rest | a reviewer reads another person's answer rows | yes | no |
 | duties | rest | approve with a stale plan fingerprint | yes | no |
 | auth | rest | forged signature token reads a run | yes | no |
 | auth | rest | forged signature token asks a question | yes | no |
@@ -49,7 +54,6 @@
 
 - F-02: Run IDs were a plain hash of tenant, user, purpose, and a client-chosen key, so a colleague could compute and read another person's run
 - F-03: Small cohorts and exact differencing: aggregates can reveal individual values
-- F-05: Any caller in the same tenant with the run's purpose and the run ID can read its status and evidence
 
 ## Not measured
 

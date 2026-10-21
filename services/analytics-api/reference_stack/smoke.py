@@ -186,8 +186,15 @@ def _review_journey(engine: Engine, expected_rows: str | None, check) -> None:
         client.post(url, json=decision, headers=_headers(stack, "requester")).status_code == 403,
     )
     approved = client.post(url, json=decision, headers=_headers(stack, "reviewer")).json()
-    answer = approved.get("outcome") or {}
-    check("a different reviewer approves and the run answers", answer.get("outcome") == "answer", str(approved)[:200])
+    check(
+        "the reviewer's response never carries the requester's rows",
+        (approved.get("outcome") or {}).get("reason_code") == "unauthorized",
+        str(approved)[:200],
+    )
+    run_url = f"{URL}/runs/{paused['run_id']}"
+    reply = client.get(run_url, params={"purpose": PURPOSE}, headers=_headers(stack, "requester")).json()
+    answer = reply.get("outcome") or {}
+    check("a different reviewer approves and the run answers", answer.get("outcome") == "answer", str(reply)[:200])
     if expected_rows and answer.get("outcome") == "answer":
         check(
             "approved answer matches the unreviewed answer", fingerprint_rows(answer["result"]["rows"]) == expected_rows
