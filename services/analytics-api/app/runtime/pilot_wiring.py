@@ -31,6 +31,7 @@ from app.context.registry_context import (
     SnapshotSearch,
     context_from_contract,
 )
+from app.decision_support import ReviewBriefService
 from app.execution import (
     ExecutionLimits,
     ExecutionResultStore,
@@ -76,6 +77,7 @@ from packages.platform_contracts.security import AnalyticsIdentity
 DEFAULT_ROLE_MAP = {
     "Analytics.Analyst": (["analytics"], ["analyst"]),
     "Analytics.Reviewer": ([], ["analytics-reviewer"]),
+    "Analytics.ReviewAssistant": ([], ["analytics-review-assistant"]),
 }
 
 
@@ -310,7 +312,12 @@ def build_pilot_runtime(
     )
     started = time.monotonic()
     service = runtime.service()
-    v2 = V2Runtime(service=service, verifier=verifier, feedback=runtime.feedback_service())
+    v2 = V2Runtime(
+        service=service,
+        verifier=verifier,
+        feedback=runtime.feedback_service(),
+        briefs=ReviewBriefService(runtime.control, runtime.plans),
+    )
     v2.governed = runtime  # type: ignore[attr-defined]  # kept for the purge job and diagnostics
     v2.started_seconds = time.monotonic() - started  # type: ignore[attr-defined]
     return v2

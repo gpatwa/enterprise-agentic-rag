@@ -160,6 +160,8 @@ def _token(private, kid="k1", **claims):
         "oid": "object-id-1",
         "tid": ENTRA_TENANT,
         "roles": ["Analytics.Analyst"],
+        "scp": "access_as_user",
+        "preferred_username": "person@example.com",
         "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
         **claims,
     }
@@ -199,6 +201,65 @@ def test_hostile_or_foreign_entra_tokens_are_refused(claims):
     private, public = _keypair()
     with pytest.raises(AuthenticationError):
         _entra([], {"k1": public}).verify(_token(private, **claims))
+
+
+def _without(private, *names, **claims):
+    """A token without the person claims (an app-only token has none of them)."""
+    body = {
+        "iss": ISSUER,
+        "aud": "api://analytics",
+        "sub": "service-principal-object-id",
+        "oid": "service-principal-object-id",
+        "tid": ENTRA_TENANT,
+        "roles": ["Analytics.Analyst", "Analytics.Reviewer"],
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
+        **claims,
+    }
+    for name in names:
+        body.pop(name, None)
+    return jwt.encode(body, private, algorithm="RS256", headers={"kid": "k1"})
+
+
+def test_an_app_only_token_is_an_agent_that_keeps_only_the_read_only_assistant_group():
+    from app.security import caller_kind
+
+    private, public = _keypair()
+    verifier = _entra([], {"k1": public})
+    roles = ["Analytics.Analyst", "Analytics.Reviewer", "Analytics.ReviewAssistant"]
+    for marker in ({"idtyp": "app"}, {}):  # Entra's marker, or just no person claim at all
+        who = verifier.verify(_without(private, roles=roles, **marker))
+        assert who.purposes == [] and who.groups == ["analytics-review-assistant"]  # analyst and reviewer are stripped
+        assert caller_kind(who) == "agent" and who.claims["act_sub"] == "service-principal-object-id"
+    person = verifier.verify(_without(private, roles=roles, scp="access_as_user"))
+    assert (
+        person.groups == ["analyst", "analytics-reviewer", "analytics-review-assistant"]
+        and caller_kind(person) == "human"
+    )
+    assert verifier.verify(_without(private, preferred_username="p@example.com")).purposes == ["analytics"]
+
+
+def test_an_app_only_token_cannot_ask_or_decide_end_to_end(tmp_path):
+    runtime, stack = _local_runtime(tmp_path, review_threshold=1e-9)
+    client = _client(runtime, stack.verifier())
+    asked = client.post(
+        f"{URL}/analyze",
+        json={"request_text": "Show monthly revenue", "purpose": "analytics"},
+        headers={"Authorization": f"Bearer {stack.token('requester')}", "Idempotency-Key": "agent-key-0000001"},
+    ).json()
+    assert asked["state"] == "waiting_review"
+    # a stand-in for an app-only identity: no purposes, the assistant group, an automated user id
+    token = stack.token("agent:review-bot", purposes=(), groups=("analytics-review-assistant",))
+    body = {"purpose": "analytics", "decision": "approved", "plan_fingerprint": asked["outcome"]["plan_fingerprint"]}
+    decided = client.post(
+        f"{URL}/runs/{asked['run_id']}/review", json=body, headers={"Authorization": f"Bearer {token}"}
+    )
+    assert decided.status_code == 403 and decided.json()["detail"] == "human_required"
+    again = client.post(
+        f"{URL}/analyze",
+        json={"request_text": "Show monthly revenue", "purpose": "analytics"},
+        headers={"Authorization": f"Bearer {token}", "Idempotency-Key": "agent-key-0000002"},
+    )
+    assert again.status_code == 403
 
 
 def test_a_forged_signature_or_an_unknown_key_is_refused_and_a_rotated_key_is_refetched_once():

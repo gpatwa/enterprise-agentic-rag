@@ -19,8 +19,12 @@ from typing import Any
 
 from jose import JWTError, jwt
 
+from app.decision_support.brief import REVIEW_ASSISTANT_GROUP
 from app.security.oidc import AuthenticationError
 from packages.platform_contracts.security import AnalyticsIdentity
+
+# An application identity (service principal or managed identity) keeps only these groups, whatever roles it was given.
+APP_ONLY_GROUPS = frozenset({REVIEW_ASSISTANT_GROUP})
 
 
 def fetch_jwks(url: str) -> dict[str, Any]:
@@ -57,6 +61,15 @@ class EntraVerifier:
                 raise AuthenticationError("unknown signing key")
             return self._keys[kid]
 
+    @staticmethod
+    def _is_app_only(claims: dict[str, Any]) -> bool:
+        """App-only (client-credentials) tokens carry `idtyp: app` and no person claim; people's tokens carry a delegated scope
+        (`scp`) or a user name. A token with neither is treated as app-only too."""
+        if claims.get("idtyp") == "app":
+            return True
+        person_claims = ("scp", "preferred_username", "upn", "unique_name")
+        return not any(isinstance(claims.get(name), str) and claims[name].strip() for name in person_claims)
+
     def verify(self, token: str) -> AnalyticsIdentity:
         try:
             kid = jwt.get_unverified_header(token).get("kid")
@@ -74,6 +87,7 @@ class EntraVerifier:
             raise
         except (JWTError, TypeError, ValueError, KeyError) as exc:
             raise AuthenticationError("invalid identity token") from exc
+        app_only = self._is_app_only(claims)
         entra_tenant = claims.get("tid")
         if not isinstance(entra_tenant, str) or entra_tenant not in self._tenant_map:
             raise AuthenticationError("token tenant is not enabled for analytics")
@@ -89,7 +103,14 @@ class EntraVerifier:
             role_purposes, role_groups = self._role_map.get(role, ([], []))
             purposes += [p for p in role_purposes if p not in purposes]
             groups += [g for g in role_groups if g not in groups]
+        if app_only:
+            # An application is never a person: no purposes, and of its roles only the read-only assistant group, so it can never
+            # ask a question or decide a review whatever roles it was given.
+            purposes = []
+            groups = [g for g in groups if g in APP_ONLY_GROUPS]
         passthrough = {"iss": str(claims["iss"]), "aud": str(claims["aud"]), "sub": subject, "tid": entra_tenant}
+        if app_only:
+            passthrough["act_sub"] = subject  # an automated caller: `caller_kind` is agent
         actor = claims.get("act")
         if actor is not None:
             if (

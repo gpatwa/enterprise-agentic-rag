@@ -157,6 +157,36 @@ resource "azuread_application" "api" {
 
   api {
     requested_access_token_version = 2
+
+    # A delegated scope, so tokens issued to signed-in people carry `scp`; an app-only token gets no purposes from the API.
+    oauth2_permission_scope {
+      id                         = "0e5a2c64-6a3b-4a60-9a4d-6c1f8d2b7e11"
+      value                      = "access_as_user"
+      type                       = "User"
+      admin_consent_display_name = "Use Compass analytics as the signed-in user"
+      admin_consent_description  = "Allows the app to ask governed analytics questions as the signed-in user."
+      user_consent_display_name  = "Use Compass analytics as you"
+      user_consent_description   = "Allows the app to ask governed analytics questions as you."
+      enabled                    = true
+    }
+  }
+
+  optional_claims {
+    access_token {
+      name = "idtyp"
+    }
+    access_token {
+      name = "preferred_username"
+    }
+  }
+
+  app_role {
+    allowed_member_types = ["User", "Application"]
+    description          = "Read paused reviews and write notes for reviewers. Cannot ask questions or decide reviews."
+    display_name         = "Analytics review assistant"
+    id                   = "7c2d9e41-3b5a-4f68-8a1e-5d0b6c4f9a27"
+    value                = "Analytics.ReviewAssistant"
+    enabled              = true
   }
 
   app_role {
