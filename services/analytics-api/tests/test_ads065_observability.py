@@ -100,8 +100,8 @@ def test_a_run_that_pauses_and_resumes_stays_in_one_trace_across_requests(tmp_pa
         plan_fingerprint=review.plan_fingerprint,
         note=None,
     )
-    assert done.outcome.outcome == "answer"
-    service.status(who, purpose=PURPOSE, run_id=paused.run_id)
+    assert done.state == "terminal" and done.outcome.reason_code == "unauthorized"  # the reviewer gets no rows
+    assert service.status(who, purpose=PURPOSE, run_id=paused.run_id).outcome.outcome == "answer"
     trace = obs.tracer.trace(trace_id_for_run("tenant-a", paused.run_id))
     assert [s.name for s in trace if s.layer == "api"] == ["api.analyze", "api.review", "api.status"]
     assert {s.layer for s in trace} == set(LAYERS)

@@ -26,11 +26,18 @@ def authorize(
             enforced_filter_ids=required_filters,
             policy_version=contract.version,
         )
-    needs_review = [
-        policy.id
-        for policy in applicable
-        if policy.classification in {"confidential", "restricted"} and not identity.groups
-    ]
+    groups = set(identity.groups)
+    entitled = lambda policy: bool(groups.intersection(policy.allowed_groups))  # noqa: E731
+    restricted = [p.id for p in applicable if p.classification == "restricted" and not entitled(p)]
+    if restricted:  # restricted data is denied unless the caller is in one of the policy's named groups
+        return AuthorizationDecision(
+            decision_id=uuid4().hex,
+            effect="deny",
+            reasons=[f"group_not_allowed:{policy_id}" for policy_id in restricted],
+            enforced_filter_ids=required_filters,
+            policy_version=contract.version,
+        )
+    needs_review = [p.id for p in applicable if p.classification == "confidential" and not entitled(p)]
     if needs_review:
         return AuthorizationDecision(
             decision_id=uuid4().hex,

@@ -230,7 +230,8 @@ def test_the_adapter_imports_only_the_tool_surface_and_identity_layers():
 
 
 def test_review_stays_human_only_and_separated_through_mcp(tmp_path):
-    stack, _, _, adapter = _rig(tmp_path, review_threshold=1e-9)
+    stack, directory, _, adapter = _rig(tmp_path, review_threshold=1e-9)
+    directory.set_user("tenant-a", "reviewer", ("analyst", "analytics-reviewer"))
     requester = stack.token("requester")
     paused = _structured(_analyze(adapter, requester))["run"]
     assert paused["state"] == "waiting_review"
@@ -239,13 +240,15 @@ def test_review_stays_human_only_and_separated_through_mcp(tmp_path):
         purpose=PURPOSE, run_id=paused["run_id"], decision="approved", plan_fingerprint=review.plan_fingerprint
     )
     own = _structured(_call(adapter, requester, "analytics.review", **decision))
-    assert own["error"]["code"] == "review_not_permitted"
+    assert own["error"]["code"] == "reviewer_role_required"  # the requester is not in the reviewer group
     delegated = _structured(_call(adapter, _delegated_token(stack), "analytics.review", **decision))
     assert delegated["error"]["code"] == "human_required"
     state = _structured(_call(adapter, requester, "analytics.status", purpose=PURPOSE, run_id=paused["run_id"]))
     assert state["run"]["state"] == "waiting_review"
     done = _structured(_call(adapter, stack.token("reviewer"), "analytics.review", **decision))
-    assert done["ok"] and done["run"]["outcome"]["outcome"] == "answer"
+    assert done["ok"] and done["run"]["outcome"]["reason_code"] == "unauthorized"  # the reviewer gets no rows
+    mine = _structured(_call(adapter, requester, "analytics.status", purpose=PURPOSE, run_id=paused["run_id"]))
+    assert mine["run"]["outcome"]["outcome"] == "answer"
 
 
 def test_other_tenants_cannot_reach_a_run_through_mcp(tmp_path):

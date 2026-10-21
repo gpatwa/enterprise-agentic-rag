@@ -334,11 +334,11 @@
     },
     {
       "id": "GAP01",
-      "name": "run_ids_are_derivable_without_a_server_key",
+      "name": "a_derivable_run_id_no_longer_lets_a_colleague_read_the_run",
       "group": "exfiltration",
-      "kind": "known_gap",
+      "kind": "control",
       "op": "run_id",
-      "expect": "readable",
+      "expect": "not_run_requester",
       "keyed": false,
       "finding": "F-02"
     },
@@ -445,7 +445,7 @@
       "severity": "high",
       "status": "mitigated",
       "resolution": "`GovernedAnalyzeService(run_id_key=...)` makes the ID an HMAC. The key is a deployment requirement; the reference stack and tests leave it off, which GAP01 documents",
-      "residual": "a deployment that omits the key keeps the derivable ID",
+      "residual": "a deployment that omits the key keeps the derivable ID; with F-05 resolved a derived ID no longer lets a colleague read the run, and production refuses to start without run_id_key",
       "evidence_cases": [
         "EX07",
         "GAP01"
@@ -490,14 +490,17 @@
       "id": "F-05",
       "title": "Any caller in the same tenant with the run's purpose and the run ID can read its status and evidence",
       "severity": "medium",
-      "status": "accepted_by_design",
-      "resolution": "deliberate, so reviewers can open a paused run; unguessable run IDs (F-02) are what protect it. A requester-or-reviewer-only read is a possible later tightening",
-      "residual": "anyone given a run ID can read it",
+      "status": "resolved",
+      "resolution": "M7 security fixes: only the requester reads a run; a member of the analytics-reviewer group can open it (to decide a review) but never receives the requester's rows; any other colleague gets 403 not_run_requester",
+      "residual": "a reviewer sees that a run exists and its state",
       "evidence_cases": [
         "EX01",
-        "EX02"
+        "EX02",
+        "GAP01"
       ],
-      "evidence_tests": []
+      "evidence_tests": [
+        "test_the_documented_gaps_stay_true"
+      ]
     },
     {
       "id": "F-06",

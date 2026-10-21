@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.api_v2 import V2Runtime, build_v2_router
-from app.config import settings
+from app.config import settings, v1_enabled
 from app.runtime.shadow import ShadowRuntime, query_with_shadow
 from app.service import AnalyticsService
 from packages.platform_contracts.analytics import (
@@ -21,6 +21,11 @@ analytics_service = AnalyticsService(settings)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await analytics_service.start()
+    if settings.ANALYTICS_V2_ENABLED and v2_runtime.service is None:
+        from app.runtime.pilot_wiring import build_pilot_runtime
+
+        built = build_pilot_runtime(settings)  # fails the start-up loudly rather than serving 503s
+        v2_runtime.service, v2_runtime.verifier, v2_runtime.feedback = built.service, built.verifier, built.feedback
     yield
     await analytics_service.close()
 
@@ -31,17 +36,24 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-if settings.ENV == "prod" and (
-    not settings.cors_origins or settings.cors_origins == ["*"]
-):
+if settings.ENV == "prod" and (not settings.cors_origins or settings.cors_origins == ["*"]):
     raise RuntimeError("ANALYTICS_CORS_ORIGINS must be explicit in production")
+if settings.ENV == "prod" and not settings.ANALYTICS_API_KEY:
+    raise RuntimeError("ANALYTICS_API_KEY must be set in production")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "X-API-Key", "X-Request-ID", "Authorization", "Idempotency-Key", "X-Analytics-Purpose"],
+    allow_headers=[
+        "Content-Type",
+        "X-API-Key",
+        "X-Request-ID",
+        "Authorization",
+        "Idempotency-Key",
+        "X-Analytics-Purpose",
+    ],
 )
 
 
@@ -74,7 +86,8 @@ async def health() -> AnalyticsHealthResponse:
         context_documents_indexed=analytics_service.context_bootstrap.state.indexed_documents,
         dashboard_configured=analytics_service.context_bootstrap.state.dashboard_configured,
         dashboard_ready=analytics_service.context_bootstrap.state.dashboard_ready,
-        context_bootstrap_error=analytics_service.context_bootstrap.state.error,
+        # A short code only: raw exception text can carry hosts, paths, or credentials.
+        context_bootstrap_error="context_bootstrap_failed" if analytics_service.context_bootstrap.state.error else None,
     )
 
 
@@ -103,6 +116,8 @@ async def query(
     authorization: str | None = Header(default=None),
     x_analytics_purpose: str | None = Header(default=None),
 ) -> AnalyticsQueryResponse:
+    if not v1_enabled(settings):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="v1_disabled")
     routed = shadow_runtime.decide(authorization, x_analytics_purpose)
     if routed is None:
         return await analytics_service.query(request)

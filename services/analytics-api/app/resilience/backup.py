@@ -72,15 +72,39 @@ def _decode_for_bind(value: Any) -> Any:
     return value
 
 
-def _dump_rows(engine: Engine, table: str) -> list[str]:
-    with engine.connect() as connection:
-        rows = connection.execute(text(f'SELECT * FROM "{table}" ORDER BY {_order_by(engine, table)}')).mappings().all()
+def _dump_rows(engine: Engine, table: str, connection: Any = None) -> list[str]:
+    order = _order_by(engine, table)
+    if connection is None:
+        with engine.connect() as own:
+            rows = own.execute(text(f'SELECT * FROM "{table}" ORDER BY {order}')).mappings().all()
+    else:
+        rows = connection.execute(text(f'SELECT * FROM "{table}" ORDER BY {order}')).mappings().all()
     return [
         json.dumps(
             {key: _encode(value) for key, value in row.items()}, sort_keys=True, separators=(",", ":"), default=str
         )
         for row in rows
     ]
+
+
+def _reset_sequences(connection: Any, engine: Engine, tables: list[str]) -> None:
+    """After inserting explicit ids, move every serial sequence past them (PostgreSQL only; SQLite has none)."""
+    if connection.dialect.name != "postgresql":
+        return
+    inspector = inspect(engine)
+    for table in tables:
+        for column in inspector.get_columns(table):
+            name = column["name"]
+            sequence = connection.execute(
+                text("SELECT pg_get_serial_sequence(:table, :column)"), {"table": f'"{table}"', "column": name}
+            ).scalar()
+            if sequence:
+                connection.execute(
+                    text(
+                        f'SELECT setval(:sequence, COALESCE(MAX("{name}"), 1), MAX("{name}") IS NOT NULL) FROM "{table}"'
+                    ),
+                    {"sequence": sequence},
+                )
 
 
 def _digest(lines: list[str]) -> str:
@@ -106,8 +130,13 @@ def backup_control_store(
     destination.mkdir(parents=True)
     tables: dict[str, TableBackup] = {}
     revision = _revision(engine)
-    for name in _tables(engine):
-        lines = _dump_rows(engine, name)
+    names = _tables(engine)
+    # One read transaction for every table, so the backup is a consistent snapshot even while runs are in flight.
+    with engine.connect() as connection, connection.begin():
+        if connection.dialect.name == "postgresql":
+            connection.execute(text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY"))
+        dumps = {name: _dump_rows(engine, name, connection) for name in names}
+    for name, lines in dumps.items():
         (destination / f"{name}.jsonl").write_text("".join(line + "\n" for line in lines))
         tables[name] = TableBackup(rows=len(lines), digest=_digest(lines))
     manifest = ControlBackupManifest(
@@ -164,6 +193,7 @@ def restore_control_store(source: Path | str, engine: Engine) -> dict[str, Any]:
                 f"VALUES ({', '.join(':' + c for c in columns)})"
             )
             connection.execute(statement, [{c: _decode_for_bind(row[c]) for c in columns} for row in rows])
+        _reset_sequences(connection, engine, targets)
     restored = {
         name: TableBackup(rows=len(lines), digest=_digest(lines))
         for name in targets

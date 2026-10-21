@@ -254,8 +254,13 @@ def test_status_is_tenant_and_purpose_scoped(tmp_path, monkeypatch):
     client, _, _, _ = _client(tmp_path, monkeypatch)
     run_id = _post(client).json()["run_id"]
     url = f"/api/v2/analytics/runs/{run_id}"
-    ok = client.get(url, params={"purpose": PURPOSE}, headers=_auth(user="viewer"))
-    assert ok.status_code == 200 and ok.json()["outcome"]["outcome"] == "answer"
+    ok = client.get(url, params={"purpose": PURPOSE}, headers=_auth())
+    assert ok.status_code == 200 and ok.json()["outcome"]["outcome"] == "answer"  # the requester sees the answer
+    # F-05: a colleague cannot read the run; a reviewer can see its state but never the rows computed for someone else
+    assert client.get(url, params={"purpose": PURPOSE}, headers=_auth(user="viewer")).status_code == 403
+    reviewer = client.get(url, params={"purpose": PURPOSE}, headers=_auth(user="viewer", groups=["analytics-reviewer"]))
+    assert reviewer.status_code == 200 and reviewer.json()["outcome"]["reason_code"] == "unauthorized"
+    assert "result" not in reviewer.json()["outcome"]
     assert client.get(url, params={"purpose": PURPOSE}, headers=_auth(tenant="tenant-b")).status_code == 404
     assert client.get(url, params={"purpose": "billing"}, headers=_auth(purposes=("billing",))).status_code == 404
     assert client.get(url, params={"purpose": "billing"}, headers=_auth()).status_code == 403
@@ -273,13 +278,21 @@ def test_review_pause_requires_a_different_reviewer_and_then_answers(tmp_path, m
     assert outcome["plan_fingerprint"] == review.plan_fingerprint  # the reviewer UI needs it to decide
     decision = {"purpose": PURPOSE, "decision": "approved", "plan_fingerprint": review.plan_fingerprint}
     url = f"/api/v2/analytics/runs/{run_id}/review"
+    reviewer = {"user": "reviewer", "groups": ["analyst", "analytics-reviewer"]}
     own = client.post(url, json=decision, headers=_auth())
-    assert own.status_code == 403 and own.json()["detail"] == "review_not_permitted"  # no self-approval
-    stale = client.post(url, json={**decision, "plan_fingerprint": "0" * 64}, headers=_auth(user="reviewer"))
+    assert own.status_code == 403 and own.json()["detail"] == "reviewer_role_required"  # the requester is no reviewer
+    colleague = client.post(url, json=decision, headers=_auth(user="colleague"))
+    assert colleague.status_code == 403 and colleague.json()["detail"] == "reviewer_role_required"
+    self_review = client.post(url, json=decision, headers=_auth(groups=["analyst", "analytics-reviewer"]))
+    assert self_review.status_code == 403 and self_review.json()["detail"] == "review_not_permitted"  # no self-approval
+    stale = client.post(url, json={**decision, "plan_fingerprint": "0" * 64}, headers=_auth(**reviewer))
     assert stale.status_code == 409 and stale.json()["detail"] == "review_stale"
-    approved = client.post(url, json=decision, headers=_auth(user="reviewer"))
-    assert approved.status_code == 200 and approved.json()["outcome"]["outcome"] == "answer"
-    again = client.post(url, json=decision, headers=_auth(user="reviewer"))
+    approved = client.post(url, json=decision, headers=_auth(**reviewer))
+    assert approved.status_code == 200 and approved.json()["state"] == "terminal"
+    assert approved.json()["outcome"]["reason_code"] == "unauthorized"  # the reviewer never receives the rows
+    answer = client.get(f"/api/v2/analytics/runs/{run_id}", params={"purpose": PURPOSE}, headers=_auth())
+    assert answer.json()["outcome"]["outcome"] == "answer"  # the requester does
+    again = client.post(url, json=decision, headers=_auth(**reviewer))
     assert again.status_code == 409 and again.json()["detail"] == "run_not_awaiting_review"
 
 
@@ -290,7 +303,7 @@ def test_rejected_review_is_a_refusal_without_execution(tmp_path, monkeypatch):
     done = client.post(
         f"/api/v2/analytics/runs/{paused['run_id']}/review",
         json={"purpose": PURPOSE, "decision": "rejected", "plan_fingerprint": review.plan_fingerprint},
-        headers=_auth(user="reviewer"),
+        headers=_auth(user="reviewer", groups=["analyst", "analytics-reviewer"]),
     )
     assert done.json()["outcome"]["outcome"] == "refuse" and "result" not in done.json()["outcome"]
 

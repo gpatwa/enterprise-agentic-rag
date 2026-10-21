@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import re
+import secrets
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -41,6 +42,7 @@ from packages.platform_contracts.analytics_v2 import (
     AnalyticsVisualization,
 )
 from packages.platform_contracts.analytics_v2_api import AnalyzeRunResponse
+from packages.platform_contracts.review import REVIEWER_GROUP
 from packages.platform_contracts.security import AnalyticsIdentity
 
 _KEY = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
@@ -83,7 +85,11 @@ class GovernedAnalyzeService:
         sealer: Any = None,
         now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
         run_id_key: bytes | None = None,
+        require_run_id_key: bool = False,
     ) -> None:
+        if require_run_id_key and (run_id_key is None or len(run_id_key) < 32):
+            # F-02: without a server-side key, anyone who knows a colleague's user ID and idempotency key can compute the run ID.
+            raise ValueError("run_id_key (at least 32 bytes, from the secret store) is required in this environment")
         self.store, self.runner_factory, self.state_factory, self.answers, self.now = (
             store,
             runner_factory,
@@ -117,10 +123,12 @@ class GovernedAnalyzeService:
                 raise ServiceError(503, "context_unavailable") from exc
             try:
                 self.runner_factory(identity, request).start(state, owner_id=_owner(), lease_token=_owner())
-            except IntegrityError:  # a concurrent duplicate won the create race
-                existing = self._load(run_id, identity.tenant_id, purpose)
-            except LeaseUnavailable:
-                pass
+            except IntegrityError as exc:  # a concurrent duplicate may have won the create race
+                existing = self._load(run_id, identity.tenant_id, purpose, missing_ok=True)
+                if existing is None:  # not a duplicate create: some other constraint failed
+                    raise ServiceError(503, "control_store_conflict") from exc
+            except (LeaseUnavailable, StaleWorkerError):
+                pass  # another worker holds or took over the run; the response reports its current state
         if existing is not None:
             if (existing.request_text or "").strip() != request_text.strip():
                 raise ServiceError(409, "idempotency_key_reused")
@@ -149,7 +157,10 @@ class GovernedAnalyzeService:
 
     def status(self, identity: AnalyticsIdentity, *, purpose: str, run_id: str) -> AnalyzeRunResponse:
         self._authorize(identity, purpose)
-        return self._respond(identity, self._load(run_id, identity.tenant_id, purpose))
+        state = self._load(run_id, identity.tenant_id, purpose)
+        if not _is_requester(identity, state) and REVIEWER_GROUP not in identity.groups:
+            raise ServiceError(403, "not_run_requester")  # F-05: a colleague cannot read another person's run
+        return self._respond(identity, state)
 
     def clarify(
         self, identity: AnalyticsIdentity, *, purpose: str, run_id: str, ambiguity_code: str, selected_id: str
@@ -187,6 +198,10 @@ class GovernedAnalyzeService:
         note: str | None,
     ) -> AnalyzeRunResponse:
         self._authorize(identity, purpose)
+        if REVIEWER_GROUP not in identity.groups:
+            raise ServiceError(
+                403, "reviewer_role_required"
+            )  # only the reviewer group decides; the requester never does
         state = self._load(run_id, identity.tenant_id, purpose)
         review_id = _review_id(state)
         if state.status != "waiting_approval" or not review_id:
@@ -237,8 +252,8 @@ class GovernedAnalyzeService:
                 lease_token=_owner(),
                 resume_payload=payload,
             )
-        except LeaseUnavailable:
-            pass  # another worker is advancing it; the response reports "running"
+        except (LeaseUnavailable, StaleWorkerError):
+            pass  # another worker is advancing it, or took it over from this one; the response reports its state
         except GraphRunError as exc:
             raise ServiceError(409, "run_not_resumable") from exc
 
@@ -284,7 +299,15 @@ class GovernedAnalyzeService:
             return AnalyzeRunResponse(run_id=state.run_id, state="running")
         if self.sealer is not None:
             self.sealer.seal(state)  # idempotent; feedback binds to this sealed evidence
-        return AnalyzeRunResponse(run_id=state.run_id, state="terminal", outcome=self._terminal(state, base))
+        outcome = self._terminal(state, base)
+        if isinstance(outcome, AnalyticsAnswerOutcome) and not _is_requester(identity, state):
+            # The rows were computed under the requester's identity and policy values; nobody else receives them (F-05).
+            outcome = AnalyticsRefuseOutcome(
+                **base,
+                reason_code="unauthorized",
+                explanation="Only the person who asked can see this answer's rows.",
+            )
+        return AnalyzeRunResponse(run_id=state.run_id, state="terminal", outcome=outcome)
 
     def _terminal(self, state: AgentRunState, base: dict[str, Any]):
         kind = state.terminal_outcome.kind
@@ -402,5 +425,15 @@ def _tag(identity: AnalyticsIdentity) -> str:
     return hashlib.sha256(identity.user_id.encode()).hexdigest()[:16]
 
 
+def request_id_for(identity: AnalyticsIdentity, idempotency_key: str) -> str:
+    """The request ID the service gives a request; it carries the requester's tag, which decides who may read the run."""
+    return f"{_tag(identity)}:{idempotency_key}"
+
+
+def _is_requester(identity: AnalyticsIdentity, state: AgentRunState) -> bool:
+    return state.request_id.split(":", 1)[0] == _tag(identity)
+
+
 def _owner() -> str:
-    return f"api-{hashlib.sha256(str(datetime.now(timezone.utc).timestamp()).encode()).hexdigest()[:12]}"
+    """A random worker id and lease token (a timestamp hash could collide between two requests in the same microsecond)."""
+    return f"api-{secrets.token_hex(12)}"

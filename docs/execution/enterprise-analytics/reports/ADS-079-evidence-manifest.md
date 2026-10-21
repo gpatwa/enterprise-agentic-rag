@@ -1,6 +1,6 @@
 # ADS-079: Final Evidence Manifest (input to the human go/no-go review)
 
-Manifest `ads-079-v1`, digest `e9406cf2e2ec2a61`, generated at `e62269c249fa` on `claude/m7-gap-fixes`.
+Manifest `ads-079-v1`, digest `07ddf684cbf1001e`, generated at `daa6e10f9b27` on `claude/m7-security-postgres-fixes`.
 
 **Decision: `pending_human_review`.** This document does not decide and is not signed. Product, engineering, data owner, security, and operations must each sign against the digest, and a person records the go/no-go.
 
@@ -10,7 +10,7 @@ Manifest `ads-079-v1`, digest `e9406cf2e2ec2a61`, generated at `e62269c249fa` on
 - 20 threshold/policy files are not approved by a person
 - the reference corpus is not approved by its definition owner and results owner
 - 42 packets are `review` with no independent review recorded
-- security findings not resolved: F-02, F-03, F-05
+- security findings not resolved: F-02, F-03
 - no signed human sign-off yet from: product, engineering, data_owner, security, operations
 
 ## Evaluations
@@ -41,7 +41,7 @@ Manifest `ads-079-v1`, digest `e9406cf2e2ec2a61`, generated at `e62269c249fa` on
 
 ## Linked artifacts
 
-- **code**: 179 files
+- **code**: 181 files
 - **contracts**: 40 files
 - **semantic_registry**: 2 files
 - **prompts**: 4 files

@@ -199,6 +199,11 @@ class AgentGraphRunner:
                 transitions.append(transition)
                 break
             fingerprints.add(fingerprint)
+            renew = getattr(self.store, "renew_lease", None)
+            if (
+                renew is not None
+            ):  # heartbeat before each node, so a long run is not taken over by a retry while it works
+                lease = renew(lease, now=now)
             try:
                 output = self.node_contracts.invoke(handler, node_input)
             except Exception as exc:  # noqa: BLE001 - unknown node failures become bounded terminal evidence.

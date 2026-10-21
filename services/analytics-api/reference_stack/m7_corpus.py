@@ -99,7 +99,7 @@ ANSWERS: dict[str, list[tuple[str, bool]]] = {
         ("Show me revenue by month", False),
         ("Revenue per month, please", False),
         ("How did monthly revenue trend", False),
-        ("Revenue by month, oldest to newest", False),
+        ("Revenue by month, largest first", False),  # was "oldest to newest": the expected rows are value-ordered
         ("Can I see revenue by month", False),
     ],
     "monthly_all": [

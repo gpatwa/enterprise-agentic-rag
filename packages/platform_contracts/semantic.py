@@ -129,6 +129,8 @@ class SemanticPolicy(BaseModel):
     allowed_purposes: list[str] = Field(min_length=1)
     required_filter_ids: list[str] = Field(default_factory=list)
     owner_ids: list[str] = Field(min_length=1)
+    # Groups entitled to confidential or restricted targets. Membership in *any* group used to be enough; now it must be one of these.
+    allowed_groups: list[str] = Field(default_factory=list)
 
 
 class SemanticContract(BaseModel):

@@ -21,7 +21,7 @@ def report(tmp_path_factory, isolation_inputs):
 def test_every_probe_is_refused_without_leaking_and_the_gates_are_met(report):
     assert report["ok"], [(n, g["value"]) for n, g in report["gates"].items() if not g["meets"]]
     assert not [p["name"] for p in report["probes"] if not p["passed"]]
-    assert {p["group"] for p in report["probes"]} == {"cross_tenant", "purpose", "duties", "auth"}
+    assert {p["group"] for p in report["probes"]} == {"cross_tenant", "purpose", "duties", "auth", "same_tenant"}
     assert {p["surface"] for p in report["probes"]} == {"rest", "tools"}
     assert report["samples"]["probes"] >= 24 and THRESHOLDS["approval"]["status"] == "proposed"
 

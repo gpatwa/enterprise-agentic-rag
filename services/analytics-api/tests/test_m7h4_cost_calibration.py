@@ -114,3 +114,14 @@ def test_the_local_measurement_is_informational_and_the_report_says_it_is_not_a_
     text = ev.render_markdown(report)
     assert report["ok"] and "not a warehouse calibration" in text
     assert set(report["local_measurement"]) == {"duckdb", "postgres"}
+
+
+def test_a_fit_with_a_negative_intercept_is_refused():
+    # observed = 3 * estimate - 50, all positive for estimates of 20 and more: the fitted intercept is -50
+    rows = [
+        CostSample(dialect="d", estimated_units=float(20 + 5 * i), observed=3.0 * (20 + 5 * i) - 50.0)
+        for i in range(12)
+    ]
+    with pytest.raises(CalibrationError) as caught:
+        fit_calibration(rows, version="v", unit="u", calibrated_against="x", valid_for_production=True)
+    assert caught.value.code == "negative_intercept:d"

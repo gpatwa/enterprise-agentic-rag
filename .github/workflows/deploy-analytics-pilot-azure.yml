@@ -1,0 +1,56 @@
+name: Deploy Analytics pilot (Container Apps)
+
+# Manual only. Infrastructure is created by infra/terraform/azure-analytics-pilot (see its README); this workflow ships code.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub deployment environment
+        required: true
+        type: environment
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      IMAGE: ${{ secrets.PILOT_ACR_LOGIN_SERVER }}/compass-analytics-api:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Build and push the API image
+        run: |
+          az acr login --name "${{ secrets.PILOT_ACR_LOGIN_SERVER }}"
+          docker build --platform linux/amd64 -t "$IMAGE" -f services/analytics-api/Dockerfile .
+          docker push "$IMAGE"
+      - name: Update the API and the purge job
+        run: |
+          az containerapp update -n "${{ secrets.PILOT_API_APP_NAME }}" -g "${{ secrets.PILOT_RESOURCE_GROUP }}" --image "$IMAGE"
+          az containerapp job update -n "${{ secrets.PILOT_PURGE_JOB_NAME }}" -g "${{ secrets.PILOT_RESOURCE_GROUP }}" --image "$IMAGE"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/analytics-web/package-lock.json
+      - name: Build the web app
+        working-directory: apps/analytics-web
+        env:
+          VITE_ANALYTICS_API_URL: ${{ secrets.PILOT_API_URL }}
+          VITE_ANALYTICS_API_KEY: ${{ secrets.PILOT_API_KEY }}
+          VITE_ANALYTICS_DEFAULT_VIEW: governed
+        run: npm ci --no-audit --no-fund && npm run build
+      - name: Deploy the web app
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.PILOT_SWA_DEPLOY_TOKEN }}
+          action: upload
+          app_location: apps/analytics-web/dist
+          skip_app_build: true

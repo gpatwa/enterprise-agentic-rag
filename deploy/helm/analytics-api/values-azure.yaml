@@ -11,3 +11,15 @@ podLabels:
 env:
   CLOUD_PROVIDER: azure
   SECRETS_PROVIDER: azure_kv
+  # governed v2 runtime (pilot). One replica only: quota state and the answer-row handoff are process-local.
+  ANALYTICS_V2_ENABLED: "true"
+  ANALYTICS_V2_CONTRACTS: "sales-core@v1"
+  ANALYTICS_MIGRATE_ON_START: "true"
+  ANALYTICS_V1_ENABLED: "false"
+  ANALYTICS_LEASE_SECONDS: "120"
+  AZURE_OPENAI_API_VERSION: "2024-06-01"
+  AZURE_OPENAI_DEPLOYMENT: "gpt-4o-mini"
+  # Set per environment with --set-string: ENTRA_TENANT_ID, ENTRA_AUDIENCE, ANALYTICS_TENANT_MAP, AZURE_OPENAI_ENDPOINT,
+  # ANALYTICS_CORS_ORIGINS, ANALYTICS_MIN_COHORT (security decision F-03).
+
+replicaCount: 1

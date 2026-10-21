@@ -742,7 +742,7 @@
    "kind": "answer",
    "intent": "monthly_paid",
    "p0": false,
-   "question": "Revenue by month, oldest to newest",
+   "question": "Revenue by month, largest first",
    "expect_columns": 2,
    "expect_rows": [
     [

@@ -79,6 +79,11 @@ jobs:
             --set-string image.tag="$IMAGE_TAG" \
             --set-string secretRef=analytics-api-secrets \
             --set-string 'serviceAccount.annotations.azure\.workload\.identity/client-id=${{ secrets.ANALYTICS_API_IDENTITY_CLIENT_ID }}' \
+            --set-string env.ENTRA_TENANT_ID="${{ secrets.ENTRA_TENANT_ID }}" \
+            --set-string env.ENTRA_AUDIENCE="${{ secrets.ANALYTICS_ENTRA_AUDIENCE }}" \
+            --set-string env.ANALYTICS_TENANT_MAP='${{ secrets.ANALYTICS_TENANT_MAP }}' \
+            --set-string env.AZURE_OPENAI_ENDPOINT="${{ secrets.AZURE_OPENAI_ENDPOINT }}" \
+            --set-string env.ANALYTICS_CORS_ORIGINS="https://${{ secrets.ANALYTICS_HOSTNAME }}" \
             --wait --timeout 300s
           helm upgrade --install analytics-web deploy/helm/analytics-web \
             --namespace default \

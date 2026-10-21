@@ -1,6 +1,6 @@
 # ADS-067: Security Evaluation Report
 
-Generated 2026-10-13 16:38 UTC by `make analytics-security-eval`. Corpus `security-corpus-v1` (`80b3629a7d24`), rules `security-rules-v1`.
+Generated 2026-10-21 11:08 UTC by `make analytics-security-eval`. Corpus `security-corpus-v1` (`d07d87c40b30`), rules `security-rules-v1`.
 
 **Result: MEETS the proposed thresholds.** The thresholds are PROPOSED and NOT APPROVED. This is not the M6 `security_and_operations_review`, and it is not an independent security review. Severities are the implementing agent's ratings; accepting a residual risk is the security owner's decision.
 
@@ -26,10 +26,10 @@ Generated 2026-10-13 16:38 UTC by `make analytics-security-eval`. Corpus `securi
 | ID | Severity | Status | Title | Resolution / residual |
 |---|---|---|---|---|
 | F-01 | high | resolved | Grouping by an unbucketed timestamp returned one row per order (row-level access through an aggregate) | the compiler refuses a temporal dimension without a time granularity, and refuses grouping by a metric's grain key |
-| F-02 | high | mitigated | Run IDs were a plain hash of tenant, user, purpose, and a client-chosen key, so a colleague could compute and read another person's run | `GovernedAnalyzeService(run_id_key=...)` makes the ID an HMAC. The key is a deployment requirement; the reference stack and tests leave it off, which GAP01 documents **Residual:** a deployment that omits the key keeps the derivable ID |
+| F-02 | high | mitigated | Run IDs were a plain hash of tenant, user, purpose, and a client-chosen key, so a colleague could compute and read another person's run | `GovernedAnalyzeService(run_id_key=...)` makes the ID an HMAC. The key is a deployment requirement; the reference stack and tests leave it off, which GAP01 documents **Residual:** a deployment that omits the key keeps the derivable ID; with F-05 resolved a derived ID no longer lets a colleague read the run, and production refuses to start without run_id_key |
 | F-03 | high (pilot scope: medium) | open_decision | Small cohorts and exact differencing: aggregates can reveal individual values | an optional minimum cohort (`min_cohort`, default off) suppresses small groups, refuses a whole population below k as a policy refusal, and refuses filters on the entity key **Residual:** differencing across two large cohorts remains possible (GAP03); the right k per dataset, and whether personal data may be onboarded without query auditing, is the data owner's and security owner's decision |
 | F-04 | low | resolved | A query with no matching rows failed as an internal error instead of answering 'no data' | validation accepts an empty result whose control total is empty |
-| F-05 | medium | accepted_by_design | Any caller in the same tenant with the run's purpose and the run ID can read its status and evidence | deliberate, so reviewers can open a paused run; unguessable run IDs (F-02) are what protect it. A requester-or-reviewer-only read is a possible later tightening **Residual:** anyone given a run ID can read it |
+| F-05 | medium | resolved | Any caller in the same tenant with the run's purpose and the run ID can read its status and evidence | M7 security fixes: only the requester reads a run; a member of the analytics-reviewer group can open it (to decide a review) but never receives the requester's rows; any other colleague gets 403 not_run_requester **Residual:** a reviewer sees that a run exists and its state |
 | F-06 | medium | resolved | A time range gave host-dependent results: timezone-aware parameters were compared with naive timestamps in the server's local zone (found on a UTC-7 host, where a range that included every order summed all but one) | both gateways pin the session time zone to UTC, so naive timestamp columns are UTC on every host |
 
 ## Cases
@@ -61,7 +61,7 @@ Generated 2026-10-13 16:38 UTC by `make analytics-security-eval`. Corpus `securi
 | IN04 a_population_below_the_minimum_is_a_policy_refusal | inference | control | policy_restricted | policy_restricted | pass |
 | IN05 no_matching_rows_is_an_answer_not_a_failure | inference | control | answer_no_rows | answer_no_rows | pass |
 | TZ01 a_time_range_selects_the_same_instants_on_every_host | correctness | control | range_exact | range_exact | pass |
-| GAP01 run_ids_are_derivable_without_a_server_key | exfiltration | known_gap | readable | readable | pass |
+| GAP01 a_derivable_run_id_no_longer_lets_a_colleague_read_the_run | exfiltration | control | not_run_requester | not_run_requester | pass |
 | GAP02 a_single_entity_is_reportable_when_no_minimum_cohort_is_configured | inference | known_gap | row_level_value_returned | row_level_value_returned | pass |
 | GAP03 exact_differencing_across_two_aggregate_queries_is_possible | inference | known_gap | differencing_possible | differencing_possible | pass |
 | EC01 a_model_that_groups_differently_from_the_question_runs_nothing | intent_echo | control | no_execution | no_execution | pass |

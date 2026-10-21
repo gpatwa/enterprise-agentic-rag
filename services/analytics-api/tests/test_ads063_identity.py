@@ -25,6 +25,7 @@ from app.security import (
     caller_kind,
 )
 from packages.platform_contracts.delegation import AgentGrant, DelegationPolicy
+from packages.platform_contracts.security import AnalyticsIdentity
 from packages.platform_contracts.semantic import SemanticPolicy
 
 SERVICE = Path(__file__).resolve().parent.parent
@@ -197,6 +198,7 @@ def test_losing_a_group_changes_the_authorization_decision_for_protected_data():
                     classification="confidential",
                     allowed_purposes=["analytics"],
                     owner_ids=["team.data"],
+                    allowed_groups=["confidential-data"],
                 )
             ]
         }
@@ -207,6 +209,26 @@ def test_losing_a_group_changes_the_authorization_decision_for_protected_data():
     assert authorize(resolver.resolve(token), contract, {"revenue"}, "analytics").effect == "allow"
     directory.remove_group("tenant-a", "alice", "confidential-data")
     assert authorize(resolver.resolve(token), contract, {"revenue"}, "analytics").effect == "review"
+
+
+def test_any_group_no_longer_unlocks_confidential_and_restricted_data_is_denied_without_a_named_group():
+    def contract(classification):
+        policy = SemanticPolicy(
+            id="p",
+            target_ids=["revenue"],
+            classification=classification,
+            allowed_purposes=["analytics"],
+            owner_ids=["team.data"],
+            allowed_groups=["finance-restricted"],
+        )
+        return _contract().model_copy(update={"policies": [policy]})
+
+    analyst = AnalyticsIdentity(tenant_id="tenant-a", user_id="u", purposes=["analytics"], groups=["analyst"])
+    finance = analyst.model_copy(update={"groups": ["finance-restricted"]})
+    assert authorize(analyst, contract("confidential"), {"revenue"}, "analytics").effect == "review"
+    assert authorize(finance, contract("confidential"), {"revenue"}, "analytics").effect == "allow"
+    assert authorize(analyst, contract("restricted"), {"revenue"}, "analytics").effect == "deny"
+    assert authorize(finance, contract("restricted"), {"revenue"}, "analytics").effect == "allow"
 
 
 # ---- delegated purposes ----
@@ -311,7 +333,7 @@ def test_rest_applies_group_changes_delegation_and_failures_per_request(tmp_path
 
 def test_rest_and_tools_treat_a_delegated_token_as_an_agent_that_can_never_review(tmp_path):
     stack = build_stack("duckdb", tmp_path / "paused", review_threshold=1e-9)
-    directory = _directory(requester=("analyst",), reviewer=("analyst",))
+    directory = _directory(requester=("analyst",), reviewer=("analyst", "analytics-reviewer"))
     resolver = IdentityResolver(stack.verifier(), directory=directory, delegation=_policy(PLANNER))
     client = TestClient(_app(stack, resolver))
     paused = _post(client, stack.token("requester"))
@@ -345,7 +367,8 @@ def test_rest_and_tools_treat_a_delegated_token_as_an_agent_that_can_never_revie
     approved = client.post(
         f"{URL}/runs/{run_id}/review", json=body, headers={"Authorization": f"Bearer {stack.token('reviewer')}"}
     )
-    assert approved.status_code == 200 and approved.json()["outcome"]["outcome"] == "answer"
+    assert approved.status_code == 200 and approved.json()["state"] == "terminal"
+    assert approved.json()["outcome"]["reason_code"] == "unauthorized"  # the reviewer never receives the rows
 
 
 def test_the_default_runtime_is_unchanged_and_the_verifier_still_serves_without_a_resolver(tmp_path):

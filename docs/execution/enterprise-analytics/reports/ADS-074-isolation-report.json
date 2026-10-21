@@ -4,7 +4,7 @@
     "status": "proposed",
     "approved_by": null,
     "approved_at": null,
-    "note": "Plan section 10 requires zero policy and tenant-isolation violations; the other gates are the implementing agent's proposals. Not approved."
+    "note": "Plan section 10 requires zero policy and tenant-isolation violations; the other gates are the implementing agent's proposals. Not approved. Amended by the implementing agent on 2026-10-21: new gate same_tenant_overreach (security persona review). Still proposed."
   },
   "ok": true,
   "gates": {
@@ -21,6 +21,12 @@
       "meets": true
     },
     "separation_of_duties_violations": {
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "meets": true
+    },
+    "same_tenant_overreach": {
       "value": 0,
       "op": "<=",
       "threshold": 0,
@@ -55,20 +61,20 @@
     "cross_tenant_leaks": "Policy and tenant-isolation violations 0",
     "purpose_violations": "Policy and tenant-isolation violations 0 (a purpose the caller lacks)",
     "separation_of_duties_violations": "A requester or an agent decides a review: 0",
+    "same_tenant_overreach": "A colleague in the same tenant reads another person's run or rows, or decides a review without the role: 0",
     "unauthenticated_successes": "Forged, expired, wrong-audience, or missing tokens that succeed: 0",
     "probe_agreement": "Every hostile probe is refused without leaking the victim's data",
     "security_corpus_gates_met": "ADS-067 security corpus gates met",
     "protected_case_failures": "ADS-070 policy-denied, tenant-isolation, and refusal cases that fail: 0"
   },
   "samples": {
-    "probes": 24,
+    "probes": 28,
     "security_cases": 31,
     "protected_case_runs": 48
   },
   "open_findings": [
     "F-02: Run IDs were a plain hash of tenant, user, purpose, and a client-chosen key, so a colleague could compute and read another person's run",
-    "F-03: Small cohorts and exact differencing: aggregates can reveal individual values",
-    "F-05: Any caller in the same tenant with the run's purpose and the run ID can read its status and evidence"
+    "F-03: Small cohorts and exact differencing: aggregates can reveal individual values"
   ],
   "not_measured": {
     "independent_security_review": "required by the plan before any pilot; this matrix is not one",
@@ -154,6 +160,38 @@
       "name": "an automated caller approves a review",
       "surface": "rest",
       "group": "duties",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "a colleague without the reviewer role approves a review",
+      "surface": "rest",
+      "group": "duties",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "the requester holding the reviewer role approves their own review",
+      "surface": "rest",
+      "group": "duties",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "a colleague reads another person's answered run",
+      "surface": "rest",
+      "group": "same_tenant",
+      "denied": true,
+      "leaked": false,
+      "passed": true
+    },
+    {
+      "name": "a reviewer reads another person's answer rows",
+      "surface": "rest",
+      "group": "same_tenant",
       "denied": true,
       "leaked": false,
       "passed": true

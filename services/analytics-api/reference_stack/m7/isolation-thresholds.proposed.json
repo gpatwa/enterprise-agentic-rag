@@ -4,7 +4,7 @@
     "status": "proposed",
     "approved_by": null,
     "approved_at": null,
-    "note": "Plan section 10 requires zero policy and tenant-isolation violations; the other gates are the implementing agent's proposals. Not approved."
+    "note": "Plan section 10 requires zero policy and tenant-isolation violations; the other gates are the implementing agent's proposals. Not approved. Amended by the implementing agent on 2026-10-21: new gate same_tenant_overreach (security persona review). Still proposed."
   },
   "gates": {
     "cross_tenant_leaks": {
@@ -16,6 +16,10 @@
       "value": 0
     },
     "separation_of_duties_violations": {
+      "op": "<=",
+      "value": 0
+    },
+    "same_tenant_overreach": {
       "op": "<=",
       "value": 0
     },

@@ -1,6 +1,6 @@
 {
   "suite_version": "m7-reference-v1",
-  "corpus_sha256": "d0d2cce4529e09a6da6152cbbac3a8ffced74572402a0bbc690b8795bbf76747",
+  "corpus_sha256": "42c25cc23384170fdad4b0c3baf82a084a214e4d1b777069aa4b7ee6d48011ce",
   "engines": [
     "duckdb",
     "postgres"
@@ -74,13 +74,13 @@
       "meets": true
     },
     "p95_answer_latency_seconds": {
-      "value": 0.2105257911607623,
+      "value": 0.04955775011330843,
       "op": "<=",
       "threshold": 8.0,
       "meets": true
     },
     "p95_compile_policy_overhead_ms": {
-      "value": 5.815957672894001,
+      "value": 1.3296245597302914,
       "op": "<=",
       "threshold": 250.0,
       "meets": true
