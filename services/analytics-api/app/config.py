@@ -29,6 +29,25 @@ class Settings(BaseSettings):
     ANALYTICS_API_KEY: str | None = None
     # The legacy v1 query endpoint runs model-written SQL without an identity. Off in production unless explicitly enabled.
     ANALYTICS_V1_ENABLED: bool | None = None
+    # ---- governed v2 runtime (pilot wiring) ----
+    ANALYTICS_V2_ENABLED: bool = False
+    ANALYTICS_V2_CONTRACTS: str = ""  # comma-separated certified contracts, id@version, one per analytics tenant
+    ANALYTICS_MIGRATE_ON_START: bool = True
+    ANALYTICS_RUN_ID_KEY: str | None = None  # secret, at least 32 bytes; required outside dev
+    ANALYTICS_MIN_COHORT: int | None = None
+    ANALYTICS_REVIEW_COST_THRESHOLD: float = 5_000.0
+    ANALYTICS_RUN_MAX_COST_UNITS: float = 10_000.0
+    ANALYTICS_LEASE_SECONDS: int = 120
+    AZURE_OPENAI_ENDPOINT: str | None = None
+    AZURE_OPENAI_API_KEY: str | None = None
+    AZURE_OPENAI_API_VERSION: str = "2024-06-01"
+    AZURE_OPENAI_DEPLOYMENT: str = "gpt-4o-mini"
+    ENTRA_TENANT_ID: str | None = None
+    ENTRA_AUDIENCE: str | None = None  # the API app registration, for example api://<client-id>
+    ANALYTICS_TENANT_MAP: str = "{}"  # JSON: Entra tenant ID -> analytics tenant ID
+    ANALYTICS_ROLE_MAP: str | None = (
+        None  # JSON: app role -> [purposes, groups]; defaults in pilot_wiring.DEFAULT_ROLE_MAP
+    )
     ANALYTICS_CORS_ORIGINS: str = "http://localhost:5174"
     ANALYTICS_OPENSEARCH_URL: str | None = None
     ANALYTICS_CONTEXT_INDEX: str = "context-v1"

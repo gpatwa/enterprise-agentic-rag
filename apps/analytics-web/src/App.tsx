@@ -34,7 +34,10 @@ export function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [view, setView] = useState<'workspace' | 'governed'>('workspace');
+  // The pilot serves only the governed (v2) API; VITE_ANALYTICS_DEFAULT_VIEW=governed opens it first.
+  const [view, setView] = useState<'workspace' | 'governed'>(
+    import.meta.env.VITE_ANALYTICS_DEFAULT_VIEW === 'governed' ? 'governed' : 'workspace',
+  );
 
   useEffect(() => {
     getHealth().then(setHealth).catch(() => setHealth(null));

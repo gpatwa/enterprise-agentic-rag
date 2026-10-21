@@ -21,6 +21,11 @@ analytics_service = AnalyticsService(settings)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await analytics_service.start()
+    if settings.ANALYTICS_V2_ENABLED and v2_runtime.service is None:
+        from app.runtime.pilot_wiring import build_pilot_runtime
+
+        built = build_pilot_runtime(settings)  # fails the start-up loudly rather than serving 503s
+        v2_runtime.service, v2_runtime.verifier, v2_runtime.feedback = built.service, built.verifier, built.feedback
     yield
     await analytics_service.close()
 

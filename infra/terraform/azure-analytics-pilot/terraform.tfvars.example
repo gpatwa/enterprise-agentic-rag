@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars. Secrets go in secrets.auto.tfvars (./secrets.sh > secrets.auto.tfvars).
+environment     = "pilot"
+location        = "eastus"
+image_tag       = "<git sha pushed by the workflow>"
+create_openai   = false            # true only if the subscription has Azure OpenAI access
+azure_openai_endpoint = "https://<your-openai>.openai.azure.com/"
+# azure_openai_api_key is a secret: put it in secrets.auto.tfvars
+create_entra_app = true            # needs Application Administrator (or set entra_audience)
+min_cohort      = "10"             # security decision F-03
+budget_emails   = ["you@example.com"]
+monthly_budget_usd = 100

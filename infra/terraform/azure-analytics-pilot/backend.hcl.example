@@ -1,0 +1,5 @@
+# terraform init -backend-config=backend.hcl
+resource_group_name  = "terraform-state-rg"
+storage_account_name = "ragterraformstategp"
+container_name       = "tfstate"
+key                  = "analytics-pilot/terraform.tfstate"
