@@ -63,7 +63,7 @@ variable "api_key" {
 }
 
 variable "create_openai" {
-  description = "Create an Azure OpenAI account and a gpt-4o-mini deployment (needs Azure OpenAI access in the subscription)."
+  description = "Create an Azure OpenAI account and a gpt-5.6-luna deployment (needs Azure OpenAI access in the subscription)."
   type        = bool
   default     = false
 }
@@ -91,9 +91,30 @@ variable "azure_openai_api_key" {
   sensitive = true
 }
 
+variable "azure_openai_model" {
+  type    = string
+  default = "gpt-5.6-luna"
+}
+
+variable "azure_openai_model_version" {
+  type    = string
+  default = "2026-07-09"
+}
+
+variable "azure_openai_api_version" {
+  type    = string
+  default = "2025-04-01-preview"
+}
+
+variable "azure_openai_reasoning_effort" {
+  type        = string
+  default     = "medium"
+  description = "Reasoning effort for reasoning models; empty for non-reasoning models."
+}
+
 variable "azure_openai_deployment" {
   type    = string
-  default = "gpt-4o-mini"
+  default = "gpt-5.6-luna"
 }
 
 variable "create_entra_app" {
@@ -139,4 +160,10 @@ variable "monthly_budget_usd" {
 variable "budget_emails" {
   type    = list(string)
   default = []
+}
+
+variable "postgres_location" {
+  type        = string
+  default     = "centralus"
+  description = "PostgreSQL Flexible Server region; eastus provisioning is restricted for this subscription."
 }

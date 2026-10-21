@@ -25,7 +25,7 @@ resource "azurerm_container_registry" "acr" {
 resource "azurerm_postgresql_flexible_server" "pg" {
   name                          = "${local.name}-pg"
   resource_group_name           = azurerm_resource_group.rg.name
-  location                      = azurerm_resource_group.rg.location
+  location                      = var.postgres_location
   version                       = "16"
   sku_name                      = "B_Standard_B1ms"
   storage_mb                    = 32768
@@ -89,7 +89,7 @@ locals {
       "analytics-control-db-url" = local.control_db_url
       "analytics-db-url"         = local.warehouse_db_url
     },
-    local.openai_key != "" ? { "azure-openai-api-key" = local.openai_key } : {}
+    local.has_openai_key ? { "azure-openai-api-key" = local.openai_key } : {}
   )
 }
 
@@ -139,8 +139,8 @@ resource "azurerm_cognitive_deployment" "intent" {
   cognitive_account_id = azurerm_cognitive_account.openai[0].id
   model {
     format  = "OpenAI"
-    name    = "gpt-4o-mini"
-    version = "2024-07-18"
+    name    = var.azure_openai_model
+    version = var.azure_openai_model_version
   }
   scale {
     type     = "GlobalStandard"
@@ -243,23 +243,25 @@ locals {
     ANALYTICS_CONTROL_DB_URL = "analytics-control-db-url"
     ANALYTICS_DB_URL         = "analytics-db-url"
   }
-  openai_secret_env = local.openai_key != "" ? { AZURE_OPENAI_API_KEY = "azure-openai-api-key" } : {}
+  openai_secret_env = local.has_openai_key ? { AZURE_OPENAI_API_KEY = "azure-openai-api-key" } : {}
   all_secret_env    = merge(local.secret_env_map, local.openai_secret_env)
   plain_env = {
-    ENV                        = "prod"
-    ANALYTICS_V2_ENABLED       = "true"
-    ANALYTICS_V2_CONTRACTS     = var.v2_contracts
-    ANALYTICS_MIGRATE_ON_START = "true"
-    ANALYTICS_V1_ENABLED       = "false"
-    ANALYTICS_LEASE_SECONDS    = "120"
-    ANALYTICS_CORS_ORIGINS     = local.cors
-    ANALYTICS_MIN_COHORT       = var.min_cohort
-    AZURE_OPENAI_ENDPOINT      = local.openai_endpoint
-    AZURE_OPENAI_DEPLOYMENT    = var.azure_openai_deployment
-    AZURE_OPENAI_API_VERSION   = "2024-06-01"
-    ENTRA_TENANT_ID            = data.azurerm_client_config.current.tenant_id
-    ENTRA_AUDIENCE             = local.entra_audience
-    ANALYTICS_TENANT_MAP       = local.tenant_map
+    ENV                           = "prod"
+    ANALYTICS_V2_ENABLED          = "true"
+    ANALYTICS_V2_CONTRACTS        = var.v2_contracts
+    ANALYTICS_MIGRATE_ON_START    = "true"
+    ANALYTICS_V1_ENABLED          = "false"
+    ANALYTICS_LEASE_SECONDS       = "120"
+    ANALYTICS_CORS_ORIGINS        = local.cors
+    ANALYTICS_MIN_COHORT          = var.min_cohort
+    AZURE_OPENAI_ENDPOINT         = local.openai_endpoint
+    AZURE_OPENAI_DEPLOYMENT       = var.azure_openai_deployment
+    AZURE_OPENAI_API_VERSION      = var.azure_openai_api_version
+    AZURE_OPENAI_REASONING_EFFORT = var.azure_openai_reasoning_effort
+    ENTRA_TENANT_ID               = data.azurerm_client_config.current.tenant_id
+    # v2 access tokens carry the application's client id as `aud` (the api:// URI is only the scope's resource name).
+    ENTRA_AUDIENCE       = var.create_entra_app ? azuread_application.api[0].client_id : var.entra_audience
+    ANALYTICS_TENANT_MAP = local.tenant_map
   }
 }
 
@@ -411,4 +413,13 @@ resource "azurerm_consumption_budget_resource_group" "budget" {
     operator       = "GreaterThan"
     contact_emails = var.budget_emails
   }
+}
+
+# Lets people mint a token for the pilot with `az account get-access-token --scope <audience>/.default` (Azure CLI's
+# well-known client id). They still need an app role assignment; this only skips the consent prompt.
+resource "azuread_application_pre_authorized" "azure_cli" {
+  count                = var.create_entra_app ? 1 : 0
+  application_id       = azuread_application.api[0].id
+  authorized_client_id = "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
+  permission_ids       = ["0e5a2c64-6a3b-4a60-9a4d-6c1f8d2b7e11"]
 }

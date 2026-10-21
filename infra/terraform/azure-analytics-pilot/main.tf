@@ -41,6 +41,7 @@ locals {
   control_db_url   = "postgresql://${var.postgres_admin_user}:${urlencode(var.postgres_admin_password)}@${local.pg_host}:5432/analytics_control?sslmode=require"
   warehouse_db_url = "postgresql://analytics_readonly:${urlencode(var.postgres_readonly_password)}@${local.pg_host}:5432/analytics_warehouse?sslmode=require"
   openai_endpoint  = var.create_openai ? azurerm_cognitive_account.openai[0].endpoint : var.azure_openai_endpoint
+  has_openai_key   = var.create_openai || var.azure_openai_api_key != ""
   openai_key       = var.create_openai ? azurerm_cognitive_account.openai[0].primary_access_key : var.azure_openai_api_key
   entra_audience   = var.create_entra_app ? "api://${var.prefix}-${var.environment}-analytics" : var.entra_audience
 }

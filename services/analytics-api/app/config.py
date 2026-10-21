@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     AZURE_OPENAI_API_KEY: str | None = None
     AZURE_OPENAI_API_VERSION: str = "2024-06-01"
     AZURE_OPENAI_DEPLOYMENT: str = "gpt-4o-mini"
+    AZURE_OPENAI_REASONING_EFFORT: str | None = None  # set for reasoning models (e.g. "medium")
     ENTRA_TENANT_ID: str | None = None
     ENTRA_AUDIENCE: str | None = None  # the API app registration, for example api://<client-id>
     ANALYTICS_TENANT_MAP: str = "{}"  # JSON: Entra tenant ID -> analytics tenant ID

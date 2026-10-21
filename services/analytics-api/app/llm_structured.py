@@ -12,17 +12,30 @@ from typing import Any
 
 
 class OpenAIStructuredClient:
-    def __init__(self, client: Any, *, model: str, timeout_seconds: float = 30.0) -> None:
+    def __init__(
+        self, client: Any, *, model: str, timeout_seconds: float = 30.0, reasoning_effort: str | None = None
+    ) -> None:
         self._client, self._model, self._timeout = client, model, timeout_seconds
+        self._reasoning_effort = reasoning_effort or None
 
     @classmethod
-    def azure(cls, *, endpoint: str, api_key: str, api_version: str, deployment: str, timeout_seconds: float = 30.0):
+    def azure(
+        cls,
+        *,
+        endpoint: str,
+        api_key: str,
+        api_version: str,
+        deployment: str,
+        timeout_seconds: float = 30.0,
+        reasoning_effort: str | None = None,
+    ):
         from openai import AzureOpenAI
 
         return cls(
             AzureOpenAI(azure_endpoint=endpoint, api_key=api_key, api_version=api_version),
             model=deployment,
             timeout_seconds=timeout_seconds,
+            reasoning_effort=reasoning_effort,
         )
 
     @classmethod
@@ -34,6 +47,12 @@ class OpenAIStructuredClient:
     def complete_json(self, *, prompt: str, schema: dict, max_tokens: int) -> Any:
         import openai
 
+        # Reasoning models reject temperature/max_tokens and spend completion tokens on thinking, so give them headroom.
+        sampling: dict[str, Any] = (
+            {"max_completion_tokens": max_tokens + 4000, "reasoning_effort": self._reasoning_effort}
+            if self._reasoning_effort
+            else {"max_tokens": max_tokens, "temperature": 0}
+        )
         try:
             response = self._client.chat.completions.create(
                 model=self._model,
@@ -45,9 +64,8 @@ class OpenAIStructuredClient:
                     {"role": "user", "content": prompt},
                 ],
                 response_format={"type": "json_object"},
-                max_tokens=max_tokens,
-                temperature=0,
                 timeout=self._timeout,
+                **sampling,
             )
         except openai.APITimeoutError as exc:
             raise TimeoutError("model timed out") from exc
