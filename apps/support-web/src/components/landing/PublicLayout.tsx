@@ -127,7 +127,7 @@ function PublicFooter() {
       <div className="border-t border-border/40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-fg-muted">
           <span>&copy; {year} Compass. All rights reserved.</span>
-          <span>SOC 2 Type II in progress · GDPR-ready · Tenant-isolated by default</span>
+          <span>Pilot-stage · Tenant-isolated · Evidence trail on every answer</span>
         </div>
       </div>
     </footer>

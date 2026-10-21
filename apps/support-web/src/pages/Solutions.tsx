@@ -52,12 +52,12 @@ export const PERSONA_CONTENT: Record<string, SolutionsContent> = {
     heroEyebrow: 'Compass for RevOps',
     heroHeadline: 'Pipeline insight across CRM, warehouse, and product.',
     heroSubhead:
-      'Quota performance, deal risk, account health, and CRM hygiene — answered across Salesforce, your warehouse, and product usage.',
+      'Quota performance, pipeline, and account health — answered from certified definitions over your warehouse data.',
     wins: [
       {
         title: 'Deals at risk, in plain English',
         description:
-          'Compass joins CRM with product usage to surface accounts whose engagement is dropping.',
+          'Ask which accounts are slipping and get the number with the SQL behind it, built from metrics your data team certified.',
       },
       {
         title: 'Stop the spreadsheet pulls',
@@ -67,7 +67,7 @@ export const PERSONA_CONTENT: Record<string, SolutionsContent> = {
       {
         title: 'Govern the action',
         description:
-          'Ask, verify, and update opportunities back in Salesforce — with approval logs.',
+          'Costly or sensitive queries wait for a named reviewer, and every decision is logged with the run.',
       },
     ],
     suggestedSkill: 'RevOps Skill',
@@ -92,7 +92,7 @@ export const PERSONA_CONTENT: Record<string, SolutionsContent> = {
       {
         title: 'Lineage built in',
         description:
-          'Every answer cites the dbt model, the freshness, and the upstream pipeline — out of the box.',
+          'Every answer carries the certified definitions it used and the compiled SQL, so reviewers can trace it.',
       },
     ],
     suggestedSkill: 'Semantic Layer Skill',
@@ -102,21 +102,21 @@ export const PERSONA_CONTENT: Record<string, SolutionsContent> = {
     heroEyebrow: 'Compass for Engineering',
     heroHeadline: 'Trace ownership, lineage, and incidents in plain English.',
     heroSubhead:
-      'Connect repos, runbooks, dashboards, and tickets. Ask "who owns this service?" or "what changed before this incident?" — across all of it.',
+      'Search resolved support tickets and prior fixes with tenant-scoped retrieval and citations, and answer operational metric questions from certified definitions.',
     wins: [
       {
         title: 'Ownership, instantly',
         description:
-          'Code, services, and dashboards mapped to teams. No more "ask someone in Slack."',
+          'Find how a similar issue was resolved before, with the ticket and the fix cited.',
       },
       {
         title: 'Incident timelines',
         description:
-          'Pull the last 24h of changes across deploys, configs, and on-call escalations into one answer.',
+          'Ask operational metric questions and get the answer with its SQL and evidence, not a screenshot.',
       },
       {
-        title: 'Take action under audit',
-        description: 'Open Jira tickets or page on-call from the answer — with full audit trail.',
+        title: 'Reviewed before it runs',
+        description: 'Expensive queries pause for human approval, with the decision recorded.',
       },
     ],
     suggestedSkill: 'Engineering Skill',
@@ -126,22 +126,22 @@ export const PERSONA_CONTENT: Record<string, SolutionsContent> = {
     heroEyebrow: 'Compass for Security',
     heroHeadline: 'See who asked what, on which data, when — for every query.',
     heroSubhead:
-      'Tenant scope, role-based access, PII redaction, and audit log built in. SOC2 evidence collection becomes a query, not a quarter.',
+      'Tenant scope, purpose-bound access, small-cohort suppression, and a tamper-evident evidence trail on every run.',
     wins: [
       {
         title: 'Audit-ready answers',
         description:
-          'Every Compass query is logged with the user, role, sources accessed, and PII redaction applied.',
+          'Every run records who asked, the purpose, the definitions used, the compiled SQL, and the policy decisions.',
       },
       {
         title: 'Permission-aware retrieval',
         description:
-          'Row-level security at the source enforced before the answer renders. Users see only what they should.',
+          'Policy is checked before execution, and answer rows go only to the requester, not to reviewers or assistants.',
       },
       {
-        title: 'Compliance in real time',
+        title: 'Separation of duties',
         description:
-          'Ask "who accessed customer PII last week?" and get a defensible answer in seconds.',
+          'Reviewers see the plan, SQL, and cost before approving, and requesters cannot approve their own runs.',
       },
     ],
     suggestedSkill: 'Security Skill',
@@ -151,12 +151,12 @@ export const PERSONA_CONTENT: Record<string, SolutionsContent> = {
     heroEyebrow: 'Compass for Every Team',
     heroHeadline: 'Ask company questions without knowing where the answer lives.',
     heroSubhead:
-      'Compass routes through your warehouse, docs, code, and SaaS tools — and returns answers anyone can verify and act on.',
+      'Compass answers from certified definitions over your governed data — and returns answers anyone can verify.',
     wins: [
       {
         title: 'No tool-hopping',
         description:
-          'Stop guessing whether the answer is in Confluence, Notion, the warehouse, or a 6-tab Looker dashboard.',
+          'One place to ask, with one set of certified definitions behind every answer.',
       },
       {
         title: 'Plain language in, plain English out',
@@ -164,7 +164,7 @@ export const PERSONA_CONTENT: Record<string, SolutionsContent> = {
       },
       {
         title: 'Built for trust',
-        description: 'Every answer ships with citations and the path it took. No black boxes.',
+        description: 'Every answer ships with its SQL and evidence. If Compass cannot answer safely, it says so.',
       },
     ],
     suggestedSkill: 'Starter Skills (curated)',
