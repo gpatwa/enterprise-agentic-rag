@@ -30,3 +30,12 @@ output "entra_api_client_id" {
 output "key_vault_name" {
   value = azurerm_key_vault.kv.name
 }
+
+output "landing_url" {
+  value = "https://${azurerm_static_web_app.landing.default_host_name}"
+}
+
+output "landing_deploy_token" {
+  value     = azurerm_static_web_app.landing.api_key
+  sensitive = true
+}
