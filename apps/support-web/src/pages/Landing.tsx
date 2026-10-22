@@ -6,10 +6,8 @@ import {
   ChevronDown,
   Database,
   FileSearch,
-  Github,
   Lock,
   MessageSquare,
-  Quote,
   ShieldCheck,
   Sparkles,
   Workflow,
@@ -30,75 +28,79 @@ const PAGE_PATH = '/welcome';
 const FAQS: { q: string; a: string }[] = [
   {
     q: 'What is Compass?',
-    a: 'Compass is an enterprise data agent that lets every employee ask questions across your warehouse, documents, and SaaS tools — and get verified, source-cited answers in seconds.',
+    a: 'Compass answers business questions from your governed data. Ask in plain English; Compass resolves the question to certified metric definitions, compiles the SQL deterministically, enforces policy, and returns the answer with the SQL and evidence attached.',
   },
   {
-    q: 'How is Compass different from a BI tool?',
-    a: 'BI tools require you to know the question and the schema. Compass takes plain-English questions, picks the right source (warehouse, docs, code, tickets), runs the SQL or retrieval, and returns the answer with the trace attached. You get to verify it, save it, or act on it.',
+    q: 'How is Compass different from a chat-with-your-data tool?',
+    a: 'Those tools let a model write SQL and hope. Compass never runs model-written SQL. The model only extracts intent; a deterministic compiler builds the query from certified definitions. If the question is ambiguous, unsupported, or not permitted, Compass asks or refuses instead of guessing.',
   },
   {
-    q: 'Is Compass safe for regulated data?',
-    a: 'Yes. Tenant isolation, role-based access, PII detection and redaction, full audit log, and a read-only analytics role are built in. We are SOC 2 Type II in progress and GDPR-ready (right-to-be-forgotten endpoint shipped).',
+    q: 'What stops a wrong or unsafe answer?',
+    a: 'Certified semantic definitions, an intent check against your own terms, policy and purpose checks, small-group (cohort) suppression, a cost estimate before execution, and human review for costly or sensitive queries. Reviewers are people; automated assistants can only read and draft notes.',
   },
   {
-    q: 'What data sources does Compass connect to?',
-    a: 'Compass connects to PostgreSQL, warehouses, support systems, and OpenSearch for governed lexical, vector, and hybrid retrieval. Qdrant remains a temporary local demo fixture while the enterprise search plane uses OpenSearch. SaaS connectors include Zendesk, Intercom, Slack, GitHub, Notion, Drive, Jira, and Linear.',
+    q: 'Can I see how an answer was produced?',
+    a: 'Yes. Every answer carries the compiled SQL, parameters, the definitions used, and a tamper-evident evidence trail, and runs can be replayed. Result rows are not stored in the audit record.',
   },
   {
-    q: 'Do answers cite their sources?',
-    a: 'Always. Every answer ships with the SQL, the rows, the document chunks, the freshness, and the user who asked. No black boxes. The audit trail is queryable for compliance.',
+    q: 'What data does it run on?',
+    a: 'PostgreSQL and DuckDB today, against semantic definitions kept in Git. Other warehouses are on the roadmap, not shipped. Compass Resolution Intelligence separately searches resolved support tickets with tenant-scoped retrieval.',
   },
   {
-    q: 'Can I try Compass before talking to sales?',
-    a: 'Yes. Click "Try Compass" to use the demo workspace — or book a 20-minute walkthrough on your own data.',
+    q: 'Is Compass certified for compliance frameworks?',
+    a: 'Not yet. Compass is in pilot and has not completed a SOC 2 audit or a formal independent security review. Ask us for the current security and evidence summary.',
+  },
+  {
+    q: 'Can I try Compass?',
+    a: 'Yes. Open the workspace to try the demo, or contact us to run a pilot on one of your datasets.',
   },
 ];
 
 const VALUE_PROPS: { icon: LucideIcon; title: string; body: string }[] = [
   {
-    icon: FileSearch,
-    title: 'Search resolution memory',
-    body: 'Turn historical support tickets, comments, and articles into tenant-scoped lexical, vector, and hybrid answers with citations.',
-  },
-  {
     icon: MessageSquare,
     title: 'Ask in plain English',
-    body: 'No SQL required, no dashboard hunting. Compass routes through warehouse, docs, code, and SaaS — automatically.',
+    body: 'No SQL, no dashboard hunting. Questions are mapped to the metrics and dimensions your data team has certified.',
   },
   {
     icon: FileSearch,
-    title: 'Verify every answer',
-    body: 'Every answer cites the SQL, the rows, the documents, and the path it took. Trust, on by default.',
-  },
-  {
-    icon: Workflow,
-    title: 'Act under audit',
-    body: 'Open Jira tickets, update Salesforce, page on-call — with role-based approvals and a full audit log.',
+    title: 'Every answer shows its work',
+    body: 'The compiled SQL, parameters, definitions used, and an evidence trail ship with the answer, and runs can be replayed.',
   },
   {
     icon: ShieldCheck,
-    title: 'Built for enterprise',
-    body: 'Tenant isolation, PII redaction, SSO-ready, and an immutable audit trail. SOC 2 Type II in progress.',
+    title: 'Refuses instead of guessing',
+    body: 'Ambiguous, unsupported, or unauthorized questions get a clear refusal or a clarifying question, never a plausible-looking wrong number.',
+  },
+  {
+    icon: Workflow,
+    title: 'People decide the risky ones',
+    body: 'Costly or sensitive queries wait for a human reviewer. Requesters cannot approve their own runs, and AI assistants can only read.',
+  },
+  {
+    icon: Lock,
+    title: 'Scoped to the asker',
+    body: 'Answers are tenant-isolated and purpose-bound, small cohorts are suppressed, and queries run through a read-only database role.',
   },
 ];
 
 const HOW_IT_WORKS: { tag: string; title: string; body: string; icon: LucideIcon }[] = [
   {
     tag: 'Ask',
-    title: 'Ask anything in natural language',
-    body: 'Pose business questions the way you would in Slack: "What was Q3 revenue by region?", "Which deals slipped last week?", "Who owns the checkout service?"',
+    title: 'Ask a business question',
+    body: 'Pose it the way you would in Slack: "What was Q3 revenue by region?" Compass resolves your terms against certified definitions.',
     icon: MessageSquare,
   },
   {
     tag: 'Verify',
-    title: 'See the SQL, sources, and reasoning',
-    body: 'Compass plans the query, executes it, and renders an answer card with the SQL, the rows, the cited documents, and the steps it took — collapsible, exportable, and audited.',
+    title: 'See the SQL and the evidence',
+    body: 'The query is compiled deterministically from certified metrics, checked against policy and budget, and returned with the SQL, parameters, and evidence trail.',
     icon: FileSearch,
   },
   {
-    tag: 'Act',
-    title: 'Take action with full audit',
-    body: 'Save the question, push to a dashboard, open a ticket, or update CRM directly from the answer. Every action is logged with user, role, and source.',
+    tag: 'Review',
+    title: 'Humans approve what matters',
+    body: 'Expensive or sensitive runs pause for a named reviewer. Every decision is recorded alongside the run, and nothing executes before approval.',
     icon: Workflow,
   },
 ];
@@ -114,9 +116,9 @@ const PERSONA_LINKS: { slug: string; label: string; sub: string }[] = [
 
 export function LandingPage() {
   useSEO({
-    title: 'Compass — Ask. Verify. Act. The enterprise data agent.',
+    title: 'Compass — Governed answers from your data, with proof',
     description:
-      'Compass is the unified answer-and-action layer for enterprise data. Ask questions in plain English across your warehouse, docs, and SaaS — with cited sources, audit trail, and built-in security.',
+      'Ask business questions in plain English and get answers built from certified definitions — with the SQL, evidence trail, policy checks, and human review for risky queries. No model-written SQL.',
     canonicalPath: PAGE_PATH,
     ogType: 'website',
     jsonLd: [
@@ -127,18 +129,13 @@ export function LandingPage() {
         applicationCategory: 'BusinessApplication',
         operatingSystem: 'Web',
         description:
-          'Enterprise data agent that answers questions across warehouse, docs, code and SaaS — with cited sources and audit trail.',
+          'Governed analytics: plain-English questions answered from certified metric definitions, with the SQL, evidence trail, and human review attached.',
         offers: {
           '@type': 'Offer',
           price: '0',
           priceCurrency: 'USD',
           availability: 'https://schema.org/InStock',
-          description: 'Free demo workspace',
-        },
-        aggregateRating: {
-          '@type': 'AggregateRating',
-          ratingValue: '4.9',
-          reviewCount: '12',
+          description: 'Demo workspace',
         },
       },
       {
@@ -147,7 +144,7 @@ export function LandingPage() {
         name: 'Compass',
         url: SITE_URL,
         logo: SITE_URL + '/compass-mark.svg',
-        slogan: 'Ask. Verify. Act.',
+        slogan: 'Governed answers, with proof.',
         sameAs: [],
       },
       {
@@ -182,7 +179,6 @@ export function LandingPage() {
       <ValuePropsSection />
       <AnalyticsSection />
       <HowItWorksSection />
-      <TestimonialSection />
       <PersonasSection />
       <SecuritySection />
       <FAQSection />
@@ -241,7 +237,7 @@ function AnalyticsSection() {
             Turn messy business questions into governed answers.
           </h2>
           <p className="text-fg-secondary text-base sm:text-lg leading-relaxed mt-4 max-w-2xl">
-            Start with searchable resolution memory, then add certified metrics, typed intent, deterministic SQL, policy checks, and an evidence trail your data team can approve.
+            Certified metrics, typed intent, deterministic SQL, policy and cost checks, and an evidence trail your data team can inspect and replay.
           </p>
           <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <Button asChild size="lg" className="h-12 text-base">
@@ -250,7 +246,7 @@ function AnalyticsSection() {
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="h-12 text-base">
-              <a href="#book-demo">See the analytics demo</a>
+              <a href="#book-demo">Talk to us about a pilot</a>
             </Button>
           </div>
         </div>
@@ -290,23 +286,23 @@ function Hero() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20 sm:pt-24 sm:pb-28 lg:pt-32 lg:pb-36">
         <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest font-medium px-3 py-1 rounded-full bg-accent/10 text-accent ring-1 ring-accent/30">
           <Sparkles className="w-3 h-3" aria-hidden="true" />
-          The enterprise data agent
+          Governed analytics
         </div>
         <h1
           id="hero-heading"
           className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight leading-[1.05] mt-6 max-w-4xl"
         >
-          Ask.{' '}
-          <span className="italic font-serif text-accent">Verify.</span>{' '}
-          Act.
+          Answers you can{' '}
+          <span className="italic font-serif text-accent">defend.</span>
           <span className="block text-fg-secondary text-2xl sm:text-3xl md:text-4xl mt-3 md:mt-5 font-normal leading-snug">
-            The unified answer-and-action layer for enterprise data.
+            Ask in plain English. Get the number, the SQL, and the proof.
           </span>
         </h1>
         <p className="text-fg-secondary text-base sm:text-lg leading-relaxed mt-6 max-w-2xl">
-          Compass lets every employee ask company questions across your warehouse,
-          documents, code, and SaaS tools — and returns answers anyone can verify and
-          act on, with a full audit trail.
+          Compass answers business questions from your certified metric definitions.
+          The model never writes SQL: a deterministic compiler does, under policy and
+          budget checks, with human review for risky queries. If it cannot answer
+          safely, it says so.
         </p>
         <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-md sm:max-w-none">
           <Button asChild size="lg" className="h-12 text-base">
@@ -315,11 +311,11 @@ function Hero() {
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline" className="h-12 text-base">
-            <a href="#book-demo">Book a 20-min demo</a>
+            <a href="#book-demo">Talk to us about a pilot</a>
           </Button>
         </div>
         <p className="text-xs text-fg-muted mt-4">
-          No credit card required · Demo workspace · Or bring your own data
+          Pilot-stage product · Demo workspace · Pilot on your own dataset
         </p>
       </div>
     </section>
@@ -330,15 +326,15 @@ function Hero() {
 
 function TrustStrip() {
   const items = [
-    'SOC 2 Type II (in progress)',
-    'GDPR-ready',
+    'No model-written SQL',
+    'Certified definitions only',
     'Tenant-isolated',
-    'Audit log built in',
-    'PII redaction on by default',
+    'Tamper-evident evidence trail',
+    'Human review for risky queries',
   ];
   return (
     <section
-      aria-label="Trust and compliance"
+      aria-label="Trust and governance"
       className="border-b border-border/40 bg-surface/40"
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-fg-muted">
@@ -369,12 +365,12 @@ function ValuePropsSection() {
           id="value-heading"
           className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight leading-[1.1] max-w-3xl"
         >
-          One agent. Every data source. Every answer with proof.
+          A fast answer is easy. A defensible one is the product.
         </h2>
         <p className="text-fg-secondary text-base sm:text-lg leading-relaxed mt-4 max-w-2xl">
-          Stop tool-hopping between BI dashboards, ticketing, docs, and chat. Ask Compass once.
+          Self-service analytics fails when nobody trusts the number. Compass makes trust the default, so your data team stops being the bottleneck without losing control.
         </p>
-        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-10">
+        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mt-10">
           {VALUE_PROPS.map((p) => (
             <li key={p.title} className="glass rounded-xl p-5 sm:p-6">
               <div className="w-9 h-9 rounded-md flex items-center justify-center bg-accent/15 text-accent ring-1 ring-accent/30 mb-4">
@@ -407,7 +403,7 @@ function HowItWorksSection() {
           id="how-heading"
           className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight leading-[1.1] max-w-3xl"
         >
-          From question to verified action — in one surface.
+          From question to defensible answer.
         </h2>
         <ol className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mt-10">
           {HOW_IT_WORKS.map((s, i) => (
@@ -431,55 +427,6 @@ function HowItWorksSection() {
   );
 }
 
-/* ----------------------------- Testimonial ------------------------------ */
-
-// TODO(beta-quote): Replace placeholder once a beta customer grants permission.
-// Swap `quoteText`, `quoteAuthor`, `quoteRole`, then remove `isPlaceholder` to
-// hide the "pending permission" pill. Keep markup unchanged so layout doesn't
-// shift when the real quote lands.
-const TESTIMONIAL = {
-  quoteText:
-    'Compass cut our analyst-request backlog by 70% in the first month. The answers come with SQL attached, so the data team trusts what employees self-serve.',
-  quoteAuthor: '[Sample Reference]',
-  quoteRole: 'VP of Data, Acme Inc.',
-  isPlaceholder: true,
-} as const;
-
-function TestimonialSection() {
-  return (
-    <section
-      aria-labelledby="testimonial-heading"
-      className="py-16 sm:py-20 lg:py-24"
-    >
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 id="testimonial-heading" className="sr-only">
-          Customer testimonial
-        </h2>
-        <figure className="glass-strong rounded-2xl p-8 sm:p-10 lg:p-12 relative">
-          <Quote
-            className="w-8 h-8 text-accent/30 absolute top-6 left-6"
-            aria-hidden="true"
-          />
-          <blockquote className="pl-12 sm:pl-14 text-fg text-xl sm:text-2xl md:text-3xl leading-snug font-medium tracking-tight">
-            &ldquo;{TESTIMONIAL.quoteText}&rdquo;
-          </blockquote>
-          <figcaption className="pl-12 sm:pl-14 mt-6 flex flex-col sm:flex-row sm:items-center sm:gap-3 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-fg">{TESTIMONIAL.quoteAuthor}</span>
-              <span className="text-fg-muted">{TESTIMONIAL.quoteRole}</span>
-            </div>
-            {TESTIMONIAL.isPlaceholder && (
-              <span className="text-xs uppercase tracking-widest text-governance bg-governance/10 ring-1 ring-governance/30 rounded-full px-2 py-0.5 mt-2 sm:mt-0">
-                Beta quote — pending customer permission
-              </span>
-            )}
-          </figcaption>
-        </figure>
-      </div>
-    </section>
-  );
-}
-
 /* ------------------------------ Personas -------------------------------- */
 
 function PersonasSection() {
@@ -496,7 +443,7 @@ function PersonasSection() {
           id="personas-heading"
           className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight leading-[1.1] max-w-3xl"
         >
-          One product. Six surfaces. Pick yours.
+          Built for the teams who get asked.
         </h2>
         <ul className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {PERSONA_LINKS.map((p) => (
@@ -525,23 +472,23 @@ function SecuritySection() {
   const items: { icon: LucideIcon; title: string; body: string }[] = [
     {
       icon: ShieldCheck,
-      title: 'Tenant isolation by default',
-      body: 'Every row carries a tenant_id; every query is scoped. Cross-tenant access is impossible by design, not by convention.',
-    },
-    {
-      icon: Lock,
-      title: 'PII redaction on the wire',
-      body: 'Emails, SSNs, credit cards, phone numbers, and IPs are detected and redacted before storage and before LLM calls.',
+      title: 'Tenant isolation',
+      body: 'Every run, plan, and result is scoped to the requesting tenant and purpose. Isolation is covered by adversarial tests, not just convention.',
     },
     {
       icon: Database,
-      title: 'Read-only analytics role',
-      body: 'The SQL agent runs as a Postgres role that physically cannot write. Defense-in-depth alongside app-level validation.',
+      title: 'Read-only execution',
+      body: 'Queries run through a database role that cannot write, in addition to application-level validation of every compiled plan.',
     },
     {
       icon: FileSearch,
-      title: 'Immutable audit log',
-      body: 'Every question, every source touched, every action — stored with user, role, and request ID. Queryable for compliance.',
+      title: 'Tamper-evident evidence',
+      body: 'Each step is appended to a hash-chained evidence trail. Result rows are not stored in the audit record.',
+    },
+    {
+      icon: Lock,
+      title: 'Separation of duties',
+      body: 'Only people can approve reviews, and never their own request. Automated assistants are limited to read-only briefs and advisory notes.',
     },
   ];
   return (
@@ -552,17 +499,18 @@ function SecuritySection() {
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-xs uppercase tracking-widest text-fg-muted mb-3">
-          Security & compliance
+          Security & governance
         </div>
         <h2
           id="security-heading"
           className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight leading-[1.1] max-w-3xl"
         >
-          Procurement-ready, out of the box.
+          Controls you can inspect, not just trust.
         </h2>
         <p className="text-fg-secondary text-base sm:text-lg leading-relaxed mt-4 max-w-2xl">
-          Built for environments where every answer has to be defensible. SOC 2 Type II in
-          progress, GDPR-ready, and tenant-isolated by default.
+          Built for environments where every answer has to be defensible. Compass is in
+          pilot: we have not completed a SOC 2 audit or a formal third-party security
+          review, and we will share the evidence we do have.
         </p>
         <ul className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           {items.map((it) => (
@@ -657,24 +605,24 @@ function FinalCTA() {
           <span className="italic font-serif text-accent">your</span> data.
         </h2>
         <p className="text-fg-secondary text-base sm:text-lg leading-relaxed mt-5 max-w-xl mx-auto">
-          20 minutes. Bring one question your team keeps re-asking. We&rsquo;ll answer it
-          in front of you, with sources.
+          Bring one question your team keeps re-asking and the dataset behind it. We&rsquo;ll
+          scope a pilot and show you the answer, the SQL, and the evidence.
         </p>
         <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 max-w-md mx-auto sm:max-w-none">
           <Button asChild size="lg" className="h-12 text-base">
             <Link to="/">
-              Try Compass now <ArrowRight className="w-4 h-4" />
+              Open the workspace <ArrowRight className="w-4 h-4" />
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline" className="h-12 text-base">
-            <a href="mailto:demo@compass.example.com?subject=Compass%20demo%20request">
-              Book a demo
+            <a href="mailto:demo@compass.example.com?subject=Compass%20pilot%20request">
+              Request a pilot
             </a>
           </Button>
         </div>
         <div className="mt-10 inline-flex items-center gap-2 text-xs text-fg-muted">
-          <Github className="w-3.5 h-3.5" aria-hidden="true" />
-          Built in the open · Backed by Anthropic Claude
+          <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
+          Pilot-stage · Local and Azure deployments
         </div>
       </div>
     </section>
