@@ -29,6 +29,7 @@ from app.context.registry_context import (
     FixedOntology,
     FixedSnapshots,
     SnapshotSearch,
+    certified_vocabulary,
     context_from_contract,
 )
 from app.decision_support import ReviewBriefService
@@ -104,6 +105,7 @@ class GovernedRuntime:
     reports: ValidationReportStore = field(default_factory=ValidationReportStore)
     model_breaker: CircuitBreaker = field(default_factory=lambda: CircuitBreaker("model"))
     warehouse_breaker: CircuitBreaker = field(default_factory=lambda: CircuitBreaker("warehouse"))
+    vocabularies: Mapping[str, str] = field(default_factory=dict)  # tenant -> certified ids shown to the model
 
     def __post_init__(self) -> None:
         engine = self.control.engine
@@ -131,7 +133,8 @@ class GovernedRuntime:
             "bootstrap": identity_bootstrap_node(request),
             "retrieve": context_retrieval_node(FixedSnapshots(context, ontology), SnapshotSearch(context)),
             "extract_intent": structured_intent_node(
-                ResilientModelClient(self.model_factory(request.request_id), breaker=self.model_breaker)
+                ResilientModelClient(self.model_factory(request.request_id), breaker=self.model_breaker),
+                vocabulary=self.vocabularies.get(identity.tenant_id),
             ),
             "resolve": ontology_resolution_node(self.contracts, FixedOntology(ontology)),
             "clarify": clarification_node(),
@@ -225,7 +228,7 @@ def migrate(database_url: str, service_root: Path | None = None) -> None:
     root = service_root or Path(__file__).resolve().parents[2]
     config = Config(str(root / "alembic.ini"))
     config.set_main_option("script_location", str(root / "alembic"))
-    config.set_main_option("sqlalchemy.url", database_url)
+    config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))  # configparser treats % as interpolation
     import os
 
     previous = os.environ.get("ANALYTICS_CONTROL_DB_URL")
@@ -254,10 +257,12 @@ def build_pilot_runtime(
     if not documents:
         raise RuntimeError("ANALYTICS_V2_CONTRACTS must name at least one certified contract (id@version)")
     contexts = {}
+    vocabularies = {}
     for document in documents:
         if document.contract.tenant_id in contexts:
             raise RuntimeError("the pilot wiring serves one certified contract per analytics tenant")
         contexts[document.contract.tenant_id] = context_from_contract(document)
+        vocabularies[document.contract.tenant_id] = certified_vocabulary(document)
     tables = sorted({d.physical_name for doc in documents for d in doc.contract.datasets})
     warehouse = PostgresGateway(create_engine(settings.ANALYTICS_DB_URL, pool_pre_ping=True), allowed_tables=tables)
     if model_factory is None:
@@ -269,6 +274,7 @@ def build_pilot_runtime(
                 api_key=settings.AZURE_OPENAI_API_KEY or "",
                 api_version=settings.AZURE_OPENAI_API_VERSION,
                 deployment=settings.AZURE_OPENAI_DEPLOYMENT,
+                reasoning_effort=settings.AZURE_OPENAI_REASONING_EFFORT,
             )
         else:
             client = OpenAIStructuredClient.openai_compatible(
@@ -303,6 +309,7 @@ def build_pilot_runtime(
         ),
         contracts=CertifiedContracts(documents),
         contexts=contexts,
+        vocabularies=vocabularies,
         model_factory=model_factory,
         review_threshold=settings.ANALYTICS_REVIEW_COST_THRESHOLD,
         max_cost_units=settings.ANALYTICS_RUN_MAX_COST_UNITS,

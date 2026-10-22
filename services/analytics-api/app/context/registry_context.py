@@ -8,6 +8,7 @@ ever included. An OpenSearch-backed `ContextSearchProvider` (ADS-017) can replac
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from datetime import datetime, timedelta, timezone
 
@@ -17,6 +18,40 @@ from packages.platform_contracts.ontology import OntologyEdge, OntologyNode, Ont
 from packages.platform_contracts.semantic import SemanticRegistryDocument
 
 _STOP = frozenset("a an the of by for and per to in on is are what how do we our me show give i can you".split())
+
+
+def certified_vocabulary(document: SemanticRegistryDocument) -> str:
+    """The exact certified identifiers a model may use in an intent (ids and kinds only; no policy, owners, or data)."""
+    if document.lifecycle != "certified":
+        raise ValueError("vocabulary is only built from a certified contract")
+    contract = document.contract
+    fields = {f.id: f for f in contract.fields}
+    return json.dumps(
+        {
+            "semantic_contract": {"contract_id": contract.id, "contract_version": contract.version},
+            "datasets": [{"dataset_id": d.id, "description": d.description} for d in contract.datasets],
+            "metrics": [
+                {
+                    "metric_id": m.id,
+                    "dataset_id": m.dataset_id,
+                    "aggregation": m.aggregation,
+                    "measure": m.measure_field_id,
+                }
+                for m in contract.metrics
+                if m.certification == "certified"
+            ],
+            "dimensions": [
+                {"dimension_id": d.id, "dataset_id": d.dataset_id, "type": d.dimension_type}
+                for d in contract.dimensions
+            ],
+            "filterable_fields": [
+                {"field_id": f.id, "data_type": f.data_type}
+                for f in fields.values()
+                if f.classification != "restricted"
+            ],
+        },
+        separators=(",", ":"),
+    )
 
 
 def context_from_contract(

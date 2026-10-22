@@ -4,7 +4,7 @@ pydantic==2.6.0
 pydantic-settings==2.1.0
 sqlalchemy==2.0.25
 psycopg2-binary==2.9.10
-openai==1.10.0
+openai==1.109.1
 httpx==0.26.0
 python-jose[cryptography]==3.3.0
 sqlglot==30.17.0

@@ -21,7 +21,7 @@ database_url = Settings().control_database_url
 if not database_url:
     raise RuntimeError("ANALYTICS_CONTROL_DB_URL is required for analytics migrations")
 database_url = database_url.replace("+asyncpg", "")
-config.set_main_option("sqlalchemy.url", database_url)
+config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))  # configparser treats % as interpolation
 
 target_metadata = Base.metadata
 

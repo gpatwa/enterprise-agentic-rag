@@ -2,7 +2,7 @@
 
 One governed API replica on Azure Container Apps, PostgreSQL Flexible Server (Burstable B1ms) for the control store and the pilot
 warehouse, Key Vault for secrets, a Static Web App (Free) for the web UI, an hourly purge job, and an optional Azure OpenAI
-`gpt-4o-mini` deployment and Entra ID app registration. Separate state from the AKS platform in `../azure`.
+`gpt-5.6-luna` deployment (reasoning effort medium) and Entra ID app registration. Separate state from the AKS platform in `../azure`.
 
 Use this module when the AKS cluster in `../azure` is **not** already running. If it is, deploying the existing Helm charts
 (`.github/workflows/deploy-analytics-azure.yml`, values updated for v2) adds almost nothing to the bill and is cheaper.
@@ -18,7 +18,7 @@ Use this module when the AKS cluster in `../azure` is **not** already running. I
 | Log Analytics | PerGB2018, 30-day retention, 1 GB/day cap | 0 - 10 |
 | Container Registry | Basic (or reuse an existing one) | 0 - 5 |
 | Static Web App | Free | 0 |
-| Azure OpenAI | gpt-4o-mini, pay per token (~4k in / 0.6k out per answer) | ~0.001 per answer |
+| Azure OpenAI | gpt-5.6-luna (medium), pay per token; cost per answer not yet measured (~4k in / 0.6k out per answer) | ~0.001 per answer |
 | **Total** | | **about 30 - 70 + tokens** |
 
 The `budget_emails` variable adds a resource-group budget with alerts at 80% and 100% of `monthly_budget_usd`.
@@ -70,3 +70,11 @@ Container App, and deploys the web app.
 review. Give its identity (for example a user-assigned managed identity) the `Analytics.ReviewAssistant` app role only. It is read-only
 by construction: the API strips every other role from application tokens, and the decision endpoint needs the reviewer group and a
 human caller. Never assign `Analytics.Reviewer` or `Analytics.Analyst` to an application.
+
+## Notes from the first real deployment
+
+- PostgreSQL Flexible Server provisioning is restricted in some regions per subscription (here `eastus`); `postgres_location` (default `centralus`) places it separately from the rest of the stack. Check with `az postgres flexible-server list-skus -l <region>`.
+- The intent model is `gpt-5.6-luna` with `reasoning_effort=medium` (`azure_openai_*` variables). Reasoning models need `max_completion_tokens` and reject `temperature`, which `OpenAIStructuredClient` handles when `AZURE_OPENAI_REASONING_EFFORT` is set (requires the pinned `openai` SDK in `requirements.txt`).
+- v2 Entra access tokens carry the app's **client id** as `aud`, so `ENTRA_AUDIENCE` is the client id, while users request the `api://.../.default` scope.
+- The Azure CLI is pre-authorized for the `access_as_user` scope so `az account get-access-token` works for people holding an app role.
+- The intent prompt now carries the certified vocabulary (ids only) and the query identity the model must echo; without them a real model cannot produce resolvable intents.
