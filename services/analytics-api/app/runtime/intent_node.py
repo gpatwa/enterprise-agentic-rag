@@ -71,7 +71,7 @@ def _prompt(request_text: str, context: ContextPack, request_id: str = "", vocab
     )
     # The released v1 text above is pinned (prompt registry). A real model also needs the identity it must echo and the
     # certified ids it may use, so those are appended as an addendum rather than edited into the baseline.
-    if not (request_id or vocabulary):
+    if not vocabulary:
         return base
     addendum = [f"Set query_id to {json.dumps(request_id)} and tenant_id to {json.dumps(context.tenant_id)}."]
     if vocabulary:
