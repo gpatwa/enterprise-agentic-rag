@@ -214,6 +214,16 @@ resource "azuread_service_principal" "api" {
   app_role_assignment_required = true
 }
 
+# ---- the public landing page (static, Free tier) ----
+resource "azurerm_static_web_app" "landing" {
+  name                = "${local.name}-landing"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = "eastus2"
+  sku_tier            = "Free"
+  sku_size            = "Free"
+  tags                = local.tags
+}
+
 # ---- the web app (static, Free tier) ----
 resource "azurerm_static_web_app" "web" {
   name                = "${local.name}-analytics-web"
