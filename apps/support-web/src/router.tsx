@@ -8,10 +8,8 @@ import { LayoutDashboard, Bot } from 'lucide-react';
 /**
  * Route-level code splitting.
  * Each page is a separate Vite chunk; only the active route's code is fetched.
- * LandingPage stays eager for the public entry surface.
  */
 import { HomePage } from '@/pages/Home';
-import { LandingPage } from '@/pages/Landing';
 const ThreadsPage = lazy(() =>
   import('@/pages/Threads').then((m) => ({ default: m.ThreadsPage }))
 );
@@ -29,9 +27,6 @@ const SupportResolutionPage = lazy(() =>
 );
 const KnowledgePage = lazy(() =>
   import('@/pages/Knowledge').then((m) => ({ default: m.KnowledgePage }))
-);
-const SolutionsPage = lazy(() =>
-  import('@/pages/Solutions').then((m) => ({ default: m.SolutionsPage }))
 );
 const AgentsPage = lazy(() =>
   import('@/pages/Agents').then((m) => ({ default: m.AgentsPage }))
@@ -64,12 +59,6 @@ function RouteSkeleton() {
 }
 
 export const router = createBrowserRouter([
-  // Public marketing landing — no AppShell, no auth. Mounts its own
-  // PublicLayout (header + footer only). SEO entry point.
-  {
-    path: '/welcome',
-    element: <LandingPage />,
-  },
   {
     path: '/',
     element: (
@@ -143,18 +132,6 @@ export const router = createBrowserRouter([
     element: (
       <RootLayout>
         <AgentsPage />
-      </RootLayout>
-    ),
-  },
-  {
-    path: '/solutions',
-    element: <Navigate to="/solutions/everyone" replace />,
-  },
-  {
-    path: '/solutions/:persona',
-    element: (
-      <RootLayout>
-        <SolutionsPage />
       </RootLayout>
     ),
   },

@@ -45,9 +45,8 @@ const MAX_MESSAGE_LENGTH = 4000;
  * `POST /api/v1/feedback` — which audit-logs and (best-effort) relays to
  * the team's Slack channel via an incoming webhook.
  *
- * Hidden when `VITE_FEEDBACK_DISABLED=1` so the marketing /welcome page
- * (which mounts a different layout) doesn't pick it up; we don't want
- * anonymous visitors using the in-app feedback path.
+ * Hidden when `VITE_FEEDBACK_DISABLED=1` (for example on a public demo build)
+ * so anonymous visitors cannot use the in-app feedback path.
  */
 export function FeedbackWidget() {
   const [open, setOpen] = useState(false);

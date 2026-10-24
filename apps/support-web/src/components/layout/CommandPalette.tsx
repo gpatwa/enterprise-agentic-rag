@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   LifeBuoy,
   MessageSquare,
-  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -39,14 +38,6 @@ const NAV: NavItem[] = [
   { id: 'dashboards', label: 'Dashboards', icon: LayoutDashboard, to: '/dashboards' },
   { id: 'sources', label: 'Sources', icon: Database, to: '/sources' },
   { id: 'knowledge', label: 'Knowledge', icon: Brain, to: '/knowledge' },
-];
-
-const SOLUTIONS: NavItem[] = [
-  { id: 'sol-finance', label: 'Compass for Finance', icon: Sparkles, to: '/solutions/finance' },
-  { id: 'sol-revops', label: 'Compass for RevOps', icon: Sparkles, to: '/solutions/revops' },
-  { id: 'sol-data', label: 'Compass for Data Teams', icon: Sparkles, to: '/solutions/data' },
-  { id: 'sol-eng', label: 'Compass for Engineering', icon: Sparkles, to: '/solutions/engineering' },
-  { id: 'sol-sec', label: 'Compass for Security', icon: Sparkles, to: '/solutions/security' },
 ];
 
 export function CommandPalette() {
@@ -138,16 +129,6 @@ export function CommandPalette() {
             </CommandGroup>
           </>
         )}
-
-        <CommandSeparator />
-        <CommandGroup heading="Solutions">
-          {SOLUTIONS.map((s) => (
-            <CommandItem key={s.id} onSelect={() => go(s.to)} value={`solution ${s.label}`}>
-              <s.icon className="text-fg-muted" />
-              <span>{s.label}</span>
-            </CommandItem>
-          ))}
-        </CommandGroup>
       </CommandList>
     </CommandDialog>
   );
