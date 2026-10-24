@@ -1,4 +1,4 @@
-# Landing page messaging review (for CEO, Founder, CPO)
+# Landing page messaging review (for CEO, Founder, CPO, CMO)
 
 Status: **Review brief, not an approval.** Prepared by the implementing agent. Nothing here is signed off; each decision below needs a named person's answer in their own words. Live page: https://salmon-ground-06555890f.4.azurestaticapps.net/welcome (source: `apps/support-web/src/pages/Landing.tsx`).
 
@@ -46,6 +46,14 @@ Removed because unevidenced: SOC 2 / GDPR status, aggregate rating, the 70% test
 2. Which persona pages (Finance, RevOps, Engineering, Security) are true enough to keep, given only one dataset type is supported?
 3. Where should "Try Compass" lead? Today it links to the support app home, which has no backend on the landing site; the analytics app needs a token. A real sign-in flow is not built.
 
+**CMO**
+1. Is "Answers you can defend" a category-defining line or generic? What is the one-sentence positioning against "chat with your data" tools and BI copilots?
+2. Who is the audience for the page (data leader, security/compliance, business unit head), and does the tone fit them? Is the pilot-stage honesty a trust asset or a conversion cost?
+3. Proof: with no customers, which proof points can we show honestly (live demo, evidence trail screenshot, a sample refusal) instead of testimonials and ratings?
+4. Naming and brand: is "Compass" cleared for use (trademark, domain), and what are the domain, SEO, and social-card plans? The page currently lives on an Azure default hostname.
+5. Persona pages: which of Finance, RevOps, Data, Engineering, Security get dedicated campaigns, and does each message match something the product demonstrably does?
+6. Call to action: "Try Compass" versus "Talk to us about a pilot". Which funnel do we want while we are pilot-only?
+
 ## Decisions to record
 
 | Decision | Owner | Answer |
@@ -54,5 +62,6 @@ Removed because unevidenced: SOC 2 / GDPR status, aggregate rating, the 70% test
 | Which claims stay | Founder | |
 | CTA destination and persona pages | CPO | |
 | Public pilot-stage and no-SOC-2 wording | CEO + Founder | |
+| Positioning line, brand/naming, domain, proof points | CMO | |
 
 Known follow-ups regardless of answers: add a real domain (currently an Azure default hostname), fix the CTA target, and decide whether the in-app Agents page (which lists connectors and actions we do not ship) should be trimmed to match.
