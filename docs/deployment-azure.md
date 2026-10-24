@@ -13,7 +13,7 @@ Static Web Apps. Current production endpoint:
 
 `https://red-pond-0fa9a940f.7.azurestaticapps.net`
 
-The root route rewrites to the prerendered `/welcome` landing page. Rebuild
+The root route rewrites to the prerendered `/welcome` landing page (now built from `apps/landing`, no longer from `apps/support-web`). Rebuild
 and publish it with:
 
 ```bash

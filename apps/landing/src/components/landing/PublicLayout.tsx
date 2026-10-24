@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { APP_URL } from '@/config';
 
 /**
  * Minimal layout for public marketing pages — no Sidebar, no TopBar.
@@ -74,7 +75,7 @@ function PublicHeader() {
         </ul>
         <div className="flex-1" />
         <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-          <Link to="/">Sign in</Link>
+          <a href={APP_URL}>Sign in</a>
         </Button>
         <Button asChild size="sm">
           <a href="#book-demo">Book a demo</a>
@@ -101,7 +102,7 @@ function PublicFooter() {
         <FooterColumn
           heading="Product"
           links={[
-            { label: 'Try Compass', href: '/' },
+            { label: 'Try Compass', href: APP_URL },
             { label: 'How it works', href: '#how-it-works' },
             { label: 'Security', href: '#trust' },
             { label: 'FAQ', href: '#faq' },
@@ -120,7 +121,7 @@ function PublicFooter() {
           heading="Company"
           links={[
             { label: 'Book a demo', href: '#book-demo' },
-            { label: 'Sign in', href: '/' },
+            { label: 'Sign in', href: APP_URL },
           ]}
         />
       </div>

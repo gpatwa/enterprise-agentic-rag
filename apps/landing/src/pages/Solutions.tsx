@@ -10,6 +10,7 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowRight, Sparkles, Wrench, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { APP_URL, PILOT_MAILTO } from '@/config';
 
 export interface SolutionsContent {
   persona: string;
@@ -211,12 +212,12 @@ export function SolutionsPage() {
         {/* CTAs */}
         <div className="mt-8 flex items-center gap-3 flex-wrap">
           <Button asChild>
-            <Link to="/">
+            <a href={APP_URL}>
               Try Compass <ArrowRight className="w-4 h-4" />
-            </Link>
+            </a>
           </Button>
           <Button asChild variant="outline">
-            <a href="#book-demo">Book a demo</a>
+            <a href={PILOT_MAILTO}>Talk to us about a pilot</a>
           </Button>
         </div>
 

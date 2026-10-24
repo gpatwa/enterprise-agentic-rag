@@ -16,8 +16,9 @@ fi
 
 echo "Building landing page with canonical URL: $SITE_URL"
 (
-  cd apps/support-web
-  VITE_SITE_URL="$SITE_URL" npm ci --no-audit --no-fund
+  cd apps/landing
+  npm ci --no-audit --no-fund
+  npx playwright install chromium
   VITE_SITE_URL="$SITE_URL" npm run build
   DEPLOY_TOKEN="$(az staticwebapp secrets list --name "$STATIC_WEB_APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.apiKey -o tsv)"
   test -n "$DEPLOY_TOKEN"

@@ -1,0 +1,7 @@
+{
+  "routes": [{ "route": "/", "rewrite": "/welcome/index.html" }],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/assets/*", "/compass-*", "/robots.txt", "/sitemap.xml", "/welcome/*"]
+  }
+}

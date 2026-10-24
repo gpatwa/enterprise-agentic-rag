@@ -17,12 +17,8 @@ import { Button } from '@/components/ui/button';
 import { PublicLayout } from '@/components/landing/PublicLayout';
 import { useSEO } from '@/lib/useSEO';
 import { cn } from '@/lib/utils';
+import { APP_URL, PILOT_MAILTO, SITE_URL } from '@/config';
 
-// Site URL is env-driven (VITE_SITE_URL in .env / CI). Cast keeps TS happy
-// without requiring a vite/client triple-slash directive.
-const SITE_URL =
-  (import.meta as unknown as { env?: { VITE_SITE_URL?: string } }).env
-    ?.VITE_SITE_URL ?? 'https://compass.example.com';
 const PAGE_PATH = '/welcome';
 
 const FAQS: { q: string; a: string }[] = [
@@ -241,9 +237,9 @@ function AnalyticsSection() {
           </p>
           <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <Button asChild size="lg" className="h-12 text-base">
-              <Link to="/">
+              <a href={APP_URL}>
                 Open the governed workspace <ArrowRight className="w-4 h-4" />
-              </Link>
+              </a>
             </Button>
             <Button asChild size="lg" variant="outline" className="h-12 text-base">
               <a href="#book-demo">Talk to us about a pilot</a>
@@ -306,9 +302,9 @@ function Hero() {
         </p>
         <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-md sm:max-w-none">
           <Button asChild size="lg" className="h-12 text-base">
-            <Link to="/">
+            <a href={APP_URL}>
               Try Compass <ArrowRight className="w-4 h-4" />
-            </Link>
+            </a>
           </Button>
           <Button asChild size="lg" variant="outline" className="h-12 text-base">
             <a href="#book-demo">Talk to us about a pilot</a>
@@ -610,12 +606,12 @@ function FinalCTA() {
         </p>
         <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 max-w-md mx-auto sm:max-w-none">
           <Button asChild size="lg" className="h-12 text-base">
-            <Link to="/">
+            <a href={APP_URL}>
               Open the workspace <ArrowRight className="w-4 h-4" />
-            </Link>
+            </a>
           </Button>
           <Button asChild size="lg" variant="outline" className="h-12 text-base">
-            <a href="mailto:demo@compass.example.com?subject=Compass%20pilot%20request">
+            <a href={PILOT_MAILTO}>
               Request a pilot
             </a>
           </Button>
