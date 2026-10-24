@@ -2,8 +2,8 @@
 # Build and publish the public Compass landing page to Azure Static Web Apps.
 set -euo pipefail
 
-RESOURCE_GROUP="${RESOURCE_GROUP:-rag-platform-rg}"
-STATIC_WEB_APP_NAME="${STATIC_WEB_APP_NAME:-compass-landing}"
+RESOURCE_GROUP="${RESOURCE_GROUP:-compass-pilot-rg}"
+STATIC_WEB_APP_NAME="${STATIC_WEB_APP_NAME:-compass-pilot-landing}"
 SITE_URL="${SITE_URL:-}"
 
 command -v az >/dev/null || { echo "Missing required command: az" >&2; exit 1; }

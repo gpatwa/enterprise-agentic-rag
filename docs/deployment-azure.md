@@ -11,7 +11,7 @@ It is a controlled demo deployment, not production approval.
 The public Compass landing page is deployed independently from AKS to Azure
 Static Web Apps. Current production endpoint:
 
-`https://red-pond-0fa9a940f.7.azurestaticapps.net`
+`https://salmon-ground-06555890f.4.azurestaticapps.net`
 
 The root route rewrites to the prerendered `/welcome` landing page (now built from `apps/landing`, no longer from `apps/support-web`). Rebuild
 and publish it with:
