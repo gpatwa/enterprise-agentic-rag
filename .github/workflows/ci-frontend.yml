@@ -1,6 +1,6 @@
 # .github/workflows/ci-frontend.yml
 # Frontend CI — TypeScript type-check, Vitest unit tests, Playwright E2E,
-# and a production build verification (including the SEO prerender step).
+# and production build verification (the marketing site in apps/landing includes the SEO prerender step).
 name: CI (frontend)
 
 on:
@@ -9,12 +9,14 @@ on:
     paths:
       - "apps/support-web/**"
       - "apps/analytics-web/**"
+      - "apps/landing/**"
       - ".github/workflows/ci-frontend.yml"
   pull_request:
     branches: [main]
     paths:
       - "apps/support-web/**"
       - "apps/analytics-web/**"
+      - "apps/landing/**"
       - ".github/workflows/ci-frontend.yml"
 
 # Cancel superseded runs on the same branch / PR.
@@ -63,8 +65,7 @@ jobs:
 
   # ──────────────────────────────────────────────────
   # 2. Production build — verifies the whole bundle pipeline:
-  #    TypeScript compile, Vite chunk splitting, SEO templater,
-  #    and Playwright-based prerender of /welcome.
+  #    TypeScript compile and Vite chunk splitting.
   # ──────────────────────────────────────────────────
   build:
     name: Production build
@@ -88,10 +89,7 @@ jobs:
         # standardises on a Volta-pinned npm version.
         run: npm install --prefer-offline --no-audit --no-fund
 
-      - name: Install Playwright Chromium (for prerender)
-        run: npx playwright install --with-deps chromium
-
-      - name: Build (with prerender + SEO templater)
+      - name: Build
         env:
           VITE_SITE_URL: https://compass.example.com
         run: npm run build
@@ -99,13 +97,7 @@ jobs:
       - name: Verify build artifacts
         run: |
           test -f dist/index.html || (echo "MISSING dist/index.html" && exit 1)
-          test -f dist/welcome/index.html || (echo "MISSING prerendered /welcome" && exit 1)
-          test -f dist/sitemap.xml || (echo "MISSING dist/sitemap.xml" && exit 1)
-          test -f dist/robots.txt || (echo "MISSING dist/robots.txt" && exit 1)
-          # Sanity: prerender must contain the hero h1 and at least one JSON-LD block
-          grep -q 'id="hero-heading"' dist/welcome/index.html
-          grep -q 'application/ld+json' dist/welcome/index.html
-          echo "All build artifacts present and prerender contains expected markers."
+          echo "Build artifacts present."
 
       - name: Bundle-size budget check (informational)
         run: |
@@ -203,3 +195,36 @@ jobs:
           file: ${{ matrix.context }}/Dockerfile
           push: false
           tags: compass-${{ matrix.product }}:ci-${{ github.sha }}
+
+  # ──────────────────────────────────────────────────
+  # Marketing site (apps/landing): type-check, lint, production build with
+  # SEO templater and Playwright prerender of /welcome.
+  # ──────────────────────────────────────────────────
+  landing:
+    name: Landing Type-check & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/landing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/landing/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsc -b --noEmit
+      - run: npm run lint
+      - run: npx playwright install --with-deps chromium
+      - name: Build (with prerender + SEO templater)
+        env:
+          VITE_SITE_URL: https://compass.example.com
+        run: npm run build
+      - name: Verify build artifacts
+        run: |
+          test -f dist/welcome/index.html || (echo "MISSING prerendered /welcome" && exit 1)
+          test -f dist/sitemap.xml && test -f dist/robots.txt
+          grep -q 'id="hero-heading"' dist/welcome/index.html
+          grep -q 'application/ld+json' dist/welcome/index.html
+          if grep -q 'SOC 2 Type II\|GDPR-ready\|aggregateRating' dist/welcome/index.html; then echo "unsubstantiated claim in landing"; exit 1; fi
