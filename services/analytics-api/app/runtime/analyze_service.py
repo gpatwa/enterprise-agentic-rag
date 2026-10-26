@@ -348,9 +348,7 @@ class GovernedAnalyzeService:
                 remediation="Ask about a certified metric or dimension, or contact the data owner.",
             )
         if kind == "refused":
-            return AnalyticsRefuseOutcome(
-                **base, reason_code="policy_restricted", explanation="The request was refused by policy or review."
-            )
+            return _refusal(base, [error.message_reference for error in state.errors if error.code == "policy_denied"])
         if kind == "review_required":
             return AnalyticsRefuseOutcome(
                 **base,
@@ -366,6 +364,30 @@ class GovernedAnalyzeService:
             retryable=retryable,
             retry_guidance="resubmit_with_new_idempotency_key" if retryable else None,
         )
+
+
+def _refusal(base: dict[str, Any], references: list[str]) -> AnalyticsRefuseOutcome:
+    """Say why in terms a person can act on, without naming policy values, counts, or which records were involved."""
+    if "cohort_too_small" in references:
+        return AnalyticsRefuseOutcome(
+            **base,
+            reason_code="policy_restricted",
+            explanation="Some groups in this breakdown are too small to report, so the result is withheld to protect privacy.",
+            remediation="Ask for a broader grouping (for example by month instead of by day) or a wider time range.",
+        )
+    if any(reference.endswith("purpose_not_authorized") for reference in references):
+        return AnalyticsRefuseOutcome(
+            **base,
+            reason_code="unauthorized",
+            explanation="Your account is not authorized to ask questions for this purpose.",
+            remediation="Ask your administrator for access, or check the purpose you selected.",
+        )
+    return AnalyticsRefuseOutcome(
+        **base,
+        reason_code="policy_restricted",
+        explanation="This request is restricted by policy or was not approved in review.",
+        remediation="Contact the data owner or a reviewer if you believe you should have access.",
+    )
 
 
 def _answer(base: dict[str, Any], state: AgentRunState, material: AnswerMaterial) -> AnalyticsAnswerOutcome:
