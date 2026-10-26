@@ -368,7 +368,7 @@ class GovernedAnalyzeService:
 
 def _refusal(base: dict[str, Any], references: list[str]) -> AnalyticsRefuseOutcome:
     """Say why in terms a person can act on, without naming policy values, counts, or which records were involved."""
-    if "cohort_too_small" in references:
+    if any(reference.endswith("cohort_too_small") for reference in references):
         return AnalyticsRefuseOutcome(
             **base,
             reason_code="policy_restricted",

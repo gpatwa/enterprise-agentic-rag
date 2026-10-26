@@ -12,7 +12,7 @@ BASE = {
 
 
 def test_small_groups_are_explained_and_a_broader_question_is_suggested():
-    outcome = _refusal(BASE, ["cohort_too_small"])
+    outcome = _refusal(BASE, ["run-123:cohort_too_small"])  # the result stage prefixes the run id
     assert outcome.reason_code == "policy_restricted"
     assert "too small" in outcome.explanation and "broader grouping" in outcome.remediation
     assert not any(ch.isdigit() for ch in outcome.explanation + outcome.remediation)  # no thresholds or counts
