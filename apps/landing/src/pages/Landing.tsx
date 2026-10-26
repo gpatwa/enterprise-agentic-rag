@@ -112,9 +112,9 @@ const PERSONA_LINKS: { slug: string; label: string; sub: string }[] = [
 
 export function LandingPage() {
   useSEO({
-    title: 'Compass — Governed answers from your data, with proof',
+    title: 'Compass — Agentic analytics you can trust',
     description:
-      'Ask business questions in plain English and get answers built from certified definitions — with the SQL, evidence trail, policy checks, and human review for risky queries. No model-written SQL.',
+      'Governed agentic analytics: your team asks, Compass answers from certified definitions and shows the SQL and evidence behind every number. No model-written SQL, policy and budget checks, human review for risky queries.',
     canonicalPath: PAGE_PATH,
     ogType: 'website',
     jsonLd: [
@@ -288,17 +288,16 @@ function Hero() {
           id="hero-heading"
           className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight leading-[1.05] mt-6 max-w-4xl"
         >
-          Answers you can{' '}
-          <span className="italic font-serif text-accent">defend.</span>
+          Agentic analytics you can{' '}
+          <span className="italic font-serif text-accent">trust.</span>
           <span className="block text-fg-secondary text-2xl sm:text-3xl md:text-4xl mt-3 md:mt-5 font-normal leading-snug">
-            Ask in plain English. Get the number, the SQL, and the proof.
+            Your team asks. Compass answers from definitions you&rsquo;ve certified, and shows the SQL and evidence behind every number.
           </span>
         </h1>
         <p className="text-fg-secondary text-base sm:text-lg leading-relaxed mt-6 max-w-2xl">
-          Compass answers business questions from your certified metric definitions.
-          The model never writes SQL: a deterministic compiler does, under policy and
-          budget checks, with human review for risky queries. If it cannot answer
-          safely, it says so.
+          The model never writes SQL. A deterministic compiler builds each query from
+          your certified metrics, under policy and budget checks, and a person reviews
+          anything risky. If Compass cannot answer safely, it says so.
         </p>
         <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-md sm:max-w-none">
           <Button asChild size="lg" className="h-12 text-base">
