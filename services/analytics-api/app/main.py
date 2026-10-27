@@ -60,6 +60,7 @@ app.add_middleware(
         "Authorization",
         "Idempotency-Key",
         "X-Analytics-Purpose",
+        "X-Demo-Visitor",
     ],
 )
 
