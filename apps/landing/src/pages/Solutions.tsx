@@ -103,12 +103,12 @@ export const PERSONA_CONTENT: Record<string, SolutionsContent> = {
     heroEyebrow: 'Compass for Engineering',
     heroHeadline: 'Trace ownership, lineage, and incidents in plain English.',
     heroSubhead:
-      'Search resolved support tickets and prior fixes with tenant-scoped retrieval and citations, and answer operational metric questions from certified definitions.',
+      'Answer operational metric questions from certified definitions, with the SQL and evidence attached.',
     wins: [
       {
-        title: 'Ownership, instantly',
+        title: 'Owners on every definition',
         description:
-          'Find how a similar issue was resolved before, with the ticket and the fix cited.',
+          'Each certified metric and dataset names its owner, so the question of who owns what has a recorded answer.',
       },
       {
         title: 'Incident timelines',
