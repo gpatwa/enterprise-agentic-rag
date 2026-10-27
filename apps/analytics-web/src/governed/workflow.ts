@@ -23,6 +23,11 @@ export class ApiError extends Error {
 
 const MESSAGES: Record<string, string> = {
   missing_bearer_token: 'Enter an access token to use governed analysis.',
+  demo_rate_limited: 'You have reached the demo limit for now. Please try again in an hour, or ask us for pilot access.',
+  demo_daily_limit: 'The demo has reached its daily limit. Please come back tomorrow, or ask us for pilot access.',
+  demo_busy: 'The demo is busy right now. Please try again shortly.',
+  demo_disabled: 'The public demo is not available.',
+  demo_visitor_required: 'The demo could not identify this browser. Reload the page and try again.',
   invalid_identity_token: 'The access token was rejected. Check it and try again.',
   purpose_not_authorized: 'This token is not authorized for the selected purpose.',
   governed_runtime_not_configured: 'Governed analysis is not enabled on this server.',
@@ -58,7 +63,7 @@ type Fetch = typeof fetch;
 function headers(config: GovernedConfig, extra: Record<string, string> = {}): HeadersInit {
   return {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${config.token}`,
+    ...(config.demoVisitor ? { 'X-Demo-Visitor': config.demoVisitor } : { Authorization: `Bearer ${config.token}` }),
     ...(config.apiKey ? { 'X-API-Key': config.apiKey } : {}),
     ...extra,
   };
@@ -78,17 +83,20 @@ async function parse(response: Response): Promise<RunResponse> {
   return (await response.json()) as RunResponse;
 }
 
-const base = (config: GovernedConfig) => `${config.baseUrl}/api/v2/analytics`;
+const base = (config: GovernedConfig) =>
+  config.demoVisitor ? `${config.baseUrl}/api/v2/demo` : `${config.baseUrl}/api/v2/analytics`;
 
 export const analyze = (config: GovernedConfig, requestText: string, key: string, doFetch: Fetch = fetch) =>
   doFetch(`${base(config)}/analyze`, {
     method: 'POST',
     headers: headers(config, { 'Idempotency-Key': key }),
-    body: JSON.stringify({ request_text: requestText, purpose: config.purpose }),
+    body: JSON.stringify(
+      config.demoVisitor ? { request_text: requestText } : { request_text: requestText, purpose: config.purpose },
+    ),
   }).then(parse);
 
 export const getRun = (config: GovernedConfig, runId: string, doFetch: Fetch = fetch) =>
-  doFetch(`${base(config)}/runs/${encodeURIComponent(runId)}?purpose=${encodeURIComponent(config.purpose)}`, {
+  doFetch(`${base(config)}/runs/${encodeURIComponent(runId)}${config.demoVisitor ? '' : `?purpose=${encodeURIComponent(config.purpose)}`}`, {
     headers: headers(config),
   }).then(parse);
 
@@ -102,7 +110,11 @@ export const clarify = (
   doFetch(`${base(config)}/runs/${encodeURIComponent(runId)}/clarify`, {
     method: 'POST',
     headers: headers(config),
-    body: JSON.stringify({ purpose: config.purpose, ambiguity_code: ambiguityCode, selected_id: selectedId }),
+    body: JSON.stringify(
+      config.demoVisitor
+        ? { ambiguity_code: ambiguityCode, selected_id: selectedId }
+        : { purpose: config.purpose, ambiguity_code: ambiguityCode, selected_id: selectedId },
+    ),
   }).then(parse);
 
 export const decideReview = (
@@ -119,6 +131,30 @@ export const decideReview = (
   }).then(parse);
 
 export const newIdempotencyKey = (): string => `web-${crypto.randomUUID()}`;
+
+/** A random id for this browser, kept so the demo can find its own runs. Never a credential. */
+export function demoVisitorId(): string {
+  try {
+    const stored = localStorage.getItem('compass-demo-visitor');
+    if (stored && /^[A-Za-z0-9-]{16,64}$/.test(stored)) return stored;
+    const fresh = crypto.randomUUID();
+    localStorage.setItem('compass-demo-visitor', fresh);
+    return fresh;
+  } catch {
+    return crypto.randomUUID(); // storage blocked: a per-visit id still works
+  }
+}
+
+/** Whether the server offers the public demo. Any failure means "no". */
+export async function demoAvailable(baseUrl: string, apiKey?: string, doFetch: Fetch = fetch): Promise<boolean> {
+  try {
+    const response = await doFetch(`${baseUrl}/api/v2/demo/status`, { headers: apiKey ? { 'X-API-Key': apiKey } : {} });
+    if (!response.ok) return false;
+    return ((await response.json()) as { enabled?: boolean }).enabled === true;
+  } catch {
+    return false;
+  }
+}
 
 /** Poll a running run until it settles (or attempts run out, returning the last response). */
 export async function pollUntilSettled(

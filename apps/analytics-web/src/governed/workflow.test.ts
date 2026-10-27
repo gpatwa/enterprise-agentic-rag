@@ -5,6 +5,7 @@ import { answer, base } from './fixtures';
 import type { GovernedConfig, RunResponse } from './types';
 import {
   analyze,
+  demoAvailable,
   ApiError,
   chartSpec,
   columnLabels,
@@ -125,4 +126,29 @@ test('cited cells are labelled with their semantic IDs when the visualization bi
   assert.deepEqual(columnLabels(answer({ visualization: null })), {});
   const labelled = groundClaim(answer().claims[0], answer().result, columnLabels(answer()));
   assert.deepEqual(labelled.cites.filter((c) => c.kind === 'cell').map((c) => c.label), ['orders.status', 'revenue']);
+});
+
+test('demo requests carry a visitor id instead of a token, use the demo routes, and never choose a purpose', async () => {
+  const seen: { url: string; init: RequestInit }[] = [];
+  const doFetch = (async (url: string, init: RequestInit) => {
+    seen.push({ url, init });
+    return new Response(JSON.stringify({ run_id: 'r1', state: 'running' }), { status: 202 });
+  }) as unknown as typeof fetch;
+  const demoConfig: GovernedConfig = { baseUrl: 'http://api', token: '', purpose: 'analytics', demoVisitor: 'visitor-1234567890abcdef' };
+  await analyze(demoConfig, 'Revenue by month', 'key-1', doFetch);
+  await getRun(demoConfig, 'r1', doFetch);
+  assert.equal(seen[0].url, 'http://api/api/v2/demo/analyze');
+  assert.equal(seen[1].url, 'http://api/api/v2/demo/runs/r1');
+  const sent = seen[0].init.headers as Record<string, string>;
+  assert.equal(sent['X-Demo-Visitor'], 'visitor-1234567890abcdef');
+  assert.equal(sent.Authorization, undefined);
+  assert.deepEqual(JSON.parse(seen[0].init.body as string), { request_text: 'Revenue by month' });
+});
+
+test('the demo is offered only when the server says so', async () => {
+  const reply = (body: unknown, ok = true) => (async () => ({ ok, json: async () => body })) as unknown as typeof fetch;
+  assert.equal(await demoAvailable('http://api', undefined, reply({ enabled: true })), true);
+  assert.equal(await demoAvailable('http://api', undefined, reply({ enabled: false })), false);
+  assert.equal(await demoAvailable('http://api', undefined, reply({}, false)), false);
+  assert.equal(await demoAvailable('http://api', undefined, (async () => { throw new Error('down'); }) as unknown as typeof fetch), false);
 });

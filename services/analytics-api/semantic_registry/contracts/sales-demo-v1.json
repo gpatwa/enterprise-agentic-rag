@@ -1,0 +1,92 @@
+{
+  "lifecycle": "certified",
+  "contract": {
+    "id": "sales-demo",
+    "tenant_id": "tenant-demo",
+    "domain": "sales",
+    "version": "v1",
+    "owners": [
+      {
+        "id": "team.demo",
+        "display_name": "Demo",
+        "owner_type": "team"
+      }
+    ],
+    "datasets": [
+      {
+        "id": "orders",
+        "display_name": "Orders",
+        "source_asset_id": "warehouse.demo_orders",
+        "physical_name": "demo_sales_orders",
+        "description": "One row per order (public demo sample data)",
+        "owner_ids": [
+          "team.demo"
+        ]
+      }
+    ],
+    "fields": [
+      {
+        "id": "orders.id",
+        "dataset_id": "orders",
+        "physical_name": "id",
+        "data_type": "string"
+      },
+      {
+        "id": "orders.amount",
+        "dataset_id": "orders",
+        "physical_name": "amount",
+        "data_type": "decimal"
+      },
+      {
+        "id": "orders.status",
+        "dataset_id": "orders",
+        "physical_name": "status",
+        "data_type": "string"
+      },
+      {
+        "id": "orders.created_at",
+        "dataset_id": "orders",
+        "physical_name": "created_at",
+        "data_type": "timestamp"
+      }
+    ],
+    "dimensions": [
+      {
+        "id": "status",
+        "dataset_id": "orders",
+        "field_id": "orders.status",
+        "dimension_type": "categorical",
+        "owner_ids": [
+          "team.demo"
+        ]
+      },
+      {
+        "id": "created_at",
+        "dataset_id": "orders",
+        "field_id": "orders.created_at",
+        "dimension_type": "temporal",
+        "owner_ids": [
+          "team.demo"
+        ]
+      }
+    ],
+    "metrics": [
+      {
+        "id": "revenue",
+        "dataset_id": "orders",
+        "aggregation": "sum",
+        "measure_field_id": "orders.amount",
+        "grain": {
+          "kind": "order",
+          "key_field_ids": [
+            "orders.id"
+          ]
+        },
+        "certification": "certified",
+        "owner_ids": [
+          "team.demo"
+        ]
+      }
+    ]
+  }
+}

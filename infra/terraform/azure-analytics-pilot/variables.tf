@@ -167,3 +167,21 @@ variable "postgres_location" {
   default     = "centralus"
   description = "PostgreSQL Flexible Server region; eastus provisioning is restricted for this subscription."
 }
+
+variable "enable_public_demo" {
+  description = "Let anonymous visitors try governed analysis on the separate sample-only demo tenant (needs bootstrap.sql's demo table)."
+  type        = bool
+  default     = false
+}
+
+variable "demo_per_address_hourly" {
+  description = "Public demo: questions per client address per hour (each can call a paid model)."
+  type        = number
+  default     = 10
+}
+
+variable "demo_global_daily" {
+  description = "Public demo: questions per day across all visitors (a hard ceiling on model spend)."
+  type        = number
+  default     = 300
+}

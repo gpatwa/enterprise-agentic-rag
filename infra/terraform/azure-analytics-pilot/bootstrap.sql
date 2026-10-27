@@ -21,6 +21,23 @@ SELECT 'o' || i, i, CASE WHEN i % 5 = 0 THEN 'refunded' ELSE 'paid' END,
 FROM generate_series(1, 100) AS i
 ON CONFLICT (id) DO NOTHING;
 
+-- Public demo tenant (tenant-demo): its own table, so demo visitors can never reach a real tenant's data. Synthetic orders spread
+-- over 2024 so that day- and week-level breakdowns still clear the minimum-group-size rule.
+CREATE TABLE IF NOT EXISTS demo_sales_orders (
+  id text PRIMARY KEY,
+  amount numeric(12, 2) NOT NULL,
+  status text NOT NULL,
+  created_at timestamptz NOT NULL
+);
+
+INSERT INTO demo_sales_orders
+SELECT 'd' || i,
+       round((20 + (i * 37) % 480)::numeric, 2),
+       CASE WHEN i % 7 = 0 THEN 'refunded' WHEN i % 5 = 0 THEN 'pending' ELSE 'paid' END,
+       TIMESTAMPTZ '2024-01-01 00:00:00+00' + make_interval(secs => (i * 1579) % 31622400)
+FROM generate_series(1, 20000) AS i
+ON CONFLICT (id) DO NOTHING;
+
 GRANT CONNECT ON DATABASE analytics_warehouse TO analytics_readonly;
 GRANT USAGE ON SCHEMA public TO analytics_readonly;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO analytics_readonly;
