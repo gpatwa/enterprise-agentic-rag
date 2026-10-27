@@ -40,7 +40,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: 'What data does it run on?',
-    a: 'PostgreSQL and DuckDB today, against semantic definitions kept in Git. Other warehouses are on the roadmap, not shipped. Compass Resolution Intelligence separately searches resolved support tickets with tenant-scoped retrieval.',
+    a: 'PostgreSQL and DuckDB today, against semantic definitions kept in Git. Other warehouses are on the roadmap, not shipped. Other Compass products, such as Resolution Intelligence for support tickets, are in development and are not part of the pilot.',
   },
   {
     q: 'Is Compass certified for compliance frameworks?',
@@ -171,47 +171,47 @@ export function LandingPage() {
     <PublicLayout>
       <Hero />
       <TrustStrip />
-      <ResolutionMemorySection />
       <ValuePropsSection />
       <AnalyticsSection />
       <HowItWorksSection />
       <PersonasSection />
       <SecuritySection />
+      <RoadmapSection />
       <FAQSection />
       <FinalCTA />
     </PublicLayout>
   );
 }
 
-function ResolutionMemorySection() {
+function RoadmapSection() {
+  const items: [string, string, string][] = [
+    [
+      'Resolution Intelligence',
+      'In development',
+      'Search over resolved support tickets with tenant-scoped retrieval and citations. Not part of the pilot.',
+    ],
+    ['Discovery', 'Planned', 'Ranked discovery experiences. Not available yet.'],
+  ];
   return (
-    <section
-      id="resolution-memory"
-      aria-labelledby="resolution-memory-heading"
-      className="py-16 sm:py-20 lg:py-24 border-b border-border/40 bg-surface/20 scroll-mt-16"
-    >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-10 lg:gap-16 items-start">
-        <div>
-          <div className="text-xs uppercase tracking-widest text-fg-muted mb-3">Compass Resolution Intelligence</div>
-          <h2 id="resolution-memory-heading" className="text-3xl sm:text-4xl font-semibold tracking-tight leading-[1.1] max-w-xl">
-            Make every solved ticket searchable before you automate.
-          </h2>
-          <p className="text-fg-secondary text-base sm:text-lg leading-relaxed mt-4 max-w-xl">
-            OpenSearch combines exact terms, BM25, vector similarity, and deterministic hybrid ranking so agents can find the right prior resolution quickly.
-          </p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {[
-            ['Ingest', 'Tickets, comments, and knowledge articles become versioned resolution memory.'],
-            ['Retrieve', 'Tenant and ACL filters apply before results reach the agent.'],
-            ['Trust', 'Citations, ranking explanations, reviewed actions, and audit evidence stay attached.'],
-          ].map(([title, body]) => (
-            <div key={title} className="border border-border/60 bg-background/70 p-5 rounded-xl">
-              <div className="font-semibold">{title}</div>
+    <section id="roadmap" aria-labelledby="roadmap-heading" className="py-16 sm:py-20 border-t border-border/40 bg-surface/20 scroll-mt-16">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-xs uppercase tracking-widest text-fg-muted mb-3">Roadmap</div>
+        <h2 id="roadmap-heading" className="text-2xl sm:text-3xl font-semibold tracking-tight leading-[1.1] max-w-2xl">
+          Analytics comes first. More of Compass is on the way.
+        </h2>
+        <ul className="mt-8 grid gap-4 sm:grid-cols-2">
+          {items.map(([name, stage, body]) => (
+            <li key={name} className="border border-border/60 bg-background/70 p-5 rounded-xl">
+              <div className="flex items-center justify-between gap-3">
+                <div className="font-semibold">{name}</div>
+                <span className="text-xs uppercase tracking-widest text-governance bg-governance/10 ring-1 ring-governance/30 rounded-full px-2 py-0.5">
+                  {stage}
+                </span>
+              </div>
               <p className="text-sm text-fg-secondary leading-relaxed mt-2">{body}</p>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
     </section>
   );
