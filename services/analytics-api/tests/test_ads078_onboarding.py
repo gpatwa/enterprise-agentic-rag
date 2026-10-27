@@ -38,7 +38,11 @@ def test_a_draft_in_a_registry_is_never_served(tmp_path):
 
 def test_the_drill_never_writes_the_repository_registry(report):
     registry = ev.SERVICE_ROOT / "semantic_registry"
-    assert sorted(p.name for p in registry.rglob("*.json")) == ["olist-commerce-v1.json", "sales-core-v1.json"]
+    assert sorted(p.name for p in registry.rglob("*.json")) == [
+        "olist-commerce-v1.json",
+        "sales-core-v1.json",
+        "sales-demo-v1.json",  # the public demo tenant's sample-only contract (deliberate, reviewed)
+    ]
     assert not any("subscriptions" in p.name for p in Path(registry).rglob("*"))
 
 
