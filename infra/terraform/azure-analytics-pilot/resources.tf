@@ -256,19 +256,22 @@ locals {
   openai_secret_env = local.has_openai_key ? { AZURE_OPENAI_API_KEY = "azure-openai-api-key" } : {}
   all_secret_env    = merge(local.secret_env_map, local.openai_secret_env)
   plain_env = {
-    ENV                           = "prod"
-    ANALYTICS_V2_ENABLED          = "true"
-    ANALYTICS_V2_CONTRACTS        = var.v2_contracts
-    ANALYTICS_MIGRATE_ON_START    = "true"
-    ANALYTICS_V1_ENABLED          = "false"
-    ANALYTICS_LEASE_SECONDS       = "120"
-    ANALYTICS_CORS_ORIGINS        = local.cors
-    ANALYTICS_MIN_COHORT          = var.min_cohort
-    AZURE_OPENAI_ENDPOINT         = local.openai_endpoint
-    AZURE_OPENAI_DEPLOYMENT       = var.azure_openai_deployment
-    AZURE_OPENAI_API_VERSION      = var.azure_openai_api_version
-    AZURE_OPENAI_REASONING_EFFORT = var.azure_openai_reasoning_effort
-    ENTRA_TENANT_ID               = data.azurerm_client_config.current.tenant_id
+    ENV                               = "prod"
+    ANALYTICS_V2_ENABLED              = "true"
+    ANALYTICS_V2_CONTRACTS            = var.enable_public_demo ? "${var.v2_contracts},sales-demo@v1" : var.v2_contracts
+    ANALYTICS_DEMO_ENABLED            = tostring(var.enable_public_demo)
+    ANALYTICS_DEMO_PER_ADDRESS_HOURLY = tostring(var.demo_per_address_hourly)
+    ANALYTICS_DEMO_GLOBAL_DAILY       = tostring(var.demo_global_daily)
+    ANALYTICS_MIGRATE_ON_START        = "true"
+    ANALYTICS_V1_ENABLED              = "false"
+    ANALYTICS_LEASE_SECONDS           = "120"
+    ANALYTICS_CORS_ORIGINS            = local.cors
+    ANALYTICS_MIN_COHORT              = var.min_cohort
+    AZURE_OPENAI_ENDPOINT             = local.openai_endpoint
+    AZURE_OPENAI_DEPLOYMENT           = var.azure_openai_deployment
+    AZURE_OPENAI_API_VERSION          = var.azure_openai_api_version
+    AZURE_OPENAI_REASONING_EFFORT     = var.azure_openai_reasoning_effort
+    ENTRA_TENANT_ID                   = data.azurerm_client_config.current.tenant_id
     # v2 access tokens carry the application's client id as `aud` (the api:// URI is only the scope's resource name).
     ENTRA_AUDIENCE       = var.create_entra_app ? azuread_application.api[0].client_id : var.entra_audience
     ANALYTICS_TENANT_MAP = local.tenant_map

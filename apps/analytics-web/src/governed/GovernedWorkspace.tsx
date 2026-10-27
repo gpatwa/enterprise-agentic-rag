@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { GovernedConfig, RunResponse, TraceEntry } from './types';
 import { OutcomeView, TracePanel } from './views';
@@ -6,6 +6,8 @@ import {
   analyze,
   clarify,
   decideReview,
+  demoAvailable,
+  demoVisitorId,
   describeOutcome,
   errorMessage,
   getRun,
@@ -23,6 +25,8 @@ const DEFAULT_PURPOSE = import.meta.env.VITE_ANALYTICS_PURPOSE ?? 'analytics';
 
 export function GovernedWorkspace() {
   const [token, setToken] = useState('');
+  const [demo, setDemo] = useState(false); // public sample-data mode: no sign-in
+  const [demoOffered, setDemoOffered] = useState(false);
   const [purpose, setPurpose] = useState(DEFAULT_PURPOSE);
   const [question, setQuestion] = useState('');
   const [runId, setRunId] = useState('');
@@ -33,7 +37,20 @@ export function GovernedWorkspace() {
   const [replay, setReplay] = useState<ReplayVerdict | null>(null);
   const request = useRef<{ text: string; key: string } | null>(null);
 
-  const config = (): GovernedConfig => ({ baseUrl: BASE_URL, token, purpose, apiKey: API_KEY || undefined });
+  useEffect(() => {
+    void demoAvailable(BASE_URL, API_KEY || undefined).then((offered) => {
+      setDemoOffered(offered);
+      if (offered) setDemo(true);
+    });
+  }, []);
+
+  const config = (): GovernedConfig => ({
+    baseUrl: BASE_URL,
+    token,
+    purpose,
+    apiKey: API_KEY || undefined,
+    demoVisitor: demo ? demoVisitorId() : undefined,
+  });
   const note = (label: string, id?: string, detail?: string) =>
     setTrace((current) => [...current, traceEntry(label, id, detail)]);
 
@@ -71,8 +88,10 @@ export function GovernedWorkspace() {
     busy,
     replay,
     onClarify: (code: string, id: string) => current && void run(`Clarified ${code}`, () => clarify(config(), current, code, id)),
-    onDecide: (decision: 'approved' | 'rejected', fingerprint: string) =>
-      current && void run(`Review ${decision}`, () => decideReview(config(), current, decision, fingerprint)),
+    onDecide: (decision: 'approved' | 'rejected', fingerprint: string) => {
+      if (demo) return setError('Reviews are not available in the public demo.');
+      if (current) void run(`Review ${decision}`, () => decideReview(config(), current, decision, fingerprint));
+    },
     onRetry: submit,
     onReplay: async () => {
       if (!response) return;
@@ -96,20 +115,31 @@ export function GovernedWorkspace() {
       <section className="gv-card" aria-label="Connection">
         <h2>Governed analysis</h2>
         <p>Answers come with their evidence: the data used, the claims made, and a trace of each step.</p>
-        <div className="gv-form">
-          <label>Access token<input type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} /></label>
-          <label>Purpose<input value={purpose} onChange={(e) => setPurpose(e.target.value)} /></label>
-        </div>
+        {demo ? (
+          <p className="gv-demo" role="note">
+            <strong>Public demo.</strong> Sample data only, no sign-in. Questions are limited, and the demo has no review or
+            reporting features. Try: &ldquo;What was total revenue by status?&rdquo; or &ldquo;Revenue by month&rdquo;.{' '}
+            <button type="button" onClick={() => setDemo(false)}>Use my own access token</button>
+          </p>
+        ) : (
+          <div className="gv-form">
+            <label>Access token<input type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} /></label>
+            <label>Purpose<input value={purpose} onChange={(e) => setPurpose(e.target.value)} /></label>
+            {demoOffered && <button type="button" onClick={() => setDemo(true)}>Back to the public demo</button>}
+          </div>
+        )}
         <label className="gv-ask">Question
           <textarea rows={2} value={question} onChange={(e) => setQuestion(e.target.value)} />
         </label>
         <div className="gv-actions">
-          <button onClick={submit} disabled={busy || !token || question.trim().length < 3}>Ask</button>
+          <button onClick={submit} disabled={busy || (!demo && !token) || question.trim().length < 3}>Ask</button>
         </div>
-        <div className="gv-form">
-          <label>Open a run (reviewers)<input value={runId} onChange={(e) => setRunId(e.target.value)} placeholder="run ID" /></label>
-          <button disabled={busy || !token || !runId.trim()} onClick={() => void run('Opened run', () => getRun(config(), runId.trim()))}>Open</button>
-        </div>
+        {!demo && (
+          <div className="gv-form">
+            <label>Open a run (reviewers)<input value={runId} onChange={(e) => setRunId(e.target.value)} placeholder="run ID" /></label>
+            <button disabled={busy || !token || !runId.trim()} onClick={() => void run('Opened run', () => getRun(config(), runId.trim()))}>Open</button>
+          </div>
+        )}
       </section>
       {error && <div className="error-banner" role="alert">{error}</div>}
       {response && <OutcomeView response={response} actions={actions} />}

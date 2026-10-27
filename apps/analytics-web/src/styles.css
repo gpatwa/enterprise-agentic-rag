@@ -144,3 +144,6 @@ tbody tr:hover { background: #f8faf7; }
 .gv-trace li { display: flex; gap: 10px; flex-wrap: wrap; }
 .gv-trace time { color: #6b7280; }
 .gv-refuse, .gv-failed { border-color: #e8b4b0; }
+
+.gv-demo { margin: 12px 0; padding: 10px 12px; border-radius: 8px; background: rgba(99, 102, 241, 0.12); font-size: 13px; }
+.gv-demo button { margin-left: 6px; }

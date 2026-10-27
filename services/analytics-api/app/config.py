@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     ANALYTICS_V2_ENABLED: bool = False
     ANALYTICS_V2_CONTRACTS: str = ""  # comma-separated certified contracts, id@version, one per analytics tenant
     ANALYTICS_MIGRATE_ON_START: bool = True
+    # ---- public demo mode (anonymous, sample-only tenant; off by default) ----
+    ANALYTICS_DEMO_ENABLED: bool = False
+    ANALYTICS_DEMO_TENANT: str = "tenant-demo"
+    ANALYTICS_DEMO_PER_ADDRESS_HOURLY: int = 10
+    ANALYTICS_DEMO_GLOBAL_DAILY: int = 300
     ANALYTICS_RUN_ID_KEY: str | None = None  # secret, at least 32 bytes; required outside dev
     ANALYTICS_MIN_COHORT: int | None = None
     ANALYTICS_REVIEW_COST_THRESHOLD: float = 5_000.0
@@ -54,6 +59,12 @@ class Settings(BaseSettings):
     ANALYTICS_CONTEXT_INDEX: str = "context-v1"
     ANALYTICS_DASHBOARDS_URL: str | None = None
     ANALYTICS_CONTEXT_BOOTSTRAP: bool = False
+
+    def entra_tenant_targets(self) -> set[str]:
+        """Analytics tenants that signed-in (Entra) users can map to."""
+        import json
+
+        return set(json.loads(self.ANALYTICS_TENANT_MAP or "{}").values())
 
     @property
     def database_url(self) -> str | None:

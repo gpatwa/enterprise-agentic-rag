@@ -6,6 +6,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.api_v2 import V2Runtime, build_v2_router
 from app.config import settings, v1_enabled
+from app.demo import build_demo_router
 from app.runtime.shadow import ShadowRuntime, query_with_shadow
 from app.service import AnalyticsService
 from packages.platform_contracts.analytics import (
@@ -26,6 +27,12 @@ async def lifespan(_: FastAPI):
 
         built = build_pilot_runtime(settings)  # fails the start-up loudly rather than serving 503s
         v2_runtime.service, v2_runtime.verifier, v2_runtime.feedback = built.service, built.verifier, built.feedback
+        v2_runtime.resolver, v2_runtime.briefs = built.resolver, built.briefs  # review-assistant routes need the briefs
+        v2_runtime.governed = built.governed  # type: ignore[attr-defined]
+        if settings.ANALYTICS_DEMO_ENABLED and settings.ANALYTICS_DEMO_TENANT not in built.governed.contexts:
+            raise RuntimeError("ANALYTICS_DEMO_ENABLED needs a certified contract for ANALYTICS_DEMO_TENANT")
+        if settings.ANALYTICS_DEMO_ENABLED and settings.ANALYTICS_DEMO_TENANT in (settings.entra_tenant_targets()):
+            raise RuntimeError("the demo tenant must not be a tenant that signed-in users map to")
     yield
     await analytics_service.close()
 
@@ -68,6 +75,7 @@ async def verify_api_key(x_api_key: str | None = Header(default=None)) -> None:
 v2_runtime = V2Runtime()
 shadow_runtime = ShadowRuntime()
 app.include_router(build_v2_router(v2_runtime, verify_api_key))
+app.include_router(build_demo_router(v2_runtime, verify_api_key, settings))
 
 
 @app.get("/health", response_model=AnalyticsHealthResponse)

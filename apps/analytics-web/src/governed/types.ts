@@ -91,6 +91,8 @@ export interface GovernedConfig {
   token: string;
   purpose: string;
   apiKey?: string;
+  /** Public demo mode: no token; the server builds a sample-only identity from this anonymous visitor id. */
+  demoVisitor?: string;
 }
 
 export interface TraceEntry {
