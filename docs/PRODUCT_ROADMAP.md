@@ -40,9 +40,13 @@ Goal: a real pilot on one real dataset with named reviewers.
 - Replace the sample corpus with 25 to 50 real questions; separate definition-owner and results-owner approval.
 - Assign reviewer and analyst roles; run reviews through the real flow.
 - Measure Luna cost and latency per answer; calibrate cost units against the real warehouse.
+- Measure consistency: run each pilot question several times and report the rate of identical outcomes, not a single run.
+- Hold out part of the real question set from tuning (prompts, definitions, thresholds) and report accuracy on it separately, so a tuned corpus score is not mistaken for real accuracy.
+- Turn every wrong or refused-in-error answer into a regression case.
+- If an LLM judge is ever used to grade answers, validate it against human labels first (today's graders are deterministic and hand-written).
 - Walk the operations runbooks in a game day with someone who did not write them.
 
-Exit evidence: real answers reviewed by people, measured cost and latency, corrections captured as feedback.
+Exit evidence: real answers reviewed by people, measured cost, latency and consistency, accuracy on a held-out set, corrections captured as feedback.
 
 ### Phase 2: Broaden semantics
 - More datasets and multiple contracts per tenant; additional warehouse adapters chosen by pilot demand.
