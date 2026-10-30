@@ -115,10 +115,10 @@ jobs:
       - name: Smoke-test the API image
         if: matrix.product == 'discovery-api'
         run: |
-          docker run -d --name d -p 8110:8110 compass-discovery-api:ci-${{ github.sha }}
+          docker run -d --name discovery-api-smoke -p 8110:8110 compass-discovery-api:ci-${{ github.sha }}
           for i in $(seq 1 20); do
             curl -fsS http://localhost:8110/health && exit 0
             sleep 2
           done
-          docker logs d
+          docker logs discovery-api-smoke
           exit 1
