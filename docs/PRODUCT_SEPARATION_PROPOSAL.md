@@ -102,7 +102,7 @@ Splitting into separate repositories, publishing `platform_contracts` as a packa
 ## Owner decisions (2026-10-29, recorded in the owner's words)
 
 1. Per-product CI (Step 1): "yes".
-2. Platform services: "Option A" (they belong to Resolution Intelligence).
+2. Platform services: "Option A" now (they belong to Resolution Intelligence). The owner also asked to "keep Option B: a shared platform product in road map" (added to `docs/PRODUCT_ROADMAP.md` as a later item).
 3. Retiring `deploy.yml`, `deploy-staging.yml` and `deploy-prod.yml`: "don't retire ... it was meant for AWS deployment". They stay.
 4. Discovery as a local demo with CI only: "No". Discovery is to become separately deployable. Its Dockerfile, CI and pipeline are follow-up work; a cloud deploy still needs a separate explicit request.
 
