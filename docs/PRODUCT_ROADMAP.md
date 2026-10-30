@@ -65,6 +65,9 @@ Prerequisite: weeks of real reviewer decisions from Phase 1.
 - Multi-replica runtime (durable quota and answer handoff), upgrade and rollback runbooks, SLOs.
 - Public claims limited to what is evidenced (see the landing page, which states pilot stage).
 
+### Later: shared platform product (owner decision, 2026-10-29)
+The owner asked to keep **Option B** on the roadmap: `control-plane`, `data-plane`, `gateway` and `sandbox` become a shared platform product with its own release cycle and versioned APIs, used by more than one product. Today they follow Option A (they belong to Resolution Intelligence). Move to B when a second product needs the same tenant control plane or gateway. See `docs/PRODUCT_SEPARATION_PROPOSAL.md`. No date and no commitment.
+
 ## Decisions needed from the owner
 
 1. Pilot dataset and named reviewers (Phase 1).

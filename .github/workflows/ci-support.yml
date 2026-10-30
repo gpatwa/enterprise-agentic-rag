@@ -1,0 +1,104 @@
+# .github/workflows/ci-support.yml
+# Support (Resolution Intelligence) backend CI. Analytics has its own workflow: ci-analytics.yml.
+name: CI (support backend)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/api/**"
+      - "packages/**"
+      - "pyproject.toml"
+      - ".github/workflows/ci-support.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "services/api/**"
+      - "packages/**"
+      - "pyproject.toml"
+      - ".github/workflows/ci-support.yml"
+
+env:
+  # Pin to 3.12.3 specifically: Python >=3.12.5 made ForwardRef._evaluate
+  # require a `recursive_guard` kwarg, which pydantic v1 (used transitively
+  # by langsmith via langgraph) doesn't pass — 5 tests fail at import time.
+  # Bump after upgrading langgraph / langsmith / pydantic accordingly.
+  PYTHON_VERSION: "3.12.3"
+
+# Cancel superseded runs on the same branch / PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: services/api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          # Test-only deps. We deliberately do NOT install the optional `mcp`
+          # SDK here: the MCP unit + route + e2e tests soft-import the SDK
+          # and use a test seam (24 + 22 + 20 = 66 tests pass without it).
+          # The 4 integration tests in test_mcp_integration.py auto-skip
+          # when the SDK is missing — so CI green is not gated on a heavy
+          # optional dependency.
+          pip install pytest pytest-asyncio pytest-cov ruff
+
+      - name: Lint (ruff)
+        working-directory: .
+        # Scope to services/api — data-plane / control-plane / sandbox have
+        # pre-existing lint debt that's out of scope for alpha. Add those
+        # paths back when they're cleaned up in a separate PR.
+        run: ruff check services/api --output-format=github
+
+      - name: Run tests
+        env:
+          # Tests use mocks — no real DB/Redis needed. JWT secret is required
+          # by Settings validation when ENV != "dev"; pass a CI-only value.
+          # Feature flags are deliberately not pre-set; individual test modules
+          # select the isolated behavior they exercise.
+          JWT_SECRET_KEY: "ci-test-secret-key-not-for-production"
+          ENV: "test"
+        run: pytest tests/ -v --tb=short
+
+      - name: Test summary
+        if: always()
+        run: |
+          echo "::group::Test counts"
+          pytest tests/ --collect-only -q 2>&1 | tail -3 || true
+          echo "::endgroup::"
+
+  docker-build:
+    name: Docker Build (support-api)
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: services/api
+          file: services/api/Dockerfile
+          push: false
+          tags: compass-support-api:ci-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

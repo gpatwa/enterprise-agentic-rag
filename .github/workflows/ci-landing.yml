@@ -1,0 +1,54 @@
+# .github/workflows/ci-landing.yml
+# Marketing site CI (apps/landing): type-check, lint, production build with SEO templater and prerender.
+name: CI (landing)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/landing/**"
+      - ".github/workflows/ci-landing.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/landing/**"
+      - ".github/workflows/ci-landing.yml"
+
+# Cancel superseded runs on the same branch / PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ──────────────────────────────────────────────────
+  # Marketing site (apps/landing): type-check, lint, production build with
+  # SEO templater and Playwright prerender of /welcome.
+  # ──────────────────────────────────────────────────
+  landing:
+    name: Landing Type-check & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/landing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/landing/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsc -b --noEmit
+      - run: npm run lint
+      - run: npx playwright install --with-deps chromium
+      - name: Build (with prerender + SEO templater)
+        env:
+          VITE_SITE_URL: https://compass.example.com
+        run: npm run build
+      - name: Verify build artifacts
+        run: |
+          test -f dist/welcome/index.html || (echo "MISSING prerendered /welcome" && exit 1)
+          test -f dist/sitemap.xml && test -f dist/robots.txt
+          grep -q 'id="hero-heading"' dist/welcome/index.html
+          grep -q 'application/ld+json' dist/welcome/index.html
+          if grep -q 'SOC 2 Type II\|GDPR-ready\|aggregateRating' dist/welcome/index.html; then echo "unsubstantiated claim in landing"; exit 1; fi
