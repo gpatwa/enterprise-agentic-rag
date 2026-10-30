@@ -1,0 +1,87 @@
+# .github/workflows/ci-discovery.yml
+# Discovery CI: backend lint and tests, web type-check, tests and production build.
+name: CI (discovery)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/discovery-api/**"
+      - "apps/discovery-web/**"
+      - "packages/platform_contracts/**"
+      - ".github/workflows/ci-discovery.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "services/discovery-api/**"
+      - "apps/discovery-web/**"
+      - "packages/platform_contracts/**"
+      - ".github/workflows/ci-discovery.yml"
+
+env:
+  PYTHON_VERSION: "3.12.3"
+
+# Cancel superseded runs on the same branch / PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: Discovery API Lint & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/discovery-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            services/discovery-api/requirements.txt
+            services/discovery-api/requirements-test.txt
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-test.txt ruff
+
+      - name: Lint
+        run: ruff check . ../../packages --output-format=github
+
+      - name: Run tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/services/discovery-api:${{ github.workspace }}
+        run: pytest tests/ -v --tb=short
+
+  web:
+    name: Discovery Web Type-check, Test & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/discovery-web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/discovery-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: TypeScript type-check
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
