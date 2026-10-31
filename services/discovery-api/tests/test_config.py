@@ -39,6 +39,49 @@ def test_production_requires_operational_safeguards() -> None:
         DiscoverySettings(environment=Environment.PRODUCTION, profile="prod")
 
 
+_SAFE_PRODUCTION = {
+    "environment": Environment.PRODUCTION,
+    "profile": "prod",
+    "fake_provider": False,
+    "auth_enabled": True,
+    "tls_enabled": True,
+    "audit_logging_enabled": True,
+}
+
+
+def test_production_accepts_real_providers_with_safeguards_on() -> None:
+    settings = DiscoverySettings(**_SAFE_PRODUCTION)
+
+    assert settings.auth_enabled and settings.tls_enabled and settings.audit_logging_enabled
+    assert settings.fake_provider is False
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("fake_provider", True),
+        ("auth_enabled", False),
+        ("tls_enabled", False),
+        ("audit_logging_enabled", False),
+    ],
+)
+def test_production_rejects_any_missing_safeguard(field: str, value: bool) -> None:
+    with pytest.raises(ValidationError, match=field):
+        DiscoverySettings(**{**_SAFE_PRODUCTION, field: value})
+
+
+def test_production_rejects_the_previously_accepted_unsafe_combination() -> None:
+    with pytest.raises(ValidationError, match="production"):
+        DiscoverySettings(
+            environment=Environment.PRODUCTION,
+            profile="prod",
+            fake_provider=False,
+            auth_enabled=False,
+            tls_enabled=False,
+            audit_logging_enabled=False,
+        )
+
+
 def test_bounds_and_feature_combinations_are_rejected() -> None:
     with pytest.raises(ValidationError):
         DiscoverySettings(port=0)
