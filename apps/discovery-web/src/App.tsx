@@ -5,6 +5,8 @@ import { HomeDetailsExperience } from './homeDetails';
 import './styles.css';
 
 const PAGE_SIZE = 6;
+/** The filter offers bands; the API takes an age in years. */
+const AGE_BY_BAND: Record<string, number> = { child: 10, teen: 16, adult: 30 };
 const demoResponse: SearchResponse = {
   schema_version: 'imd-search-v1', request_id: 'local-demo', total_matches: 3, fallback: true, error: null,
   results: [
@@ -28,7 +30,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const pageCount = Math.max(1, Math.ceil(response.total_matches / PAGE_SIZE));
   const request = useMemo<SearchRequest>(() => ({
-    query: query.trim(), context: { tenant_id: 'demo', principal_id: 'synthetic-user-1', request_id: crypto.randomUUID(), locale, device, age_band: ageBand, purpose: 'search' }, page, page_size: PAGE_SIZE,
+    query: query.trim(), context: { tenant_id: 'tenant-01', principal_id: 'user-0001', request_id: crypto.randomUUID(), locale, device, age: AGE_BY_BAND[ageBand] ?? 16, purpose: 'search' }, page, page_size: PAGE_SIZE,
   }), [ageBand, device, locale, page, query]);
 
   async function runSearch(nextPage = 1) {
