@@ -66,17 +66,22 @@ class DiscoverySettings(BaseModel):
         if self.no_model and (self.features.learned or self.features.llm):
             raise ValueError("learned and llm features require no_model=False")
         if self.environment is Environment.PRODUCTION:
-            required = {
-                "fake_provider": self.fake_provider,
-                "no_model": self.no_model,
-                "auth_enabled": self.auth_enabled,
-                "tls_enabled": self.tls_enabled,
-                "audit_logging_enabled": self.audit_logging_enabled,
-            }
-            unsafe = [name for name, enabled in required.items() if enabled is not False]
+            # Production must not run on fake providers, and must have auth, TLS and audit logging on.
+            # `no_model` is deliberately unconstrained: a deterministic, model-free ranker is a valid
+            # production choice, and learned/LLM features are already gated on `no_model=False` above.
+            unsafe = [
+                name
+                for name, ok in {
+                    "fake_provider": self.fake_provider is False,
+                    "auth_enabled": self.auth_enabled is True,
+                    "tls_enabled": self.tls_enabled is True,
+                    "audit_logging_enabled": self.audit_logging_enabled is True,
+                }.items()
+                if not ok
+            ]
             if unsafe:
                 raise ValueError(
-                    "production requires real providers and auth, TLS, and audit safeguards"
+                    "production requires real providers and auth, TLS, and audit safeguards: " + ", ".join(unsafe)
                 )
         return self
 
