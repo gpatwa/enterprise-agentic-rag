@@ -58,11 +58,11 @@ describe('IMD-069 local API/web discovery journeys', () => {
     const client = createDiscoveryClient('http://local.test');
     const result = await client.search({
       query: 'adventure', blocked_ids: ['unsafe-combat-test'], page: 1, page_size: 6,
-      context: { tenant_id: 'demo', principal_id: 'synthetic-user-1', request_id: 'imd-069-policy', locale: 'en-US', device: 'web', age_band: 'teen', purpose: 'search' },
+      context: { tenant_id: 'tenant-01', principal_id: 'user-0001', request_id: 'imd-069-policy', locale: 'en-US', device: 'web', age: 16, purpose: 'search' },
     });
 
     const request = JSON.parse(fetchMock.mock.calls[0][1].body as string);
-    expect(request.context.tenant_id).toBe('demo');
+    expect(request.context.tenant_id).toBe('tenant-01');
     expect(request.blocked_ids).toEqual(['unsafe-combat-test']);
     expect(result.results.every((item) => !forbiddenResultTitles.includes(item.title))).toBe(true);
     expect(result.results).toHaveLength(1);

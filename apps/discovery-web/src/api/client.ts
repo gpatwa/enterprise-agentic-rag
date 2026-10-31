@@ -4,7 +4,7 @@ export type DiscoveryContext = {
   request_id: string;
   locale: string;
   device: string;
-  age_band: string;
+  age: number;
   purpose: 'search';
 };
 
@@ -41,7 +41,7 @@ export type DiscoveryClient = {
 export function createDiscoveryClient(baseUrl = ''): DiscoveryClient {
   return {
     async search(request) {
-      const response = await fetch(`${baseUrl}/api/discovery/search`, {
+      const response = await fetch(`${baseUrl}/api/discovery/v1/search`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(request),

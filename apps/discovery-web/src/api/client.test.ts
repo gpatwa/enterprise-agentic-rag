@@ -4,12 +4,12 @@ import { createDiscoveryClient, type SearchRequest } from './client';
 const request: SearchRequest = {
   query: 'cozy building games',
   context: {
-    tenant_id: 'demo',
-    principal_id: 'synthetic-user-1',
+    tenant_id: 'tenant-01',
+    principal_id: 'user-0001',
     request_id: 'request-1',
     locale: 'en-US',
     device: 'web',
-    age_band: 'teen',
+    age: 16,
     purpose: 'search',
   },
 };
@@ -22,7 +22,7 @@ describe('discovery client', () => {
 
     await createDiscoveryClient('http://localhost:8000').search(request);
 
-    expect(fetchMock).toHaveBeenCalledWith('http://localhost:8000/api/discovery/search', expect.objectContaining({ method: 'POST', body: JSON.stringify(request) }));
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:8000/api/discovery/v1/search', expect.objectContaining({ method: 'POST', body: JSON.stringify(request) }));
   });
 
   it('raises a typed boundary error for non-success responses', async () => {
