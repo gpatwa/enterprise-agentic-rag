@@ -1,0 +1,41 @@
+name: Deploy Discovery pilot (Container Apps)
+
+# Manual only. Infrastructure is created by infra/terraform/azure-discovery-pilot (see its README); this workflow ships code.
+# Images are tagged with the commit SHA. After a deploy, the Terraform image-tag variables lag the running revision until the next apply.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub deployment environment
+        required: true
+        type: environment
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      API_IMAGE: ${{ secrets.DISCOVERY_ACR_LOGIN_SERVER }}/discovery-api:${{ github.sha }}
+      WEB_IMAGE: ${{ secrets.DISCOVERY_ACR_LOGIN_SERVER }}/discovery-web:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Build and push the images
+        run: |
+          az acr login --name "${{ secrets.DISCOVERY_ACR_LOGIN_SERVER }}"
+          docker build --platform linux/amd64 -t "$API_IMAGE" -f services/discovery-api/Dockerfile .
+          docker build --platform linux/amd64 -t "$WEB_IMAGE" apps/discovery-web
+          docker push "$API_IMAGE"
+          docker push "$WEB_IMAGE"
+      - name: Update the API and the web app
+        run: |
+          az containerapp update -n "${{ secrets.DISCOVERY_API_APP_NAME }}" -g "${{ secrets.DISCOVERY_RESOURCE_GROUP }}" --image "$API_IMAGE"
+          az containerapp update -n "${{ secrets.DISCOVERY_WEB_APP_NAME }}" -g "${{ secrets.DISCOVERY_RESOURCE_GROUP }}" --image "$WEB_IMAGE"

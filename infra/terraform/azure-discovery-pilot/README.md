@@ -27,7 +27,7 @@ Every request to the web app requires an Entra sign-in (Container Apps built-in 
 3. Build and push `discovery-api` (context: repo root, `services/discovery-api/Dockerfile`) and `discovery-web` (context: `apps/discovery-web`) with the tags set in `terraform.tfvars`.
 4. `terraform apply -var-file=terraform.tfvars`, then open `web_url` and sign in with an assigned account.
 
-A deploy workflow is not included yet.
+`.github/workflows/deploy-discovery-pilot-azure.yml` (manual) ships later code changes: it builds both images with the commit SHA, pushes them and updates the two apps. It needs these secrets in the chosen GitHub environment, which the owner sets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `DISCOVERY_ACR_LOGIN_SERVER`, `DISCOVERY_RESOURCE_GROUP`, `DISCOVERY_API_APP_NAME`, `DISCOVERY_WEB_APP_NAME`. It has never been run.
 
 ## Local check (no Azure)
 
