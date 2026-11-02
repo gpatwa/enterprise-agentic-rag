@@ -184,6 +184,29 @@ services:
       - analytics-api
     profiles: ["analytics", "products"]
 
+  # Discovery runs on fictional generated data with fake providers: no
+  # databases or search cluster. Start with: docker compose --profile discovery up -d
+  # then open http://localhost:5175
+  discovery-api:
+    build:
+      context: .
+      dockerfile: services/discovery-api/Dockerfile
+    ports:
+      - "8110:8110"
+    profiles: ["discovery"]
+
+  discovery-web:
+    build:
+      context: apps/discovery-web
+      dockerfile: Dockerfile
+    ports:
+      - "5175:80"
+    environment:
+      - DISCOVERY_API_HOST=discovery-api:8110
+    depends_on:
+      - discovery-api
+    profiles: ["discovery"]
+
   # ─── Local operations plane ────────────────────────────────────────────
   # Start with: docker compose --profile observability up -d
 
