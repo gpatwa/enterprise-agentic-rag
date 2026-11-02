@@ -88,9 +88,9 @@ I have no price data in this session and have not estimated a figure. Phase 1 us
 ## Owner decisions (2026-11-02, recorded in the owner's words and choices)
 
 - Phase 1 scope: "minimal footprint, access-limited, no deploy yet". No database, search cluster or model.
-- Access limit: IP allowlist (chosen from IP allowlist, Entra sign-in, Static Web App Standard).
+- Access limit: Entra sign-in with assigned accounts (changed from the IP allowlist, chosen from IP allowlist, Entra sign-in, Static Web App Standard); an IP allowlist remains an optional second layer.
 - Monthly budget alert: 25 USD.
 - Isolation: separate resource group and registry.
 - Deploy: **not authorized.** The stack is code only.
 
-Implementation note: web and API both run as Container Apps (scale to zero), not a Static Web App, so one ingress can carry the allowlist and the API stays internal. The Terraform stack is `infra/terraform/azure-discovery-pilot`; its README lists what is unverified (no plan or apply has ever been run). The web proxy now sends the API's own `Host` header, because Container Apps routes by Host.
+Implementation note: web and API both run as Container Apps (scale to zero), not a Static Web App, so one ingress can carry the sign-in and the API stays internal. The Terraform stack is `infra/terraform/azure-discovery-pilot`; its README lists what is unverified (no plan or apply has ever been run). The web proxy now sends the API's own `Host` header, because Container Apps routes by Host.

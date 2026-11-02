@@ -23,12 +23,22 @@ variable "web_image_tag" {
   type        = string
 }
 
-variable "allowed_cidrs" {
-  description = "Addresses allowed to reach the demo, as CIDR ranges (for example 203.0.113.7/32). Required and non-empty: the pilot is access-limited, never public."
+variable "allowed_user_object_ids" {
+  description = "Entra object IDs of the people who may sign in (for a guest, the object ID of their guest account in this tenant). Required and non-empty: the pilot is sign-in-only, never public."
   type        = list(string)
   validation {
-    condition     = length(var.allowed_cidrs) > 0 && alltrue([for c in var.allowed_cidrs : c != "0.0.0.0/0" && c != "::/0"])
-    error_message = "allowed_cidrs must list at least one range and must not allow all addresses."
+    condition     = length(var.allowed_user_object_ids) > 0
+    error_message = "allowed_user_object_ids must list at least one account."
+  }
+}
+
+variable "allowed_cidrs" {
+  description = "Optional second layer: when set, only these CIDR ranges can reach the web app, in addition to signing in. Empty (the default) means sign-in is the only gate."
+  type        = list(string)
+  default     = []
+  validation {
+    condition     = alltrue([for c in var.allowed_cidrs : c != "0.0.0.0/0" && c != "::/0"])
+    error_message = "allowed_cidrs must not allow all addresses."
   }
 }
 
