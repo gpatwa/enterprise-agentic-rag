@@ -9,3 +9,7 @@ output "registry_login_server" {
 output "resource_group" {
   value = azurerm_resource_group.rg.name
 }
+
+output "signin_app_client_id" {
+  value = azuread_application.web.client_id
+}

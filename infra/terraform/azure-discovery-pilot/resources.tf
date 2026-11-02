@@ -113,7 +113,46 @@ resource "azurerm_container_app" "api" {
   depends_on = [azurerm_role_assignment.apps_acr_pull]
 }
 
-# ---- Web: the only public entry point, limited to the allowed addresses ----
+# ---- Sign-in: Entra app registration; only the listed accounts may sign in ----
+locals {
+  # Known before the web app exists, so the redirect URI does not depend on it.
+  web_fqdn = "${local.name}-web.${azurerm_container_app_environment.env.default_domain}"
+}
+
+resource "azuread_application" "web" {
+  display_name     = "${local.name}-web"
+  sign_in_audience = "AzureADMyOrg"
+  owners           = [data.azuread_client_config.current.object_id]
+
+  web {
+    redirect_uris = ["https://${local.web_fqdn}/.auth/login/aad/callback"]
+    implicit_grant {
+      id_token_issuance_enabled = true
+    }
+  }
+}
+
+resource "azuread_service_principal" "web" {
+  client_id                    = azuread_application.web.client_id
+  app_role_assignment_required = true
+  owners                       = [data.azuread_client_config.current.object_id]
+}
+
+resource "azuread_app_role_assignment" "web_users" {
+  for_each            = toset(var.allowed_user_object_ids)
+  app_role_id         = "00000000-0000-0000-0000-000000000000" # default access
+  principal_object_id = each.value
+  resource_object_id  = azuread_service_principal.web.object_id
+}
+
+# The auth config reads the client secret from a Container App secret. It expires and is rotated by re-applying.
+resource "azuread_application_password" "web" {
+  application_id    = azuread_application.web.id
+  display_name      = "${local.name}-web-signin"
+  end_date_relative = "4320h"
+}
+
+# ---- Web: the only public entry point; every request requires an assigned Entra account ----
 resource "azurerm_container_app" "web" {
   name                         = "${local.name}-web"
   resource_group_name          = azurerm_resource_group.rg.name
@@ -129,6 +168,11 @@ resource "azurerm_container_app" "web" {
   registry {
     server   = azurerm_container_registry.acr.login_server
     identity = azurerm_user_assigned_identity.apps.id
+  }
+
+  secret {
+    name  = "entra-client-secret"
+    value = azuread_application_password.web.value
   }
 
   ingress {
@@ -169,6 +213,42 @@ resource "azurerm_container_app" "web" {
   }
 
   depends_on = [azurerm_role_assignment.apps_acr_pull]
+}
+
+# Container Apps built-in authentication (azurerm 3.x has no resource for it).
+# Unauthenticated requests are redirected to the Entra sign-in page; nothing is served without a session.
+resource "azapi_resource" "web_auth" {
+  type      = "Microsoft.App/containerApps/authConfigs@2024-03-01"
+  name      = "current"
+  parent_id = azurerm_container_app.web.id
+
+  body = {
+    properties = {
+      platform = {
+        enabled = true
+      }
+      globalValidation = {
+        unauthenticatedClientAction = "RedirectToLoginPage"
+        redirectToProvider          = "azureactivedirectory"
+      }
+      identityProviders = {
+        azureActiveDirectory = {
+          enabled = true
+          registration = {
+            clientId                = azuread_application.web.client_id
+            clientSecretSettingName = "entra-client-secret"
+            openIdIssuer            = "https://login.microsoftonline.com/${data.azuread_client_config.current.tenant_id}/v2.0"
+          }
+          validation = {
+            allowedAudiences = [azuread_application.web.client_id]
+          }
+        }
+      }
+      login = {
+        preserveUrlFragmentsForLogins = false
+      }
+    }
+  }
 }
 
 # ---- a budget so the pilot cannot surprise anyone ----

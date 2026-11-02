@@ -1,4 +1,7 @@
 api_image_tag = "<commit-sha>"
 web_image_tag = "<commit-sha>"
-allowed_cidrs = ["203.0.113.7/32"] # replace with real addresses; 0.0.0.0/0 is rejected
+# Object IDs of the accounts allowed to sign in: az ad user show --id <email-or-upn> --query id -o tsv
+allowed_user_object_ids = ["00000000-0000-0000-0000-000000000000"]
+# Optional second layer (empty = sign-in only); 0.0.0.0/0 is rejected
+# allowed_cidrs = ["203.0.113.7/32"]
 budget_emails = ["owner@example.com"]

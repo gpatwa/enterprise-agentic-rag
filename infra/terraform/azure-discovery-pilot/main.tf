@@ -9,6 +9,15 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 3.117"
     }
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "~> 2.53"
+    }
+    # Container Apps built-in authentication has no azurerm resource in 3.x.
+    azapi = {
+      source  = "azure/azapi"
+      version = "~> 2.0"
+    }
   }
   # Partial backend: terraform init -backend-config=backend.hcl (see README.md)
   backend "azurerm" {}
@@ -17,6 +26,12 @@ terraform {
 provider "azurerm" {
   features {}
 }
+
+provider "azuread" {}
+
+provider "azapi" {}
+
+data "azuread_client_config" "current" {}
 
 locals {
   name = "${var.prefix}-${var.environment}"
