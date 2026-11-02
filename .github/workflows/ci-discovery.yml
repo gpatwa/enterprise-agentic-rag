@@ -9,6 +9,7 @@ on:
       - "services/discovery-api/**"
       - "apps/discovery-web/**"
       - "packages/platform_contracts/**"
+      - "infra/terraform/azure-discovery-pilot/**"
       - ".github/workflows/ci-discovery.yml"
   pull_request:
     branches: [main]
@@ -16,6 +17,7 @@ on:
       - "services/discovery-api/**"
       - "apps/discovery-web/**"
       - "packages/platform_contracts/**"
+      - "infra/terraform/azure-discovery-pilot/**"
       - ".github/workflows/ci-discovery.yml"
 
 env:
@@ -122,3 +124,19 @@ jobs:
           done
           docker logs discovery-api-smoke
           exit 1
+
+  terraform:
+    name: Discovery Terraform Validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform/azure-discovery-pilot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false -input=false
+      - run: terraform validate
