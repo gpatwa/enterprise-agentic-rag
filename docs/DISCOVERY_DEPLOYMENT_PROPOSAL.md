@@ -84,3 +84,13 @@ I have no price data in this session and have not estimated a figure. Phase 1 us
 - Real cost of the proposed footprint.
 - Whether the web app works end to end against a mounted search route.
 - Terraform provider and quota availability for a new resource group in the owner's subscription (the Analytics pilot needed PostgreSQL in a different region because the preferred region was restricted).
+
+## Owner decisions (2026-11-02, recorded in the owner's words and choices)
+
+- Phase 1 scope: "minimal footprint, access-limited, no deploy yet". No database, search cluster or model.
+- Access limit: IP allowlist (chosen from IP allowlist, Entra sign-in, Static Web App Standard).
+- Monthly budget alert: 25 USD.
+- Isolation: separate resource group and registry.
+- Deploy: **not authorized.** The stack is code only.
+
+Implementation note: web and API both run as Container Apps (scale to zero), not a Static Web App, so one ingress can carry the allowlist and the API stays internal. The Terraform stack is `infra/terraform/azure-discovery-pilot`; its README lists what is unverified (no plan or apply has ever been run). The web proxy now sends the API's own `Host` header, because Container Apps routes by Host.

@@ -1,0 +1,4 @@
+api_image_tag = "<commit-sha>"
+web_image_tag = "<commit-sha>"
+allowed_cidrs = ["203.0.113.7/32"] # replace with real addresses; 0.0.0.0/0 is rejected
+budget_emails = ["owner@example.com"]
