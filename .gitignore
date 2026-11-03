@@ -75,3 +75,6 @@ docs/diagrams/*.visual-check.*
 .coverage
 htmlcov/
 data/olist/*.csv
+
+# Discovery: local datasets and built subsets are never committed
+services/discovery-api/data/
