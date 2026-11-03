@@ -106,3 +106,41 @@ def test_redacted_serialization_contains_no_secret_fields() -> None:
     assert "secret" not in str(serialized).lower()
     assert "api_key" not in str(serialized).lower()
     assert serialized["fake_provider"] is True
+
+
+def test_opensearch_backend_requires_a_url() -> None:
+    with pytest.raises(ValueError, match="opensearch_url"):
+        DiscoverySettings(search_backend="opensearch")
+
+
+def test_staging_opensearch_requires_https_and_credentials() -> None:
+    base = {"environment": Environment.STAGING, "profile": "pilot", "search_backend": "opensearch"}
+    with pytest.raises(ValueError, match="https"):
+        DiscoverySettings(**base, opensearch_url="http://search.test:9200", opensearch_username="u", opensearch_password="p")
+    with pytest.raises(ValueError, match="credentials"):
+        DiscoverySettings(**base, opensearch_url="https://search.test:9200")
+    assert DiscoverySettings(
+        **base, opensearch_url="https://search.test:9200", opensearch_username="u", opensearch_password="p"
+    ).search_backend == "opensearch"
+
+
+def test_local_opensearch_may_use_plain_http() -> None:
+    assert DiscoverySettings(search_backend="opensearch", opensearch_url="http://localhost:9200").opensearch_url
+
+
+def test_opensearch_password_is_loaded_from_env_but_never_dumped_or_repr() -> None:
+    settings = settings_from_env(
+        {
+            "DISCOVERY_SEARCH_BACKEND": "opensearch",
+            "DISCOVERY_OPENSEARCH_URL": "http://localhost:9200",
+            "DISCOVERY_OPENSEARCH_USERNAME": "admin",
+            "DISCOVERY_OPENSEARCH_PASSWORD": "s3cr3t-value",
+            "DISCOVERY_FEATURE_VECTOR": "true",
+        }
+    )
+
+    assert settings.opensearch_password == "s3cr3t-value"
+    assert settings.features.vector is True
+    assert "s3cr3t-value" not in str(settings.redacted_dump())
+    assert "s3cr3t-value" not in repr(settings)
+    assert settings.redacted_dump()["opensearch_password_set"] is True

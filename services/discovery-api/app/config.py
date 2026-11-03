@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from enum import Enum
-from typing import Any, Mapping
+from typing import Any, Literal, Mapping
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -53,6 +53,11 @@ class DiscoverySettings(BaseModel):
     max_request_events: int = Field(default=100, ge=1, le=1000)
     request_timeout_seconds: float = Field(default=5.0, gt=0.0, le=60.0)
     candidate_cap: int = Field(default=100, ge=1, le=1000)
+    search_backend: Literal["memory", "opensearch"] = "memory"
+    opensearch_url: str | None = Field(default=None, max_length=512)
+    opensearch_username: str | None = Field(default=None, max_length=255)
+    opensearch_password: str | None = Field(default=None, max_length=512, repr=False)
+    opensearch_verify_tls: bool = True
     features: FeatureFlags = Field(default_factory=FeatureFlags)
 
     @model_validator(mode="after")
@@ -63,6 +68,16 @@ class DiscoverySettings(BaseModel):
         elif self.profile in {"local", "test"}:
             raise ValueError("staging and production require a non-local profile")
 
+        if self.search_backend == "opensearch":
+            if not self.opensearch_url:
+                raise ValueError("search_backend=opensearch requires opensearch_url")
+            if self.environment in {Environment.STAGING, Environment.PRODUCTION}:
+                if not self.opensearch_url.startswith("https://"):
+                    raise ValueError("staging and production require an https opensearch_url")
+                if not (self.opensearch_username and self.opensearch_password):
+                    raise ValueError("staging and production require opensearch credentials")
+                if not self.opensearch_verify_tls and self.environment is Environment.PRODUCTION:
+                    raise ValueError("production requires TLS verification for opensearch")
         if self.no_model and (self.features.learned or self.features.llm):
             raise ValueError("learned and llm features require no_model=False")
         if self.environment is Environment.PRODUCTION:
@@ -88,7 +103,9 @@ class DiscoverySettings(BaseModel):
     def redacted_dump(self) -> dict[str, Any]:
         """Return the serializable configuration without secret material."""
 
-        return self.model_dump(mode="json")
+        dump = self.model_dump(mode="json", exclude={"opensearch_password"})
+        dump["opensearch_password_set"] = bool(self.opensearch_password)
+        return dump
 
 
 def _parse_bool(value: str, *, name: str) -> bool:
@@ -101,7 +118,7 @@ def _parse_bool(value: str, *, name: str) -> bool:
 
 
 def settings_from_env(environ: Mapping[str, str] | None = None) -> DiscoverySettings:
-    """Build settings from ``DISCOVERY_`` variables without reading secrets."""
+    """Build settings from ``DISCOVERY_`` variables; the OpenSearch password is held but never dumped."""
 
     values: dict[str, Any] = {}
     source = os.environ if environ is None else environ
@@ -118,6 +135,11 @@ def settings_from_env(environ: Mapping[str, str] | None = None) -> DiscoverySett
         "MAX_REQUEST_EVENTS": "max_request_events",
         "REQUEST_TIMEOUT_SECONDS": "request_timeout_seconds",
         "CANDIDATE_CAP": "candidate_cap",
+        "SEARCH_BACKEND": "search_backend",
+        "OPENSEARCH_URL": "opensearch_url",
+        "OPENSEARCH_USERNAME": "opensearch_username",
+        "OPENSEARCH_PASSWORD": "opensearch_password",
+        "OPENSEARCH_VERIFY_TLS": "opensearch_verify_tls",
     }
     bool_fields = {
         "fake_provider",
@@ -125,6 +147,7 @@ def settings_from_env(environ: Mapping[str, str] | None = None) -> DiscoverySett
         "auth_enabled",
         "tls_enabled",
         "audit_logging_enabled",
+        "opensearch_verify_tls",
     }
     int_fields = {"port", "max_request_events", "candidate_cap"}
     float_fields = {"request_timeout_seconds"}
@@ -140,6 +163,8 @@ def settings_from_env(environ: Mapping[str, str] | None = None) -> DiscoverySett
             values[field_name] = float(raw)
         elif field_name == "environment":
             values[field_name] = Environment(raw.strip().lower())
+        elif field_name == "search_backend":
+            values[field_name] = raw.strip().lower()
         else:
             values[field_name] = raw
 
