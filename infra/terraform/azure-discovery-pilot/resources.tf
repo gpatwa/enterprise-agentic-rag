@@ -40,6 +40,12 @@ resource "azurerm_container_app_environment" "env" {
   # In a VNet so the API can reach the search VM privately. Changing this replaces the environment.
   infrastructure_subnet_id = azurerm_subnet.cae.id
   tags                     = local.tags
+
+  # Azure creates this resource group itself. Unset in config, the provider plans a
+  # replacement of the environment (and both apps) on every run.
+  lifecycle {
+    ignore_changes = [infrastructure_resource_group_name]
+  }
 }
 
 # ---- API: internal ingress only, reachable from the web app inside the environment ----
@@ -153,6 +159,11 @@ resource "azurerm_container_app" "api" {
   }
 
   depends_on = [azurerm_role_assignment.apps_acr_pull]
+
+  # Azure fills this in on a consumption-only environment; unset, the provider plans a diff every run.
+  lifecycle {
+    ignore_changes = [workload_profile_name]
+  }
 }
 
 # ---- Sign-in: Entra app registration; only the listed accounts may sign in ----
@@ -255,6 +266,11 @@ resource "azurerm_container_app" "web" {
   }
 
   depends_on = [azurerm_role_assignment.apps_acr_pull]
+
+  # Azure fills this in on a consumption-only environment; unset, the provider plans a diff every run.
+  lifecycle {
+    ignore_changes = [workload_profile_name]
+  }
 }
 
 # Container Apps built-in authentication (azurerm 3.x has no resource for it).

@@ -149,6 +149,11 @@ resource "azurerm_linux_virtual_machine" "search" {
     private_ip     = local.search_vm_ip
     admin_password = random_password.search.result
   }))
+
+  # Azure toggles this platform default itself; setting it only creates a perpetual diff.
+  lifecycle {
+    ignore_changes = [vm_agent_platform_updates_enabled]
+  }
 }
 
 # A cost guard: deallocate every night. There is no automatic start; use the start/stop workflow or `az vm start`.
