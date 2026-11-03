@@ -17,6 +17,16 @@ resource "azurerm_subnet" "cae" {
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.net.name
   address_prefixes     = [var.cae_subnet_cidr]
+
+  # Azure rejects the environment without this delegation
+  # (ManagedEnvironmentSubnetDelegationError).
+  delegation {
+    name = "container-apps"
+    service_delegation {
+      name    = "Microsoft.App/environments"
+      actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
+    }
+  }
 }
 
 resource "azurerm_subnet" "search" {

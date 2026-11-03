@@ -28,6 +28,8 @@ Search ranks through OpenSearch on a small VM that is started only for demos. Wh
   ```bash
   az containerapp exec -g discovery-pilot-rg -n discovery-pilot-api --command "python -m app.opensearch.bootstrap"
   ```
+  `exec` needs a terminal: from a script or CI-like shell it fails with a `termios` error. Run it from an interactive terminal, or wrap it in `script -q /dev/null ...` and pipe the command to a `sh` session. Verified once: 43 of 43 documents indexed.
+- **Subnet delegation:** the `cae` subnet is delegated to `Microsoft.App/environments`; Azure rejects the environment without it.
 - **Cost (list prices, not measured):** about 10 USD per month at 40 VM hours (disk 4.80, public IP 3.65, compute about 1.66); about 39 always on.
 
 ## Order of operations (when authorized)
@@ -53,8 +55,8 @@ CI runs the same three commands.
 
 ## Not verified
 
-- A `terraform plan` or `apply` has never been run: the stack is only syntax- and schema-validated. That includes the sign-in pieces (app registration, role assignments, the `azapi` auth config).
-- The search VM: the cloud-init boot, OpenSearch's first start with the security plugin, `az containerapp exec` for the bootstrap, whether the environment reaches the VM's private IP, and `Standard_B2s` quota in the region have not been exercised.
+- Applied once against the real subscription (2026-11-02): the first apply failed on the missing subnet delegation and the fix was applied. Sign-in at the new web URL was not checked by the tool that applied it.
+- The search VM: VM boot time, whether the static public IP bills while the VM is deallocated, and the fallback behavior with the VM deallocated have not been measured. Cloud-init, OpenSearch's first start, the bootstrap, and API-to-VM connectivity were exercised once.
 - The Easy Auth redirect (`/.auth/login/aad/callback`) and the guest-account sign-in flow have not been tested.
 - The web-to-API proxy over internal ingress (Host header, plain HTTP) is reasoned from Container Apps routing rules, not tested.
 - Cost is not measured. The budget alert is set to the owner's chosen 25 USD.
