@@ -18,6 +18,14 @@ terraform {
       source  = "azure/azapi"
       version = "~> 2.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
   }
   # Partial backend: terraform init -backend-config=backend.hcl (see README.md)
   backend "azurerm" {}

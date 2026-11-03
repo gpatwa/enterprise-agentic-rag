@@ -37,7 +37,9 @@ resource "azurerm_container_app_environment" "env" {
   location                   = azurerm_resource_group.rg.location
   resource_group_name        = azurerm_resource_group.rg.name
   log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
-  tags                       = local.tags
+  # In a VNet so the API can reach the search VM privately. Changing this replaces the environment.
+  infrastructure_subnet_id = azurerm_subnet.cae.id
+  tags                     = local.tags
 }
 
 # ---- API: internal ingress only, reachable from the web app inside the environment ----
@@ -56,6 +58,11 @@ resource "azurerm_container_app" "api" {
   registry {
     server   = azurerm_container_registry.acr.login_server
     identity = azurerm_user_assigned_identity.apps.id
+  }
+
+  secret {
+    name  = "opensearch-password"
+    value = random_password.search.result
   }
 
   ingress {
@@ -100,6 +107,41 @@ resource "azurerm_container_app" "api" {
       env {
         name  = "DISCOVERY_NO_MODEL"
         value = "true"
+      }
+      # Search ranks through OpenSearch on the on-demand VM; when the VM is off the API serves the in-memory catalog.
+      env {
+        name  = "DISCOVERY_SEARCH_BACKEND"
+        value = "opensearch"
+      }
+      env {
+        name  = "DISCOVERY_OPENSEARCH_URL"
+        value = "https://${local.search_vm_ip}:9200"
+      }
+      env {
+        name  = "DISCOVERY_OPENSEARCH_USERNAME"
+        value = "admin"
+      }
+      env {
+        name        = "DISCOVERY_OPENSEARCH_PASSWORD"
+        secret_name = "opensearch-password"
+      }
+      # The bundled demo certificate is self-signed; the port is reachable only from the apps' subnet.
+      env {
+        name  = "DISCOVERY_OPENSEARCH_VERIFY_TLS"
+        value = "false"
+      }
+      env {
+        name  = "DISCOVERY_FEATURE_VECTOR"
+        value = "true"
+      }
+      env {
+        name  = "DISCOVERY_FEATURE_HYBRID"
+        value = "true"
+      }
+      # Short, so a stopped VM falls back to the in-memory catalog quickly.
+      env {
+        name  = "DISCOVERY_REQUEST_TIMEOUT_SECONDS"
+        value = "2"
       }
 
       liveness_probe {
