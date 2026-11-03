@@ -73,3 +73,27 @@ User or behavior data, click or purchase logs, images, prices, live Walmart or A
 - The gain values for graded labels.
 - Index size and latency on the pilot VM.
 - That the loader's subset selection yields useful coverage of queries.
+
+## 9. Decisions recorded 2026-11-03
+
+**Owner's stated purpose (their words):** "we are using education and demo purpose not commercial, so you make a decision." This is the owner's input to E0. It is **not** an approval that ESCI's terms permit a hosted demo, and the owner's licensing gate is not closed by it.
+
+**Evidence read by the agent (repository page and LICENSE, 2026-11-03):** the repository is Apache-2.0 (the license text covers software, documentation and configuration). No separate data license or terms of use were found on the page, no non-commercial or research-only restriction is stated there, and the page asks users to cite Reddy et al. (2022), arXiv:2206.06588. Amazon's own terms for the product text were not read. This is the absence of a stated restriction, not a grant, and it is not legal advice.
+
+**Agent decisions, delegated by the owner (the owner may overrule any of them):**
+
+| # | Decision | Reason |
+|---|---|---|
+| 2 | **C then B:** local benchmark first; product mode only after the owner confirms hosted use | The benchmark is the evidence for B and carries the least licensing risk |
+| 3 | **US locale, a 25k-product subset** chosen from products that appear in the small version; grow toward 100k only if the VM handles it | Bounded, fits the on-demand VM, enough for a meaningful nDCG |
+| 5 | **Product mode has no age or safety gate.** Eligible means: non-empty title, locale matches, not on a block list. The UI states plainly that it is a product-search demo with no age or safety filtering | ESCI has no age or safety field; reusing the experience rule would hide every item. This is a policy choice the owner may change |
+| PG | **No database for the ESCI work:** parse locally, keep a reviewed subset file, load OpenSearch from it | $0, and nothing here needs an authoritative store |
+| 7 | **Hashing embedder for the benchmark,** with the report stating that it is mostly lexical. A real embedding model is not adopted | Choosing a model and paying for model calls is the owner's approval |
+| 4 | **Unchanged:** the real *experiences* catalog is still open. ESCI would add a product-search demo; it does not replace it | Different record type |
+
+**Conditions that follow from these (apply to E1 to E6, local only):**
+- The ESCI files stay in an untracked local path. They are never committed, never pushed, and never copied to cloud storage.
+- Any report names the dataset, its version and the citation above.
+- Nothing is described as Walmart or Amazon, or as reflecting their ranking.
+
+**Not decided, still the owner's:** E7 (loading ESCI into the hosted pilot). It needs the owner's explicit yes after reading Amazon's terms for the product text, plus a separate cloud authorization.
