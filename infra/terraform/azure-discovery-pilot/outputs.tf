@@ -13,3 +13,11 @@ output "resource_group" {
 output "signin_app_client_id" {
   value = azuread_application.web.client_id
 }
+
+output "search_vm_name" {
+  value = azurerm_linux_virtual_machine.search.name
+}
+
+output "search_vm_private_ip" {
+  value = local.search_vm_ip
+}
