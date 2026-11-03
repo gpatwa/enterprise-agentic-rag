@@ -21,7 +21,7 @@ def test_mapping_contains_versioned_required_fields_and_types() -> None:
     assert properties["title"]["fields"]["keyword"]["type"] == "keyword"
     assert properties["embedding"]["type"] == "knn_vector"
     assert properties["embedding"]["dimension"] == 384
-    assert properties["embedding"]["method"]["space_type"] == "cosine"
+    assert properties["embedding"]["method"]["space_type"] == "cosinesimil"  # the OpenSearch name for the contract's logical "cosine"
     assert "imd-catalog-read" in mapping["aliases"]
 
 

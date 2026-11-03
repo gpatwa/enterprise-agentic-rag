@@ -3,13 +3,17 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Protocol
 
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.candidates.contracts import CandidateSourceResult
+from app.config import FeatureFlags
 from app.domain.models import ImmersiveDiscoveryContext, UserProfile
+from app.embedding import HashingEmbedder
 from app.policy.eligibility import compile_eligibility
 from app.query.parser import parse_query
 from app.ranking.router import (
@@ -24,6 +28,7 @@ from app.ranking.router import (
 from app.search.fusion import FusionConfig, fuse_candidates
 from app.search.lexical import LexicalRetriever
 from app.search.mapper import CatalogSearchDocument
+from app.search.vector import VectorDocument, VectorQuery, VectorRetriever
 from packages.platform_contracts.discovery import (
     DecisionTrace,
     DiscoveryComponentVersion,
@@ -32,6 +37,9 @@ from packages.platform_contracts.discovery import (
 )
 
 _MAX_RESULTS = 50
+_VECTOR_K = 20
+# Hashing embeddings of unrelated text sit near cosine 0; below this a vector match is noise.
+_MIN_VECTOR_SCORE = 0.625  # candidate score is (cosine + 1) / 2, so this is cosine 0.25
 _MAX_QUERY = 256
 _ID = r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,254}$"
 _VERSION = "imd-search-v1"
@@ -118,6 +126,11 @@ class SearchProvider(Protocol):
     def search(self, request: SearchRequest) -> SearchResponse: ...
 
 
+def _drop_weak_vector(result: CandidateSourceResult) -> CandidateSourceResult:
+    kept = tuple(item for item in result.candidates if item.score >= _MIN_VECTOR_SCORE)
+    return result.model_copy(update={"candidates": kept})
+
+
 def _digest(value: object) -> str:
     payload = json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -142,6 +155,17 @@ def _components() -> tuple[DiscoveryComponentVersion, ...]:
     )
 
 
+@dataclass(frozen=True)
+class Retrieval:
+    """Candidate sources plus the display data the response needs, whatever backend produced them."""
+
+    sources: tuple[CandidateSourceResult, ...]
+    evidence: dict[str, tuple[str, ...]]
+    titles: dict[str, str]
+    pool: int
+    fallback: bool = False
+
+
 class LocalSearchService:
     """Compose deterministic local contracts over supplied catalog fixtures."""
 
@@ -149,10 +173,65 @@ class LocalSearchService:
         self,
         documents: tuple[CatalogSearchDocument, ...] = (),
         profiles: tuple[UserProfile, ...] = (),
+        *,
+        embedder: HashingEmbedder | None = None,
+        features: FeatureFlags | None = None,
     ) -> None:
         self._documents = tuple(documents)
         self._profiles = tuple(profiles)
         self._retriever = LexicalRetriever()
+        self._features = features or FeatureFlags()
+        self._embedder = embedder
+        self._vector_retriever = VectorRetriever()
+        self._vector_documents = (
+            tuple(
+                VectorDocument(
+                    document=document,
+                    embedding=tuple(document.embedding),
+                    embedding_model_version=embedder.model_version,
+                    dimensions=embedder.dimensions,
+                )
+                for document in self._documents
+            )
+            if embedder is not None and self._wants_vector
+            else ()
+        )
+
+    @property
+    def _wants_vector(self) -> bool:
+        return self._embedder is not None and (self._features.vector or self._features.hybrid)
+
+    def _query_vector(self, text: str) -> VectorQuery | None:
+        """Embed the query, or return None when it has no embeddable tokens."""
+        assert self._embedder is not None
+        try:
+            return VectorQuery(
+                embedding=self._embedder.embed(text),
+                embedding_model_version=self._embedder.model_version,
+                dimensions=self._embedder.dimensions,
+            )
+        except ValueError:
+            return None
+
+    def _retrieve(self, text: str, context: ImmersiveDiscoveryContext, profile: UserProfile | None) -> Retrieval:
+        sources: list[CandidateSourceResult] = []
+        evidence: dict[str, tuple[str, ...]] = {}
+        fallback = False
+        if self._features.lexical:
+            lexical = self._retriever.retrieve(text, self._documents, context, profile, source_version="imd-lexical-v1")
+            sources.append(lexical.source_result)
+            evidence.update({item.experience_id: item.matched_fields for item in lexical.evidence})
+        if self._wants_vector:
+            query = self._query_vector(text)
+            if query is None:
+                fallback = True
+            else:
+                vector = self._vector_retriever.retrieve(query, self._vector_documents, context, profile, k=_VECTOR_K)
+                sources.append(_drop_weak_vector(vector.source_result))
+                for item in vector.evidence:
+                    evidence.setdefault(item.experience_id, ("embedding",))
+        titles = {document.experience_id: document.title for document in self._documents}
+        return Retrieval(tuple(sources), evidence, titles, pool=len(self._documents), fallback=fallback)
 
     def search(self, request: SearchRequest) -> SearchResponse:
         started = datetime.now(timezone.utc)
@@ -180,38 +259,30 @@ class LocalSearchService:
             return self._failure(request, components, eligibility.reason.value, started)
         try:
             parsed = parse_query(request.query)
-            lexical = self._retriever.retrieve(
-                parsed.lexical_text or request.query,
-                self._documents,
-                context,
-                profile,
-                source_version="imd-lexical-v1",
+            retrieval = self._retrieve(parsed.lexical_text or request.query, context, profile)
+            blocked = set(request.blocked_ids)
+            sources = tuple(
+                source.model_copy(
+                    update={"candidates": tuple(c for c in source.candidates if c.experience_id not in blocked)}
+                )
+                for source in retrieval.sources
             )
-            filtered = tuple(
-                candidate
-                for candidate in lexical.source_result.candidates
-                if candidate.experience_id not in set(request.blocked_ids)
-            )
-            source = lexical.source_result.model_copy(update={"candidates": filtered})
+            filtered = tuple(dict.fromkeys(c.experience_id for source in sources for c in source.candidates))
             fused = fuse_candidates(
-                (source,),
+                sources,
                 tenant_id=request.context.tenant_id,
                 request_id=request.context.request_id,
                 config=FusionConfig(limit=_MAX_RESULTS),
             )
             routed = self._route(request, fused.candidates)
-            by_id = {document.experience_id: document for document in self._documents}
-            evidence_by_id = {item.experience_id: item for item in lexical.evidence}
             results = tuple(
                 SearchResult(
                     experience_id=item.candidate_id,
-                    title=by_id[item.candidate_id].title,
+                    title=retrieval.titles[item.candidate_id],
                     rank=rank,
                     score=min(1.0, item.score),
                     reason_codes=item.reason_codes,
-                    evidence=evidence_by_id.get(item.candidate_id).matched_fields
-                    if evidence_by_id.get(item.candidate_id) is not None
-                    else (),
+                    evidence=retrieval.evidence.get(item.candidate_id, ()),
                 )
                 for rank, item in enumerate(routed.candidates, start=1)
             )
@@ -236,8 +307,8 @@ class LocalSearchService:
                 started_at=started,
                 completed_at=completed,
                 stages=(
-                    {"stage": "eligibility", "outcome": "completed", "duration_ms": 0, "candidate_count": len(self._documents), "reason_codes": (eligibility.reason.value,), "components": (components[2],)},
-                    {"stage": "retrieval", "outcome": "completed", "duration_ms": 0, "candidate_count": len(lexical.source_result.candidates), "reason_codes": ("lexical",), "components": (components[3],)},
+                    {"stage": "eligibility", "outcome": "completed", "duration_ms": 0, "candidate_count": retrieval.pool, "reason_codes": (eligibility.reason.value,), "components": (components[2],)},
+                    {"stage": "retrieval", "outcome": "completed", "duration_ms": 0, "candidate_count": len(filtered), "reason_codes": tuple(source.source for source in sources), "components": (components[3],)},
                     {"stage": "fusion", "outcome": "completed", "duration_ms": 0, "candidate_count": len(fused.candidates), "reason_codes": ("rrf",), "components": (components[3],)},
                     {"stage": "rank", "outcome": "degraded" if routed.fallback else "completed", "duration_ms": 0, "candidate_count": len(routed.candidates), "reason_codes": tuple(decision.fallback_reason.value for decision in routed.trace if decision.fallback_reason.value != "none"), "components": (components[4],)},
                 ),
@@ -250,7 +321,7 @@ class LocalSearchService:
                 components=components,
                 impression_token=token,
                 decision_trace=trace,
-                fallback=routed.fallback,
+                fallback=routed.fallback or retrieval.fallback,
             )
         except (TypeError, ValueError):
             return self._failure(request, components, "invalid_search_request", started)
@@ -312,6 +383,7 @@ def search(request: SearchRequest) -> SearchResponse:
 
 __all__ = [
     "LocalSearchService",
+    "Retrieval",
     "SearchError",
     "SearchRequest",
     "SearchResponse",

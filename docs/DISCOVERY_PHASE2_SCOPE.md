@@ -2,6 +2,12 @@
 
 Status: **Scoping proposal.** Written from the repository state on `origin/main` (2026-11-02). Nothing here is an approval or a recorded human gate, and no cloud resource is created, planned or changed by this document. Each decision below is the owner's.
 
+## Status and owner decisions (2026-11-02)
+
+- Hosting: **Azure VM, started on demand** (see the cost model). Monthly cap: **keep 25 USD**.
+- Data: **synthetic**. Vectors: **now**, using a free local hashing embedder (no model call). PostgreSQL waits until real catalog data exists. These last two are my assumptions from the owner's silence on them, to be confirmed.
+- Phase 2a progress: the OpenSearch client, index and bulk loading, lexical and vector retrieval, hybrid fusion, settings and in-memory fallback are implemented and verified locally against OpenSearch 2.15.0. Not started: the VM Terraform and its networking (Phase 2b, needs its own authorization), PostgreSQL repositories, real-data ingest.
+
 ## Where Phase 1 stands
 
 The Discovery pilot is deployed (Container Apps, Entra sign-in) and serves a fictional catalog: 48 experiences, 24 synthetic users, 43 searchable documents, generated from seed 7 at container start. Search is lexical only, over an in-memory list. There are no embeddings, no model calls, no database and no search cluster.

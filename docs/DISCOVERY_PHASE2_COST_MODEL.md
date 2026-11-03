@@ -78,10 +78,14 @@ Not applied: any free grants or reservations (Container Apps has a monthly free 
 4. **Vectors cost nothing extra** with the local embedder. Decide separately whether Azure OpenAI embeddings are worth the call.
 5. **Budget.** Keep the 25 USD alert for the lean scenarios. For an always-on Azure cluster, set about 60 to 75 per month. Either way, keep the 80 and 100 percent notifications.
 
+## 6a. Measured locally (2026-11-02)
+
+OpenSearch 2.15.0, single node, 512 MB heap, the 43-document demo catalog with 384-d vectors: the index is **192 KB** on disk and the node's heap was 363 MB of 512 MB in use. At about 4.5 KB per document that extrapolates to roughly **110 MB at 25,000 documents** (linear estimate, not measured), below the 0.2 to 0.3 GB estimated above. The heap, not the data, is what the node size must cover.
+
 ## 7. What is unverified
 
 - PostgreSQL B1ms and Log Analytics prices (API queries returned nothing) and the embedding price.
-- Real OpenSearch memory and disk use at 25,000 documents with vectors: run it locally and record the actual index size and heap before sizing.
+- Real OpenSearch memory and disk use at 25,000 documents with vectors: only the 43-document catalog was measured; the 25,000-document figure is a linear extrapolation.
 - That OpenSearch runs on Container Apps with `allow_mmap=false`, and its cold-start time.
 - AWS and Aiven figures (third-party sources).
 - Phase 1 actual spend: not read from Azure Cost Management.

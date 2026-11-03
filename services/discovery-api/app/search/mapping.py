@@ -11,6 +11,8 @@ from typing import Any, Mapping
 CATALOG_INDEX_PREFIX = "imd-catalog"
 EMBEDDING_DIMENSIONS = 384
 EMBEDDING_SIMILARITY = "cosine"
+# OpenSearch names its cosine space "cosinesimil"; the contract keeps the logical name.
+_OPENSEARCH_SPACE_TYPES = {"cosine": "cosinesimil"}
 
 
 class CatalogMappingCompatibilityError(ValueError):
@@ -181,7 +183,7 @@ def _properties(versions: CatalogMappingVersions) -> dict[str, Any]:
             "dimension": versions.embedding_dimensions,
             "method": {
                 "name": "hnsw",
-                "space_type": versions.embedding_similarity,
+                "space_type": _OPENSEARCH_SPACE_TYPES.get(versions.embedding_similarity, versions.embedding_similarity),
                 "engine": "lucene",
                 "parameters": {"ef_construction": 128, "m": 16},
             },
