@@ -1,6 +1,6 @@
 # Discovery search VM: networking and operations design
 
-Status: **Design proposal.** Written 2026-11-02 from the repository state at `origin/main` (`e73ccd8`) and public documentation. No Terraform was written or run and no Azure resource was changed. Applying any of this is a separate, explicit owner decision.
+Status: **Implemented and applied** (2026-11-02, owner-authorized), with corrections. Originally written from `origin/main` (`e73ccd8`) as a proposal. Built in #81, corrected in #82 (subnet delegation) and #83 (Azure-set defaults). Section 10 records what the apply found; where it contradicts sections 4 to 8, section 10 is right.
 
 ## 1. Goal and constraints
 
@@ -38,7 +38,7 @@ Internet --> Container App "web" (public, Entra sign-in) --> "api" (internal ing
 ```
 
 ### 4.1 Network
-- One VNet in `discovery-pilot-rg`. Subnet `cae` is a **/23** (the documented minimum for a consumption-only environment, and its size cannot change later). Consumption-only environments need no subnet delegation.
+- One VNet in `discovery-pilot-rg`. Subnet `cae` is a **/23** (the documented minimum for a consumption-only environment, and its size cannot change later). **Correction: the subnet must be delegated to `Microsoft.App/environments`.** This document first said a consumption-only environment needs no delegation; Azure rejected the environment with `ManagedEnvironmentSubnetDelegationError` (fixed in #82).
 - Subnet `search` is a /27 with an NSG: allow TCP 9200 from the `cae` subnet; allow nothing else inbound; the default deny rules cover the internet.
 - The environment gets `infrastructure_subnet_id`. Its ingress stays external, so the `web` app keeps its public URL and Entra sign-in. `api` keeps internal ingress.
 
@@ -77,7 +77,7 @@ Internet --> Container App "web" (public, Entra sign-in) --> "api" (internal ing
 
 Adding the Phase 1 baseline (registry about 5.07 per month, plus logs and idle apps, not measured), the on-demand case lands near the 25 USD alert and **has little margin**; an always-on VM does not fit. The alert is a notification, not a hard stop. Demo hours are the dial: 100 h of VM time adds about 2.5 more. Reading Azure Cost Management for `discovery-pilot-rg` after a week would replace these estimates with a measurement.
 
-## 6. Terraform change list (not written)
+## 6. Terraform change list (as proposed; now implemented, see section 10)
 
 New: virtual network and two subnets, NSG with its association, public IP, NIC, `azurerm_linux_virtual_machine` with a cloud-init template, `random_password`, an auto-shutdown schedule.
 Changed: the Container Apps environment (adds the subnet; **forces replacement**), the `api` app (environment variables and one secret), variables (`search_vm_enabled`, `search_vm_size`, optional `admin_ssh_public_key`, shutdown time), outputs (VM name for the operating commands).
@@ -90,7 +90,7 @@ Changed: the Container Apps environment (adds the subnet; **forces replacement**
 3. A search through the web URL returns results with `fallback: false` and hybrid retrieval.
 4. Deallocate the VM and confirm the same search returns results with `fallback: true`.
 
-## 8. Unverified
+## 8. Unverified (at the time of writing; see section 10 for what was later checked)
 - azurerm 3.117 arguments: `infrastructure_subnet_id` on a consumption-only environment and the shutdown-schedule resource. They need a `terraform validate` and plan.
 - Whether `az containerapp exec` can run the bootstrap in this environment (the alternative is a manually triggered Container Apps Job).
 - That the environment's apps reach a VM private IP in the same VNet (documented behavior, not tested here).
@@ -104,3 +104,21 @@ Changed: the Container Apps environment (adds the subnet; **forces replacement**
 3. SSH: none (recommended, run-command only) or an SSH key with an explicit rule?
 4. Auto-shutdown time, and do you want a start/stop workflow in addition to `az vm`?
 5. Authorization to run `terraform plan` (read-only) and then apply, in a separate step.
+
+## 10. Outcome of the apply (2026-11-02)
+
+**What happened.** The first apply (15 add, 1 change, 4 destroy) created the network and VM but failed creating the environment on the missing delegation. The old environment, both apps and the auth config had already been destroyed, so the pilot was down until the fix was applied (4 add, 3 change, 0 destroy; about 3 minutes for the environment). The web URL changed as expected.
+
+**Corrections to this document.**
+- Subnet delegation to `Microsoft.App/environments` is required (section 4.1, #82).
+- After the apply, a plain `terraform plan` wanted to replace the environment again because Azure sets `infrastructure_resource_group_name` itself, and showed diffs for `workload_profile_name` (apps) and `vm_agent_platform_updates_enabled` (VM). #83 ignores those four attributes; the plan is then empty. Anyone changing this stack should plan before applying.
+- `az containerapp exec` needs a terminal. From a script it fails with a `termios` error; run it interactively or through a pseudo-terminal. The API app scales to zero, so `exec` also needs a running replica (it reports "Could not find a replica"); raise `minReplicas` to 1 temporarily and restore it.
+
+**Verified.**
+- `Standard_B2s` unrestricted in eastus; B-series quota 0 of 20 used.
+- From outside, a request to the VM public IP on 9200 gets no connection.
+- On the VM: cloud-init finished, OpenSearch running, `vm.max_map_count` 262144, an unauthenticated request returns 401.
+- The bootstrap through the API container indexed 43 of 43 documents, which also shows the environment reaches the VM private IP.
+- With the VM running, a search from inside the API container returned `fallback: false`. With the VM deallocated, the same search returned results with `fallback: true`, each taking about 2 seconds (the configured request timeout).
+
+**Still unverified.** Entra sign-in and a search through the web URL; VM boot-to-ready time after a start; whether the static public IP bills while the VM is deallocated; an index rebuild after losing the disk; the cost estimates (no Azure Cost Management reading yet).
