@@ -87,7 +87,7 @@ User or behavior data, click or purchase logs, images, prices, live Walmart or A
 | 2 | **C then B:** local benchmark first; product mode only after the owner confirms hosted use | The benchmark is the evidence for B and carries the least licensing risk |
 | 3 | **US locale, a 25k-product subset** chosen from products that appear in the small version; grow toward 100k only if the VM handles it | Bounded, fits the on-demand VM, enough for a meaningful nDCG |
 | 5 | **Product mode has no age or safety gate.** Eligible means: non-empty title, locale matches, not on a block list. The UI states plainly that it is a product-search demo with no age or safety filtering | ESCI has no age or safety field; reusing the experience rule would hide every item. This is a policy choice the owner may change |
-| PG | **No database for the ESCI work:** parse locally, keep a reviewed subset file, load OpenSearch from it | $0, and nothing here needs an authoritative store |
+| PG | **No database for the ESCI work:** parse locally, keep a reviewed subset file, load OpenSearch from it. **Confirmed by the owner (2026-11-03): "go with 1. No database: load from a file".** | $0, and nothing here needs an authoritative store |
 | 7 | **Hashing embedder for the benchmark,** with the report stating that it is mostly lexical. A real embedding model is not adopted | Choosing a model and paying for model calls is the owner's approval |
 | 4 | **Unchanged:** the real *experiences* catalog is still open. ESCI would add a product-search demo; it does not replace it | Different record type |
 
