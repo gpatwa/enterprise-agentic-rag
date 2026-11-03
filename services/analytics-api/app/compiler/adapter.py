@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
+from app.compiler.dialects import DATABRICKS, DUCKDB, SNOWFLAKE, SQLDialect
 from app.compiler.postgres import CompiledQuery, PostgreSQLCompiler
 from packages.platform_contracts.analytics_intent import AnalyticalIntent
 from packages.platform_contracts.semantic import SemanticContract
@@ -34,6 +35,24 @@ class DuckDBCompilerAdapter(PostgreSQLCompiler):
     """
 
     dialect = "duckdb"
+    sql_dialect: SQLDialect = DUCKDB
+
+
+class SnowflakeCompilerAdapter(PostgreSQLCompiler):
+    """Snowflake: quoted identifiers keep their case, so a contract must state the physical case.
+
+    Tables may be `database.schema.table`. Bind parameters stay `:pN` here; the gateway converts them.
+    """
+
+    dialect = "snowflake"
+    sql_dialect: SQLDialect = SNOWFLAKE
+
+
+class DatabricksCompilerAdapter(PostgreSQLCompiler):
+    """Databricks SQL: backtick-quoted identifiers; tables may be `catalog.schema.table` (Unity Catalog)."""
+
+    dialect = "databricks"
+    sql_dialect: SQLDialect = DATABRICKS
 
 
 class CompilerRegistry:

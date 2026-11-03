@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from app.compiler.dialects import POSTGRES, IdentifierError, SQLDialect
 from packages.platform_contracts.analytics_intent import AnalyticalIntent
 from packages.platform_contracts.semantic import (
     SemanticContract,
@@ -39,6 +40,7 @@ class PostgreSQLCompiler:
     """
 
     dialect = "postgres"
+    sql_dialect: SQLDialect = POSTGRES
 
     def __init__(self, *, min_cohort: int | None = None) -> None:
         if min_cohort is not None and not 2 <= min_cohort <= 10_000:
@@ -46,6 +48,17 @@ class PostgreSQLCompiler:
         self.min_cohort = min_cohort
 
     def compile(
+        self,
+        intent: AnalyticalIntent,
+        contract: SemanticContract,
+        policy_values: dict[str, Any] | None = None,
+    ) -> CompiledQuery:
+        try:
+            return self._compile(intent, contract, policy_values)
+        except IdentifierError as exc:
+            raise CompilationError(f"physical name cannot be used for {self.dialect}: {exc}") from exc
+
+    def _compile(
         self,
         intent: AnalyticalIntent,
         contract: SemanticContract,
@@ -75,10 +88,10 @@ class PostgreSQLCompiler:
             # With a minimum cohort, a filter on the entity key would isolate single entities or enable exact differencing.
             raise CompilationError("filtering on a grain key is not allowed when a minimum cohort is enforced")
         dimensions = [
-            _dimension_sql(group.time_granularity, dimension, selected_fields[dimension.field_id])
+            _dimension_sql(group.time_granularity, dimension, selected_fields[dimension.field_id], self.sql_dialect)
             for group, dimension in zip(intent.group_by, selected_dimensions, strict=True)
         ]
-        metrics = [_metric_sql(metric, selected_fields) for metric in selected_metrics]
+        metrics = [_metric_sql(metric, selected_fields, self.sql_dialect) for metric in selected_metrics]
         select_items = [
             f"{expression} AS dimension_{index}" for index, expression in enumerate(dimensions)
         ] + [f"{expression} AS metric_{index}" for index, expression in enumerate(metrics)]
@@ -91,10 +104,11 @@ class PostgreSQLCompiler:
             dataset.id,
             required_filters,
             policy_values or {},
+            self.sql_dialect,
         )
         sql_parts = [
             f"SELECT {', '.join(select_items)}",
-            f"FROM {_identifier(dataset.physical_name)} AS d0",
+            f"FROM {self.sql_dialect.quote_dataset(dataset.physical_name)} AS d0",
         ]
         if where_parts:
             sql_parts.append(f"WHERE {' AND '.join(where_parts)}")
@@ -117,7 +131,7 @@ class PostgreSQLCompiler:
         )
 
 
-def _metric_sql(metric: SemanticMetric, fields: dict[str, SemanticField]) -> str:
+def _metric_sql(metric: SemanticMetric, fields: dict[str, SemanticField], d: SQLDialect) -> str:
     if metric.aggregation == "count":
         return "COUNT(*)"
     field = fields.get(metric.measure_field_id or "")
@@ -132,18 +146,18 @@ def _metric_sql(metric: SemanticMetric, fields: dict[str, SemanticField]) -> str
     }.get(metric.aggregation)
     if aggregate is None:
         raise CompilationError(f"metric aggregation {metric.aggregation} is not supported")
-    column = _column(field)
+    column = _column(field, d)
     return f"{aggregate} {column})" if metric.aggregation == "count_distinct" else f"{aggregate}({column})"
 
 
 def _dimension_sql(
-    granularity: str | None, dimension: SemanticDimension, field: SemanticField
+    granularity: str | None, dimension: SemanticDimension, field: SemanticField, d: SQLDialect
 ) -> str:
-    column = _column(field)
+    column = _column(field, d)
     if granularity:
         if dimension.dimension_type != "temporal":
             raise CompilationError("time granularity requires a temporal dimension")
-        return f"DATE_TRUNC('{granularity}', {column})"
+        return d.date_trunc(granularity, column)
     return column
 
 
@@ -154,6 +168,7 @@ def _where_clause(
     dataset_id: str,
     required_filters: list[SemanticFilter],
     policy_values: dict[str, Any],
+    d: SQLDialect,
 ) -> tuple[list[str], dict[str, Any]]:
     clauses: list[str] = []
     parameters: dict[str, Any] = {}
@@ -166,12 +181,12 @@ def _where_clause(
             raise CompilationError(f"missing policy value for required filter {filter_.id}")
         if not isinstance(values, list):
             values = [values]
-        clauses.extend(_filter_parts(field, filter_.operator, values, parameters))
+        clauses.extend(_filter_parts(field, filter_.operator, values, parameters, d))
     for filter_ in intent.filters:
         field = fields[filter_.field_id]
         if field.dataset_id != dataset_id:
             raise CompilationError("this compiler supports filters from the intent dataset only")
-        clauses.extend(_filter_parts(field, filter_.operator, filter_.values, parameters))
+        clauses.extend(_filter_parts(field, filter_.operator, filter_.values, parameters, d))
     if intent.time_range:
         dimension = dimensions[intent.time_range.dimension_id]
         field = fields[dimension.field_id]
@@ -180,19 +195,19 @@ def _where_clause(
         parameter_index = len(parameters)
         if intent.time_range.start:
             key = f"p{parameter_index}"
-            clauses.append(f"{_column(field)} >= :{key}")
+            clauses.append(f"{_column(field, d)} >= :{key}")
             parameters[key] = intent.time_range.start
             parameter_index += 1
         if intent.time_range.end:
             key = f"p{parameter_index}"
             operator = "<=" if intent.time_range.inclusive_end else "<"
-            clauses.append(f"{_column(field)} {operator} :{key}")
+            clauses.append(f"{_column(field, d)} {operator} :{key}")
             parameters[key] = intent.time_range.end
     return clauses, parameters
 
 
 def _filter_parts(
-    field: SemanticField, operator_name: str, values: list[Any], parameters: dict[str, Any]
+    field: SemanticField, operator_name: str, values: list[Any], parameters: dict[str, Any], d: SQLDialect
 ) -> list[str]:
     operator = {
         "equals": "=",
@@ -202,7 +217,7 @@ def _filter_parts(
         "less_than": "<",
         "less_than_or_equal": "<=",
     }.get(operator_name)
-    column = _column(field)
+    column = _column(field, d)
     if operator:
         key = f"p{len(parameters)}"
         parameters[key] = values[0]
@@ -244,13 +259,9 @@ def _sort_index(sort: Any, intent: AnalyticalIntent) -> int:
     return target_ids.index(sort.target_id)
 
 
-def _column(field: SemanticField) -> str:
-    return f"d0.{_identifier(field.physical_name)}"
+def _column(field: SemanticField, d: SQLDialect) -> str:
+    return f"d0.{d.quote_identifier(field.physical_name)}"
 
-
-def _identifier(value: str) -> str:
-    escaped = value.replace('"', '""')
-    return f'"{escaped}"'
 
 
 def _find_by_id(values: list[Any], identifier: str) -> Any:

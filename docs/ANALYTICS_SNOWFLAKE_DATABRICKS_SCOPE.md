@@ -2,6 +2,28 @@
 
 Status: **Scoping proposal.** Written 2026-11-03 from `origin/main` (`c2fcb25`). Nothing here is an approval or a recorded human gate. No code is written, no warehouse is contacted and no cloud resource is touched. Connecting to a live warehouse needs your explicit request in a later task (`CLAUDE.md`); everything below is verifiable locally with fake providers.
 
+## Authorization and progress (2026-11-03)
+
+Owner, in chat: "authorize W1 to W7 local-only, start with W1 and complete till W7". Recorded here from the owner's words; this is not a manifest entry and says nothing about W8 (live validation), W9 or any threshold.
+
+Built and tested locally with fakes only (no warehouse, no driver, no cloud):
+
+| Packet | State | Evidence |
+|---|---|---|
+| W1 conformance harness | Done | `tests/test_dialect_conformance.py`: four dialects (postgres, duckdb, snowflake, databricks) x four intents compile to parseable read-only SQL with equal bind parameters; golden SQL per dialect; registry fails closed on an unknown dialect; refusal tests for unquotable names |
+| W2 and W5 compiler adapters | Done | `SnowflakeCompilerAdapter`, `DatabricksCompilerAdapter`, `app/compiler/dialects.py` (the PostgreSQL and DuckDB output is unchanged: existing compiler tests still pass) |
+| W3 and W7 metadata providers | Done | `app/metadata/warehouse_providers.py`, `tests/test_warehouse_metadata_providers.py`; a missing or invisible table raises instead of returning an empty asset |
+| W4 and W6 gateways | **Policy layer done; no real driver session** | `app/execution/warehouse_gateway.py`, `tests/test_warehouse_gateways.py` against a scriptable fake session |
+
+What "done" does **not** mean:
+
+- The real Snowflake and Databricks sessions (connect, apply the statement timeout and read-only settings, `EXPLAIN` cost, cancel, row streaming, marker syntax) are not written. They need a live warehouse to verify and are part of W8. Until then the gateways cannot run a query against either engine.
+- Generated SQL is validated with `sqlglot`'s Snowflake and Databricks parsers only. It has not been run on either engine, so engine-specific behavior (time-zone handling of the timezone-aware bind values, `TIMESTAMP_NTZ` comparisons, case folding of unquoted names) is untested.
+- Result value normalization across engines (decimal precision, timestamps, large integers) is not done.
+- The default is fail-closed on cost: a session that returns no estimate makes the query not run unless `require_cost_estimate=False` is set explicitly.
+- Snowflake contracts must state the physical case of names (usually upper case); table names may be `database.schema.table`, and a name with `:`, `%`, `;`, a backslash, whitespace at either end or a control character is refused at compile time for the two new dialects only.
+- No semantic contract targets either warehouse yet, and nothing selects these adapters at runtime: `CertifiedIntentCompiler` still defaults to PostgreSQL.
+
 ## 1. Why, and what exists
 
 Auto Ontology (parked) supports Snowflake and Databricks; Analytics does not. A repo-wide search found no Snowflake or Databricks code, only competitor mentions in docs and marketing copy. Analytics today targets PostgreSQL (first customer-shaped target) and DuckDB (embedded), plus metadata from Postgres, dbt manifest, OpenMetadata and DuckDB.

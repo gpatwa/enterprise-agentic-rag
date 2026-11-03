@@ -14,8 +14,10 @@ from app.metadata.providers import (
     SemanticModelProvider,
 )
 from app.metadata.quality import MetadataQualityGate, rank_assets
+from app.metadata.warehouse_providers import DatabricksMetadataProvider, SnowflakeMetadataProvider
 
 __all__ = [
+    "DatabricksMetadataProvider",
     "DbtManifestProvider",
     "DuckDBMetadataProvider",
     "DataHubMetadataProvider",
@@ -28,6 +30,7 @@ __all__ = [
     "PolicyProvider",
     "PostgresMetadataProvider",
     "SemanticModelProvider",
+    "SnowflakeMetadataProvider",
     "rank_assets",
     "create_exploratory_discovery",
 ]

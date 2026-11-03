@@ -37,6 +37,16 @@ from app.execution.result_validation import (
     validate_result,
 )
 from app.execution.validation import validate_read_only_sql
+from app.execution.warehouse_gateway import (
+    DatabricksGateway,
+    RowStream,
+    SnowflakeGateway,
+    WarehouseCancelled,
+    WarehouseGateway,
+    WarehouseSession,
+    WarehouseTimeout,
+    bind_parameters,
+)
 
 __all__ = [
     "DraftClaim",
@@ -51,6 +61,7 @@ __all__ = [
     "CancellationToken",
     "CostLimitExceeded",
     "DialectMismatch",
+    "DatabricksGateway",
     "DuckDBGateway",
     "ExecutionCancelled",
     "ExecutionResultStore",
@@ -62,6 +73,13 @@ __all__ = [
     "ExecutionResult",
     "ExecutionTimeout",
     "PostgresGateway",
+    "RowStream",
+    "SnowflakeGateway",
+    "WarehouseCancelled",
+    "WarehouseGateway",
+    "WarehouseSession",
+    "WarehouseTimeout",
+    "bind_parameters",
     "QueryRejected",
     "ControlCohortEmpty",
     "ResultIssue",
