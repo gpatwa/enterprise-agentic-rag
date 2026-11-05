@@ -1,27 +1,97 @@
 # Claude Code Handoff
 
-Updated: 2026-10-03
+Updated: 2026-11-04
 
 This is the durable project handoff between Claude Code sessions (originally
-written by the Codex task, last updated after ADS-040/041/042/044). Re-check
+written by the Codex task; the Agentic Data Stack detail below is history through
+ADS-079 and M7, and the repository, deployment and Discovery sections were
+refreshed on 2026-11-04). Re-check
 repository state before acting; the information below records the verified
 state at the time of writing, not an instruction to force the tree to match it.
 
 ## Verified Repository State
 
-- Repository: `gpatwa/enterprise-agentic-rag`
-- Branch: `claude/agentic-data-stack-continue-3be90b`, tracking
-  `origin/claude/agentic-data-stack-continue-3be90b` (pushed; clean at handoff).
-  It is based on `codex/ea-001-canonical-fixtures` (`9278e84`), **not** on `main`:
-  `main` lacks all ADS work. A PR for this branch has not been opened.
-- Latest commit: `d97c428 feat(analytics): add ADS-042 evidence envelope and
-  append-only chain; allow timestamp_trunc in gateway validation`.
-- Work happens in a git worktree; the worktree path can be recycled between
-  sessions. Commits on the branch are the source of truth, not any one checkout.
-- The user prefers completed milestones/packets to be committed and pushed; check
-  the staged scope and upstream first. Do not run `ruff check --fix` over whole
-  directories (it re-sorts unrelated files, e.g. an alembic migration); fix only
-  the files you changed.
+- Repository: `gpatwa/enterprise-agentic-rag`. Work now lands on `main` through
+  pull requests; the long-lived ADS branch described in earlier versions of this
+  file has been merged. Check `git status -sb`, the current branch, `git log` and
+  `gh pr list` before acting; this section is a snapshot, not an instruction.
+- Snapshot at writing: `main` at `468732d` (PR #88). PR #89 (Discovery
+  product-search evaluation harness) was open. Everything below that says "merged"
+  was checked against `gh pr view`.
+- The user merges with "merge #N" (or "merge #N when CI is green", meaning wait
+  for every check). The slow Analytics job takes about 12-17 minutes. Docs-only and
+  path-filtered PRs may show no checks.
+- Commits end with `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` and PR
+  bodies end with the Claude Code attribution line. Stage files by name; never
+  commit `backend.hcl`, `terraform.tfvars` or `secrets.auto.tfvars`. Run
+  `ruff check` and `ruff format` on changed files only, never repo-wide `--fix`.
+- The worktree path can be recycled between sessions. Commits on the remote are
+  the source of truth.
+
+## Product Separation and CI
+
+Decided with the owner (recorded in `docs/PRODUCT_SEPARATION_PROPOSAL.md`): one
+repository, separately deployable products, per-product CI. Workflows:
+`ci-support`, `ci-analytics`, `ci-support-web`, `ci-analytics-web`, `ci-landing`,
+`ci-discovery` (job names kept stable). A change to `packages/platform_contracts`
+runs every backend that uses it. The platform services (`control-plane`,
+`data-plane`, `gateway`, `sandbox`) have no CI. They belong to Resolution
+Intelligence for now (Option A); a shared platform product (Option B) is on
+`docs/PRODUCT_ROADMAP.md` with no date. The older AWS deploy workflows
+(`deploy.yml`, `deploy-staging.yml`, `deploy-prod.yml`) stay; they were written
+for AWS.
+
+## Deployments (pilot stage)
+
+Nothing here is production. Deploys, `terraform plan` and `terraform apply` happen
+only when the owner asks in the current task; plan and apply are separate steps.
+
+- **Analytics (Compass):** an Azure pilot from `infra/terraform/azure-analytics-pilot`
+  (Container Apps API, Static Web App, PostgreSQL, Key Vault, Azure OpenAI with the
+  `gpt-5.6-luna` deployment), Entra sign-in for the token path, and an anonymous,
+  rate-limited, sample-only public demo mode. The landing site (`apps/landing`) is a
+  separate Static Web App; its GitHub deploy workflow needs a secret only the owner
+  can set.
+- **Discovery:** an Azure pilot from `infra/terraform/azure-discovery-pilot`
+  (separate resource group, registry and state key; web and API as Container Apps
+  scaling to zero; Entra sign-in with assignment required; OpenSearch on an
+  on-demand VM, deallocated when idle). Costs are list-price estimates only; Azure
+  Cost Management has not been read. The `discovery-search-vm.yml` start/stop
+  workflow has never run (it needs owner-set secrets).
+- Resolution Intelligence (`apps/support-web`, `services/api`) is not deployed.
+
+## Discovery State
+
+Focus areas set by the owner (2026-11-03): ML Engineering/AI, Data Science, and
+Data Operations.
+
+- The service runs on a fictional, seeded catalog with fake providers and no
+  model. `/api/discovery/v1/search`, `/home` and the interaction routes are mounted
+  over the demo catalog. Production settings validation requires non-fake
+  providers and auth, TLS and audit logging; the pilot runs as `staging`.
+- Phase 2a is built (OpenSearch lexical, vector, hybrid with a local hashing
+  embedder, and a fallback). The hashing embedder matches word overlap, not
+  meaning. Real data and PostgreSQL are not started.
+- ESCI work (`docs/DISCOVERY_ESCI_SCOPE.md`, `docs/DISCOVERY_INGESTION_RUNBOOK.md`):
+  the owner chose no database (load from a file) and a local benchmark first. E1
+  ingestion (`app/ingest`) is merged; E4 evaluation (`app/evaluation/product_search.py`)
+  was in PR #89. **No ESCI file has been downloaded.** ESCI's repository is
+  Apache-2.0, no separate data license was found, and Amazon's own terms for the
+  product text were not read. Every manifest says `license_status: unconfirmed`;
+  hosting the data is the owner's decision and needs a separate cloud authorization.
+- Known behavior, not a bug: the demo catalog spans two tenants and the web app
+  searches `tenant-01` as `user-0001`, a profile capped at rating E and desktop
+  only. By a simple attribute check (rating E, desktop, en-US) only 7 of the 21 `tenant-01` documents fit, and a query such as
+  "harbor" returns nothing because all seven searchable Harbor items are in
+  `tenant-02`. The request's `age` does not change results when a profile exists.
+
+## Analytics Warehouse Providers (local only)
+
+`docs/ANALYTICS_SNOWFLAKE_DATABRICKS_SCOPE.md` and PR #86 add Snowflake and
+Databricks dialects, compiler adapters, a warehouse gateway policy layer and
+`information_schema` metadata providers, all tested against fakes and sqlglot only.
+Nothing selects them at runtime and no driver session exists. Live sandbox
+validation (W8) and a draft-contract generator (W9) are **not authorized**.
 
 ## Product and Strategy Context
 
@@ -312,6 +382,8 @@ Canonical task status is in
 
 ## Last Verification Evidence
 
+_Historical: the counts below are from the ADS-040 to ADS-049 period. Recent runs: the full Analytics suite passed locally (1133 passed, 4 skipped) at PR #86, and the Discovery suite passed locally (376 passed, 5 skipped) with PR #89's changes. Re-run before relying on either._
+
 At commit `d97c428`, run from `services/analytics-api`:
 
 - `PYTHONPATH=.:../.. pytest -q` (equivalently `make test-analytics`): **309
@@ -339,13 +411,25 @@ for later work.
 
 ## Open Gates and Decisions for the User
 
-- Independent review of ADS-040 to ADS-049 (manifest `review` → `complete`).
-- M1 human semantic certification (still pending; nothing here certifies any
-  ontology or contract).
-- Live validation of PostgreSQL, OpenSearch, and catalog providers.
-- Whether to open a PR from this branch and against which base (`main` lacks the
-  ADS history).
-- M4 `local_demo_review` is approved (2026-10-09). Later human gates: M5-M7 per the manifest.
+Human gates are the user's. Never infer approval; record one only in the user's own
+words in the program manifest.
+
+- Recorded: gate approvals for M0-M7 (the user wrote "I approved M0/M1/M5/M6/M7
+  gates" on 2026-10-13; see the manifest). Those approvals cover the gates only. They
+  do **not** approve thresholds or policy files (ADS-054 to ADS-059 and the rollout
+  policy are still PROPOSED), the reference corpus, the five ADS-079 sign-offs, or
+  independent review, and they do not certify any semantic contract. Implemented
+  packets stay `review`; M1 stays `in_progress`.
+- Discovery: ESCI data terms and hosting (E0, E7), eligibility policy for products
+  without age or safety data, embeddings model and its cost, real catalog source,
+  PostgreSQL (only when real data needs an authoritative store), and any further
+  cloud change.
+- Analytics warehouses: which warehouse first, sandbox accounts and credentials for
+  W8, whether to include W9.
+- Landing: the owner sets the Static Web Apps deploy secret; the leadership
+  messaging review (`docs/LANDING_MESSAGING_REVIEW.md`) has not happened.
+- Cost: read Azure Cost Management for the pilot resource groups to replace the
+  list-price estimates.
 
 ## Canonical Roadmaps and Product Docs
 
@@ -368,32 +452,13 @@ for later work.
 ## Suggested Claude Code Resume Prompt
 
 > Read `CLAUDE.md` and `docs/handoffs/CLAUDE_CODE_HANDOFF.md` first. Then verify
-> `git status -sb`, the current branch and upstream (expect
-> `claude/agentic-data-stack-continue-3be90b`, tip `d97c428` or later), and recent
-> commits; treat the handoff as a snapshot and the repository as the source of
-> truth. If the branch is missing the ADS history, check out
-> `origin/claude/agentic-data-stack-continue-3be90b`.
+> `git status -sb`, the current branch, recent commits and `gh pr list`; treat this
+> file as a snapshot and the repository as the source of truth. Report in a few
+> lines what you found and what you would do next, and wait for my go-ahead.
 >
-> Continue the Agentic Data Stack from its canonical plan and manifest
-> (`docs/AGENTIC_DATA_STACK_EXECUTION_PLAN.md`,
-> `docs/execution/enterprise-analytics/agentic-data-stack-program.yaml`). M3 and
-> ADS-039 are complete. ADS-040, 041, 042, and 044 are implemented and in `review`
-> (no independent review yet; do not mark them complete). M1 human semantic
-> certification and all live validation (PostgreSQL, OpenSearch, OpenMetadata/dbt)
-> are separate pending gates: do not infer approval or claim they passed.
->
-> Next unblocked packet: **ADS-043** (grounded explanation and visualization-spec
-> node; claims must cite fixed result/semantic IDs and a repair step must not alter
-> the result). Read its acceptance criteria in the plan, inspect the current code
-> (`app/execution/result_validation.py`, `app/runtime/result_stage.py`,
-> `app/runtime/evidence.py`), and implement only that bounded scope. Wave 4C
-> (ADS-045+) waits on it.
->
-> Keep validation local with fake providers unless I explicitly authorize live
-> integrations or deployment. Do not deploy to Azure or mutate cloud resources.
-> Preserve unrelated work, add tests, write the packet doc
-> (`docs/execution/enterprise-analytics/ADS-043-*.md`), update the manifest status
-> to `review` and this handoff, and run `make test-analytics`, `ruff check` on
-> changed files only, and `git diff --check`. Report what changed, commands run,
-> actual results, and remaining gates. Commit and push each completed packet after
-> checking the staged scope and upstream.
+> Rules: merge, deploy, `terraform plan`/`apply` and any Azure change only when I ask
+> in this session. Human gates and approvals are mine, in my own words; never infer
+> them. Never set GitHub secrets or print credentials. Keep validation local with
+> fake providers unless I authorize live integrations. Stage files by name, run
+> `ruff` on changed files only, and do not claim a test or evaluation passed unless
+> you ran it.
