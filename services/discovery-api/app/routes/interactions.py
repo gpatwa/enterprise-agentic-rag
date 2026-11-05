@@ -5,7 +5,7 @@ import hashlib
 from datetime import datetime
 from enum import Enum
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.audit.ranking import RankingAuditRecord, RankingAuditWriter
@@ -18,6 +18,7 @@ from app.events.models import (
     InteractionEventBatch,
     ReportPayload,
 )
+from app.security import Identity, bind_identity, require_identity
 from packages.platform_contracts.discovery import ImpressionToken
 
 _ID = r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,254}$"
@@ -206,17 +207,21 @@ _service = LocalInteractionService()
 
 
 @router.post("/interactions", response_model=InteractionResponse)
-def submit_interactions(request: InteractionSubmission) -> InteractionResponse:
-    return _service.submit(request)
+def submit_interactions(
+    request: InteractionSubmission, identity: Identity | None = Depends(require_identity)
+) -> InteractionResponse:
+    return _service.submit(bind_identity(request, identity))
 
 
 @router.post("/feedback", response_model=FeedbackResponse)
-def submit_feedback(request: FeedbackSubmission) -> FeedbackResponse:
-    return _service.submit_feedback(request)
+def submit_feedback(
+    request: FeedbackSubmission, identity: Identity | None = Depends(require_identity)
+) -> FeedbackResponse:
+    return _service.submit_feedback(bind_identity(request, identity))
 
 
 @router.get("/explanations/{decision_ref}", response_model=ExplanationResponse)
-def get_explanation(decision_ref: str) -> ExplanationResponse:
+def get_explanation(decision_ref: str, identity: Identity | None = Depends(require_identity)) -> ExplanationResponse:
     try:
         return _service.explain(decision_ref)
     except (KeyError, ValueError) as exc:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from enum import Enum
 from typing import Any, Literal, Mapping
@@ -65,6 +66,11 @@ class DiscoverySettings(BaseModel):
     azure_openai_deployment: str | None = Field(default=None, max_length=255)
     azure_openai_api_key: str | None = Field(default=None, max_length=512, repr=False)
     azure_openai_api_version: str = Field(default="2024-10-21", max_length=32)
+    entra_tenant_id: str | None = Field(default=None, max_length=64)
+    entra_audience: str | None = Field(default=None, max_length=255)
+    entra_jwks_url: str | None = Field(default=None, max_length=512)
+    entra_tenant_map: dict[str, str] = Field(default_factory=dict)
+    entra_principal_map: dict[str, str] = Field(default_factory=dict)
     features: FeatureFlags = Field(default_factory=FeatureFlags)
 
     @model_validator(mode="after")
@@ -94,6 +100,14 @@ class DiscoverySettings(BaseModel):
                 raise ValueError("azure_openai needs an endpoint, a deployment and an api key")
             if not self.azure_openai_endpoint.startswith("https://"):
                 raise ValueError("azure_openai_endpoint must be https")
+        if self.auth_enabled:
+            if not (self.entra_tenant_id and self.entra_audience):
+                raise ValueError("auth_enabled requires entra_tenant_id and entra_audience")
+            if self.entra_tenant_map.get(self.entra_tenant_id) in (None, ""):
+                raise ValueError("auth_enabled requires entra_tenant_map to map entra_tenant_id to a tenant")
+            if self.entra_jwks_url and self.environment in {Environment.STAGING, Environment.PRODUCTION}:
+                if not self.entra_jwks_url.startswith("https://"):
+                    raise ValueError("staging and production require an https entra_jwks_url")
         if self.no_model and (self.features.learned or self.features.llm):
             raise ValueError("learned and llm features require no_model=False")
         if self.environment is Environment.PRODUCTION:
@@ -123,6 +137,16 @@ class DiscoverySettings(BaseModel):
         dump["opensearch_password_set"] = bool(self.opensearch_password)
         dump["azure_openai_credential_set"] = bool(self.azure_openai_api_key)
         return dump
+
+
+def _parse_string_map(value: str, *, name: str) -> dict[str, str]:
+    try:
+        parsed = json.loads(value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a JSON object of strings") from exc
+    if not isinstance(parsed, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in parsed.items()):
+        raise ValueError(f"{name} must be a JSON object of strings")
+    return parsed
 
 
 def _parse_bool(value: str, *, name: str) -> bool:
@@ -164,6 +188,11 @@ def settings_from_env(environ: Mapping[str, str] | None = None) -> DiscoverySett
         "AZURE_OPENAI_DEPLOYMENT": "azure_openai_deployment",
         "AZURE_OPENAI_API_KEY": "azure_openai_api_key",
         "AZURE_OPENAI_API_VERSION": "azure_openai_api_version",
+        "ENTRA_TENANT_ID": "entra_tenant_id",
+        "ENTRA_AUDIENCE": "entra_audience",
+        "ENTRA_JWKS_URL": "entra_jwks_url",
+        "ENTRA_TENANT_MAP": "entra_tenant_map",
+        "ENTRA_PRINCIPAL_MAP": "entra_principal_map",
     }
     bool_fields = {
         "fake_provider",
@@ -179,7 +208,9 @@ def settings_from_env(environ: Mapping[str, str] | None = None) -> DiscoverySett
         raw = source.get(f"DISCOVERY_{suffix}")
         if raw is None:
             continue
-        if field_name in bool_fields:
+        if field_name in {"entra_tenant_map", "entra_principal_map"}:
+            values[field_name] = _parse_string_map(raw, name=f"DISCOVERY_{suffix}")
+        elif field_name in bool_fields:
             values[field_name] = _parse_bool(raw, name=f"DISCOVERY_{suffix}")
         elif field_name in int_fields:
             values[field_name] = int(raw)

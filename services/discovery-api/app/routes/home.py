@@ -6,7 +6,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Iterable, Protocol
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.models import (
@@ -17,6 +17,7 @@ from app.domain.models import (
     UserProfile,
     evaluate_eligibility,
 )
+from app.security import Identity, bind_identity, require_identity
 from packages.platform_contracts.discovery import (
     DecisionTrace,
     DiscoveryComponentVersion,
@@ -295,9 +296,9 @@ router = APIRouter(tags=["discovery"])
 
 
 @router.post("/v1/home", response_model=HomeResponse)
-def home(request: HomeRequest) -> HomeResponse:
+def home(request: HomeRequest, identity: Identity | None = Depends(require_identity)) -> HomeResponse:
     """Return a local personalized or safe fallback home feed."""
-    return service.home(request)
+    return service.home(bind_identity(request, identity))
 
 
 __all__ = ["HomeRequest", "HomeResponse", "HomeResult", "LocalHomeService", "home", "router"]
