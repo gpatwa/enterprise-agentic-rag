@@ -11,7 +11,7 @@ from fastapi import FastAPI
 
 from app.config import settings_from_env
 from app.demo_data import load_demo_catalog
-from app.embedding import HashingEmbedder
+from app.embedding import create_embedder
 from app.opensearch.client import OpenSearchClient
 from app.opensearch.retriever import OpenSearchRetriever
 from app.opensearch.service import OpenSearchSearchService
@@ -23,7 +23,8 @@ API_PREFIX = "/api/discovery"
 def create_app() -> FastAPI:
     experiences, documents, users = load_demo_catalog()
     settings = settings_from_env()
-    embedder = HashingEmbedder()
+    embedder = create_embedder(settings)
+    billable = getattr(embedder, "is_billable", False)
     if settings.search_backend == "opensearch":
         client = OpenSearchClient(
             settings.opensearch_url or "",
@@ -33,7 +34,12 @@ def create_app() -> FastAPI:
             timeout=settings.request_timeout_seconds,
         )
         search.service = OpenSearchSearchService(
-            OpenSearchRetriever(client), documents, users, embedder=embedder, features=settings.features
+            OpenSearchRetriever(client),
+            documents,
+            users,
+            embedder=None if billable else embedder,
+            remote_embedder=embedder,
+            features=settings.features,
         )
     else:
         search.service = search.LocalSearchService(documents, users, embedder=embedder, features=settings.features)

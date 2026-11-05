@@ -58,6 +58,13 @@ class DiscoverySettings(BaseModel):
     opensearch_username: str | None = Field(default=None, max_length=255)
     opensearch_password: str | None = Field(default=None, max_length=512, repr=False)
     opensearch_verify_tls: bool = True
+    embedding_provider: Literal["hashing", "azure_openai"] = "hashing"
+    embedding_dimensions: int = Field(default=384, ge=8, le=4096)
+    embedding_max_texts: int = Field(default=1000, ge=1, le=1_000_000)
+    azure_openai_endpoint: str | None = Field(default=None, max_length=512)
+    azure_openai_deployment: str | None = Field(default=None, max_length=255)
+    azure_openai_api_key: str | None = Field(default=None, max_length=512, repr=False)
+    azure_openai_api_version: str = Field(default="2024-10-21", max_length=32)
     features: FeatureFlags = Field(default_factory=FeatureFlags)
 
     @model_validator(mode="after")
@@ -78,6 +85,15 @@ class DiscoverySettings(BaseModel):
                     raise ValueError("staging and production require opensearch credentials")
                 if not self.opensearch_verify_tls and self.environment is Environment.PRODUCTION:
                     raise ValueError("production requires TLS verification for opensearch")
+        if self.embedding_provider == "azure_openai":
+            if self.no_model:
+                raise ValueError("embedding_provider=azure_openai is a model call and requires no_model=False")
+            if self.search_backend != "opensearch":
+                raise ValueError("embedding_provider=azure_openai requires search_backend=opensearch")
+            if not (self.azure_openai_endpoint and self.azure_openai_deployment and self.azure_openai_api_key):
+                raise ValueError("azure_openai needs an endpoint, a deployment and an api key")
+            if not self.azure_openai_endpoint.startswith("https://"):
+                raise ValueError("azure_openai_endpoint must be https")
         if self.no_model and (self.features.learned or self.features.llm):
             raise ValueError("learned and llm features require no_model=False")
         if self.environment is Environment.PRODUCTION:
@@ -103,8 +119,9 @@ class DiscoverySettings(BaseModel):
     def redacted_dump(self) -> dict[str, Any]:
         """Return the serializable configuration without secret material."""
 
-        dump = self.model_dump(mode="json", exclude={"opensearch_password"})
+        dump = self.model_dump(mode="json", exclude={"opensearch_password", "azure_openai_api_key"})
         dump["opensearch_password_set"] = bool(self.opensearch_password)
+        dump["azure_openai_credential_set"] = bool(self.azure_openai_api_key)
         return dump
 
 
@@ -140,6 +157,13 @@ def settings_from_env(environ: Mapping[str, str] | None = None) -> DiscoverySett
         "OPENSEARCH_USERNAME": "opensearch_username",
         "OPENSEARCH_PASSWORD": "opensearch_password",
         "OPENSEARCH_VERIFY_TLS": "opensearch_verify_tls",
+        "EMBEDDING_PROVIDER": "embedding_provider",
+        "EMBEDDING_DIMENSIONS": "embedding_dimensions",
+        "EMBEDDING_MAX_TEXTS": "embedding_max_texts",
+        "AZURE_OPENAI_ENDPOINT": "azure_openai_endpoint",
+        "AZURE_OPENAI_DEPLOYMENT": "azure_openai_deployment",
+        "AZURE_OPENAI_API_KEY": "azure_openai_api_key",
+        "AZURE_OPENAI_API_VERSION": "azure_openai_api_version",
     }
     bool_fields = {
         "fake_provider",
@@ -149,7 +173,7 @@ def settings_from_env(environ: Mapping[str, str] | None = None) -> DiscoverySett
         "audit_logging_enabled",
         "opensearch_verify_tls",
     }
-    int_fields = {"port", "max_request_events", "candidate_cap"}
+    int_fields = {"port", "max_request_events", "candidate_cap", "embedding_dimensions", "embedding_max_texts"}
     float_fields = {"request_timeout_seconds"}
     for suffix, field_name in names.items():
         raw = source.get(f"DISCOVERY_{suffix}")
