@@ -116,14 +116,19 @@ class GhApi:
     def __init__(self, repo: str, pr_number: str, head_sha: str) -> None:
         self.repo, self.pr_number, self.head_sha = repo, pr_number, head_sha
 
-    @staticmethod
-    def _gh(*args: str) -> str:
-        result = subprocess.run(["gh", "api", *args], capture_output=True, text=True)
-        if result.returncode != 0:
-            raise GateError(
-                f"gh api {args[-1] if args else ''} failed ({result.returncode}): {result.stderr.strip()[:500]}"
-            )
-        return result.stdout
+    attempts = 5
+
+    def _gh(self, *args: str, sleep: Callable[[float], None] = time.sleep) -> str:
+        """Run ``gh api``, retrying: GitHub can fail these calls briefly right after a PR is created or updated."""
+        last = ""
+        for attempt in range(1, self.attempts + 1):
+            result = subprocess.run(["gh", "api", *args], capture_output=True, text=True)
+            if result.returncode == 0:
+                return result.stdout
+            last = f"({result.returncode}): {result.stderr.strip()[:500]}"
+            if attempt < self.attempts:
+                sleep(5.0 * attempt)
+        raise GateError(f"gh api {args[-1] if args else ''} failed after {self.attempts} attempts {last}")
 
     def changed_files(self) -> list[str]:
         out = self._gh(
