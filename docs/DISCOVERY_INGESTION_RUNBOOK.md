@@ -28,3 +28,19 @@ The subset is derived from the source files plus the manifest. To rebuild: same 
 - Column names follow the ESCI files as recalled (`product_locale`, `product_title`, `product_bullet_point`, `small_version`, ...). A missing column fails loudly; confirm against the real files.
 - Parquet reading and behavior on the real file sizes (millions of rows) are untested.
 - Indexing the subset into OpenSearch (E3) is not built.
+
+## Evaluating a subset (E4)
+
+```bash
+python -m app.evaluation.product_search --subset data/subsets/us-25k-seed7 --examples data/esci/examples.csv --out data/reports/bm25-seed7.json
+```
+
+- It first runs the same drift check as `verify`, so a report can only describe an intact subset.
+- Judgments are restricted to products in the subset, and the dropped counts are in the report (`judgments_outside_subset`, `queries_without_relevant_in_subset`, `conflicting_pairs_dropped`).
+- Queries are split by hash into **held-out** and **dev**. The headline is the `held_out` block; the dev block is for tuning only. Defaults: seed 7, 30% held out (`--held-out-fraction`).
+- Each query runs `--repeats` times (default 3); `consistent_across_repeats` says whether the rankings were identical.
+- Each block gives graded nDCG@k (mean, min and max across repeats), Exact recall@k, the share of the top-k that was judged at all, the label mix of the top-k (E, S, C, I, unjudged) and the worst queries (the regression list).
+- `compare_reports(baseline, candidate)` flags a fall in mean nDCG and any worst-list query that got worse. Keep reports; a change is judged against the last one.
+- The baseline retriever is an in-memory BM25 over title, brand, color, bullets and description. It is a floor to beat, not a claim about Discovery.
+
+Not verified: gains (Exact 1, Substitute 0.1, Complement 0.01, Irrelevant 0) follow the ESCI task as recalled; the report was only run on synthetic fixtures. Product relevance says nothing about Discovery's experience ranking or engagement.
