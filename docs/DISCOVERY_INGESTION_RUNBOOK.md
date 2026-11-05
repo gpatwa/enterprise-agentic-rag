@@ -44,3 +44,16 @@ python -m app.evaluation.product_search --subset data/subsets/us-25k-seed7 --exa
 - The baseline retriever is an in-memory BM25 over title, brand, color, bullets and description. It is a floor to beat, not a claim about Discovery.
 
 Not verified: gains (Exact 1, Substitute 0.1, Complement 0.01, Irrelevant 0) follow the ESCI task as recalled; the report was only run on synthetic fixtures. Product relevance says nothing about Discovery's experience ranking or engagement.
+
+## Indexing a subset (E3)
+
+```bash
+DISCOVERY_OPENSEARCH_URL=http://localhost:9200 python -m app.opensearch.products load --subset data/subsets/us-25k-seed7
+```
+
+- It runs `verify` on the subset first, creates the product index (strict mapping, separate from the experience catalog and its aliases) if absent, upserts by `product_id` in batches of 500, refreshes, and prints received, accepted, failed, indexed and expected counts. The exit code is 0 only if nothing failed and the index count equals the manifest's `selected`.
+- Re-running is idempotent. The index is derived: rebuild it from a verified subset directory.
+- `ProductRetriever(client, index)` is a `(query, k) -> ids` callable, so it drops into `evaluation.product_search.evaluate` next to the BM25 baseline for a like-for-like comparison.
+- Lexical only (multi_match over title, brand, color, bullets, description). No embeddings, no model calls.
+
+Verified on 2026-11-04 against a local OpenSearch 2.15.0 container with a 1000-product synthetic subset (1000 in, 1000 indexed, re-run unchanged). Not verified: the real ESCI files, any scale beyond 1000 documents, the pilot VM, and relevance quality (synthetic titles say nothing about it).
