@@ -118,7 +118,12 @@ class GhApi:
 
     @staticmethod
     def _gh(*args: str) -> str:
-        return subprocess.run(["gh", "api", *args], check=True, capture_output=True, text=True).stdout
+        result = subprocess.run(["gh", "api", *args], capture_output=True, text=True)
+        if result.returncode != 0:
+            raise GateError(
+                f"gh api {args[-1] if args else ''} failed ({result.returncode}): {result.stderr.strip()[:500]}"
+            )
+        return result.stdout
 
     def changed_files(self) -> list[str]:
         out = self._gh(
@@ -191,9 +196,13 @@ def wait_for_runs(
 
 def main() -> int:
     repo, pr, sha, base = (os.environ[k] for k in ("REPO", "PR_NUMBER", "HEAD_SHA", "BASE_REF"))
-    workflows = load_workflows(Path(".github/workflows"))
     api = GhApi(repo, pr, sha)
-    changed = api.changed_files()
+    try:
+        workflows = load_workflows(Path(".github/workflows"))
+        changed = api.changed_files()
+    except GateError as error:
+        print(f"CI gate cannot decide: {error}", file=sys.stderr)
+        return 1
     expected = expected_workflows(workflows, base, changed)
     print(f"{len(changed)} changed files; expected workflows: {[w.file for w in expected] or 'none'}")
     outcome = wait_for_runs(api, expected)

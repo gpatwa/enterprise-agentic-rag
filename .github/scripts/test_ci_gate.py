@@ -163,3 +163,14 @@ def test_an_expected_run_that_never_starts_fails() -> None:
 def test_overall_timeout_fails_with_what_was_pending() -> None:
     outcome = _wait(FakeApi({"a.yml": [_run("in_progress")]}), [_wf("a")], overall_timeout=100.0)
     assert not outcome.ok and "timed out" in outcome.lines[0]
+
+
+def test_a_failing_gh_call_reports_the_error_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    class Result:
+        returncode = 1
+        stdout = ""
+        stderr = "HTTP 403: Resource not accessible by integration"
+
+    monkeypatch.setattr(gate.subprocess, "run", lambda *a, **k: Result())
+    with pytest.raises(gate.GateError, match="Resource not accessible"):
+        gate.GhApi("o/r", "1", "sha").changed_files()
