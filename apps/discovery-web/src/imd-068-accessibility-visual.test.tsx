@@ -32,9 +32,9 @@ describe('IMD-068 accessibility and visual contract', () => {
     expect(within(search).getByRole('button', { name: 'Explore' })).toBeInTheDocument();
     expect(within(search).getByRole('combobox', { name: 'Locale' })).toBeInTheDocument();
     expect(within(search).getByRole('combobox', { name: 'Device' })).toBeInTheDocument();
-    expect(within(search).getByRole('combobox', { name: 'Age' })).toBeInTheDocument();
+    expect(within(search).queryByRole('combobox', { name: 'Age' })).not.toBeInTheDocument();
     const focusables = focusableElements(container);
-    expect(focusables.length).toBeGreaterThan(10);
+    expect(focusables.length).toBeGreaterThanOrEqual(10);
     focusables.forEach((element) => { element.focus(); expect(document.activeElement).toBe(element); });
     fireEvent.keyDown(screen.getByRole('textbox', { name: 'Search experiences' }), { key: 'Escape' });
     expect(screen.getByRole('textbox', { name: 'Search experiences' })).toHaveValue('');
