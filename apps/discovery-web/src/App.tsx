@@ -6,7 +6,8 @@ import './styles.css';
 
 const PAGE_SIZE = 6;
 /** The filter offers bands; the API takes an age in years. */
-const AGE_BY_BAND: Record<string, number> = { child: 10, teen: 16, adult: 30 };
+// The demo identity (tenant-01 / user-0001) decides what is eligible; the request still needs an age, so send a fixed one.
+const DEMO_AGE = 16;
 const demoResponse: SearchResponse = {
   schema_version: 'imd-search-v1', request_id: 'local-demo', total_matches: 3, fallback: true, error: null,
   results: [
@@ -23,15 +24,14 @@ export default function App() {
   const [query, setQuery] = useState('cozy building games');
   const [locale, setLocale] = useState('en-US');
   const [device, setDevice] = useState('web');
-  const [ageBand, setAgeBand] = useState('teen');
   const [page, setPage] = useState(1);
   const [response, setResponse] = useState<SearchResponse>(demoResponse);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pageCount = Math.max(1, Math.ceil(response.total_matches / PAGE_SIZE));
   const request = useMemo<SearchRequest>(() => ({
-    query: query.trim(), context: { tenant_id: 'tenant-01', principal_id: 'user-0001', request_id: crypto.randomUUID(), locale, device, age: AGE_BY_BAND[ageBand] ?? 16, purpose: 'search' }, page, page_size: PAGE_SIZE,
-  }), [ageBand, device, locale, page, query]);
+    query: query.trim(), context: { tenant_id: 'tenant-01', principal_id: 'user-0001', request_id: crypto.randomUUID(), locale, device, age: DEMO_AGE, purpose: 'search' }, page, page_size: PAGE_SIZE,
+  }), [device, locale, page, query]);
 
   async function runSearch(nextPage = 1) {
     setLoading(true); setError(null);
@@ -49,7 +49,7 @@ export default function App() {
     <HomeDetailsExperience />
     <section className="search-panel" aria-label="Discovery search">
       <div className="search-row"><Search size={21} aria-hidden="true" /><label className="sr-only" htmlFor="experience-search">Search experiences</label><input id="experience-search" autoComplete="off" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={handleQueryKeyDown} placeholder="Search by name, genre, or feeling" /><button type="button" onClick={() => void runSearch()} disabled={loading}>{loading ? 'Searching' : 'Explore'}</button></div>
-      <div className="filter-row" aria-label="Search filters"><div className="filter-label"><SlidersHorizontal size={15} aria-hidden="true" /><span>Filters</span></div><label>Locale<select aria-label="Locale" value={locale} onChange={(event) => { setLocale(event.target.value); setPage(1); }}><option value="en-US">English (US)</option><option value="en-GB">English (UK)</option><option value="es-ES">Spanish</option></select></label><label>Device<select aria-label="Device" value={device} onChange={(event) => { setDevice(event.target.value); setPage(1); }}><option value="web">Web</option><option value="mobile">Mobile</option><option value="tablet">Tablet</option></select></label><label>Age<select aria-label="Age" value={ageBand} onChange={(event) => { setAgeBand(event.target.value); setPage(1); }}><option value="child">Child</option><option value="teen">Teen</option><option value="adult">Adult</option></select></label></div>
+      <div className="filter-row" aria-label="Search filters"><div className="filter-label"><SlidersHorizontal size={15} aria-hidden="true" /><span>Filters</span></div><label>Locale<select aria-label="Locale" value={locale} onChange={(event) => { setLocale(event.target.value); setPage(1); }}><option value="en-US">English (US)</option><option value="en-GB">English (UK)</option><option value="es-ES">Spanish</option></select></label><label>Device<select aria-label="Device" value={device} onChange={(event) => { setDevice(event.target.value); setPage(1); }}><option value="web">Web</option><option value="mobile">Mobile</option><option value="tablet">Tablet</option></select></label></div>
       <div className="chips"><span>Personalized when permitted</span><span>Policy-aware results</span><span>Evidence-backed ranking</span></div>
     </section>
     {error && <div className="notice error" role="alert"><AlertCircle size={17} aria-hidden="true" /><span>{error}</span><button type="button" onClick={() => void runSearch(page)}>Retry</button></div>}
