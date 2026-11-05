@@ -8,6 +8,7 @@ from pathlib import Path
 
 from app.ingest.models import ProductProvenance
 from app.ingest.pipeline import IngestError, ingest, verify_subset, write_subset
+from app.ingest.store import open_store
 
 ESCI_CITATION = "Reddy et al., Shopping Queries Dataset, 2022, arXiv:2206.06588"
 
@@ -25,9 +26,31 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("--out", type=Path, help="new directory to write into; omit for a dry run")
     check = sub.add_parser("verify", help="confirm a written subset still matches its manifest")
     check.add_argument("--out", type=Path, required=True)
+    push = sub.add_parser("push", help="publish a verified subset to a store (create-only, never overwrites)")
+    push.add_argument("--out", type=Path, required=True, help="the built subset directory")
+    push.add_argument("--to", required=True, help="a directory, or az://<account>/<container>[/<prefix>]")
+    push.add_argument("--name", required=True)
+    pull = sub.add_parser("pull", help="download a subset, verify it, then move it into a new directory")
+    pull.add_argument("--from", dest="source", required=True)
+    pull.add_argument("--name", required=True)
+    pull.add_argument("--out", type=Path, required=True)
+    listing = sub.add_parser("list", help="list complete subsets in a store")
+    listing.add_argument("--store", required=True)
     args = parser.parse_args(argv)
 
     try:
+        if args.command == "push":
+            open_store(args.to).push(args.out, args.name)
+            print(f"pushed {args.name}")
+            return 0
+        if args.command == "pull":
+            open_store(args.source).pull(args.name, args.out)
+            print(f"pulled {args.name} into {args.out} (verified)")
+            return 0
+        if args.command == "list":
+            for name in open_store(args.store).list():
+                print(name)
+            return 0
         if args.command == "verify":
             manifest = verify_subset(args.out)
             print(f"ok selected={manifest.selected} checksum={manifest.subset_checksum[:12]}")

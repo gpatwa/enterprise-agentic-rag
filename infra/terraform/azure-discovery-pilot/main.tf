@@ -33,6 +33,8 @@ terraform {
 
 provider "azurerm" {
   features {}
+  # The data storage account has shared keys disabled, so the provider must use Entra for its data-plane reads.
+  storage_use_azuread = true
 }
 
 provider "azuread" {}

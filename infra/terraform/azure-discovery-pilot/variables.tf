@@ -80,3 +80,9 @@ variable "budget_emails" {
   type    = list(string)
   default = []
 }
+
+variable "data_writer_object_ids" {
+  description = "Entra object IDs of people who may upload and read datasets in the storage account (for example the owner pushing a subset from a laptop). Empty means only the apps' identity has access."
+  type        = list(string)
+  default     = []
+}

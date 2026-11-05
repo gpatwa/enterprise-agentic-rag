@@ -21,3 +21,11 @@ output "search_vm_name" {
 output "search_vm_private_ip" {
   value = local.search_vm_ip
 }
+
+output "data_storage_account" {
+  value = azurerm_storage_account.data.name
+}
+
+output "data_container" {
+  value = azapi_resource.datasets.name
+}
