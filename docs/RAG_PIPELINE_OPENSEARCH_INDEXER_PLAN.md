@@ -90,3 +90,14 @@ RO-1 is worth doing even without OpenSearch, since it decides whether the curren
 - `write_datasink` expects a `Datasink` whose `write(blocks, ctx)` receives Arrow blocks, not `list[dict]`. `pipelines/ingestion/indexing/ray_sink.py` wraps any plain `write(batch)` indexer so it receives `list[dict]`, and falls back to the old call when `write_datasink` is absent.
 - Tests: 2 without Ray, 3 with a real local Ray (every row of a 25-row dataset reaches the sink as a dict; sink errors fail the write; empty blocks are skipped). All 5 pass with Ray 2.54.0.
 - **Not verified:** Ray 2.9.0/2.9.3 (the cluster and `requirements.txt` versions; no Python 3.11 here), so the fallback is untested; the real `QdrantIndexer`/`Neo4jIndexer` against live services; whether the sink objects pickle cleanly into workers (the test's `FileSink` did; the Qdrant and Neo4j clients were not tried). The version skew (cluster 2.9.0, requirements 2.9.3, image 2.54.0) is the first thing to settle before any deploy.
+
+### RO-2 result (2026-11-06)
+
+`pipelines/ingestion/indexing/opensearch.py` (`OpenSearchIndexer`) and `sinks.py` (`INGEST_VECTOR_SINKS`, default `qdrant`; `qdrant,opensearch` dual-writes; unknown or empty values fail at start). Documents come from a new public `map_file_chunk` in `services/api/app/search/support_mapper.py`, so schema, ACL (`tenant:<tenant>` only), PII redaction and ID format match the support path.
+
+- **ID and idempotence:** `source_id = <filename>:chunk:p<page>:<sha256(text)[:16]>`. Re-running the same file gives the same IDs, so a re-run upserts in place. Editing a file changes the IDs of changed chunks and **leaves the old chunks indexed**; there is no delete-by-file yet.
+- **Safety:** wrong vector length rejects the whole batch before any provider is created; image rows are skipped and counted; a chunk with no `filename` fails the job; permanent bulk failures fail the job with document IDs and codes only (no text); retryable item failures are retried for just those documents, twice, then fail.
+- **Needs from the environment:** `services/api` on `PYTHONPATH`, the API's `OPENSEARCH_*` settings, and `INGEST_OPENSEARCH_INDEX` naming the index generation (required; the indexer creates it with the API mapping if absent and refuses a drifted one). Activating an alias is still a separate operator step.
+- **Dual-write** materializes the vector dataset once so each sink does not recompute embeddings. That path is not exercised at any scale.
+- **Tenant:** `main.py` builds the indexer with the default tenant `default`, exactly as the Qdrant sink does today. Real per-tenant ingestion is not in this packet.
+- Tests: 15 new, with a fake provider only (full API suite 639 passed). **Not verified:** a real OpenSearch node (RO-3), the real Ray run with this sink, and that the pipeline image has `opensearch-py` and the API modules (`pipelines/ingestion/requirements.txt` does not list `opensearch-py`).
