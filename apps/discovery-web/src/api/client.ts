@@ -44,6 +44,7 @@ export type ProductSearchResponse = {
   total_matches: number;
   page: number;
   page_size: number;
+  match: 'all' | 'any';
   error: { code: string; message: string } | null;
 };
 

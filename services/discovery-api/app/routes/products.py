@@ -1,7 +1,7 @@
 """Product search over the ESCI-style subset (docs/DISCOVERY_ESCI_SCOPE.md).
 
 Products are catalog items, not user-generated experiences, so this route applies no age or safety eligibility
-gate and carries no user profile: the owner can overrule that in the scope doc. It is lexical (BM25) only and
+gate and carries no user profile: the owner can overrule that in the scope doc. It is lexical (BM25) only; a multi-word query must match every word, and widens to any word only when nothing does and
 available only with ``DISCOVERY_SEARCH_BACKEND=opensearch``; there is no in-memory fallback, so a cluster failure
 returns a typed error with no results rather than silently serving something else. When auth is on, a valid bearer
 token is required like every other route; the request body carries no identity.
@@ -62,6 +62,7 @@ class ProductSearchResponse(BaseModel):
     total_matches: int = Field(default=0, ge=0)
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=10, ge=1)
+    match: str = "all"
     error: ProductSearchError | None = None
 
 
@@ -106,6 +107,7 @@ class OpenSearchProductService:
             total_matches=found.total,
             page=request.page,
             page_size=request.page_size,
+            match=found.match,
         )
 
 

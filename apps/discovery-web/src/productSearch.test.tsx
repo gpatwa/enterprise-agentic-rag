@@ -4,7 +4,7 @@ import type { ProductSearchResponse } from './api/client';
 import { ProductSearch } from './productSearch';
 
 const item = (n: number) => ({ product_id: `P${n}`, title: `Running shoe ${n}`, brand: 'Acme', color: 'red', snippet: `bullet ${n}`, rank: n, score: 2 });
-const page = (over: Partial<ProductSearchResponse> = {}): ProductSearchResponse => ({ schema_version: 'product-search-v1', results: [item(1), item(2)], total_matches: 25, page: 1, page_size: 10, error: null, ...over });
+const page = (over: Partial<ProductSearchResponse> = {}): ProductSearchResponse => ({ schema_version: 'product-search-v1', results: [item(1), item(2)], total_matches: 25, page: 1, page_size: 10, match: 'all', error: null, ...over });
 const search = () => screen.getByRole('textbox', { name: 'Search products' });
 
 describe('ProductSearch', () => {
@@ -37,6 +37,14 @@ describe('ProductSearch', () => {
     await screen.findByText('Running shoe 1');
     fireEvent.change(screen.getByRole('combobox', { name: 'Product locale' }), { target: { value: 'es' } });
     await waitFor(() => expect(client.searchProducts).toHaveBeenLastCalledWith({ query: 'shoes', page: 1, page_size: 10, locale: 'es' }));
+  });
+
+  it('says so when only some of the words matched', async () => {
+    const client = { searchProducts: vi.fn().mockResolvedValue(page({ match: 'any' })) };
+    render(<ProductSearch client={client} />);
+    fireEvent.change(search(), { target: { value: 'red shoes' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    expect(await screen.findByText(/No product matched every word/)).toBeInTheDocument();
   });
 
   it('shows an empty state', async () => {

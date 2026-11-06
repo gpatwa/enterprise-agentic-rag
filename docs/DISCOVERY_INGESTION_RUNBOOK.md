@@ -64,6 +64,7 @@ Verified on 2026-11-04 against a local OpenSearch 2.15.0 container with a 1000-p
 (`product_id`, `title`, `brand`, `color`, `snippet`, `rank`, `score`) plus `total_matches`. The web app shows it as
 the "Search products" section. It is BM25 over the index loaded in the previous section.
 
+- A multi-word query must match every word; only if no product does, it widens to any word and the response says `match: "any"` (the web page shows a notice).
 - Needs `DISCOVERY_SEARCH_BACKEND=opensearch`; otherwise the response is a typed `not_configured` error.
 - A cluster failure returns a typed `search_unavailable` error with no results and no detail. There is no fallback.
 - Paging stops at result 1000. `locale` filters on the ESCI locale code (`us`, `es`, `jp`).

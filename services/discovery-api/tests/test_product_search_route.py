@@ -30,6 +30,7 @@ DOCS = {
 class FakeCluster:
     def __init__(self, status: int = 200) -> None:
         self.bodies: list[dict] = []
+        self.operators: list[str] = []
         self.status = status
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
@@ -43,10 +44,13 @@ class FakeCluster:
             locale = query["bool"]["filter"][0]["term"]["locale"]
             query = query["bool"]["must"][0]
         words = set(query["multi_match"]["query"].lower().split())
+        every = query["multi_match"]["operator"] == "and"
+        self.operators.append(query["multi_match"]["operator"])
         matched = [
             (pid, doc)
             for pid, doc in sorted(DOCS.items())
-            if words & set(doc["title"].split()) and (locale is None or doc["locale"] == locale)
+            if (words <= set(doc["title"].split()) if every else words & set(doc["title"].split()))
+            and (locale is None or doc["locale"] == locale)
         ]
         page = matched[body["from"] : body["from"] + body["size"]]
         hits = [
@@ -158,3 +162,20 @@ def test_route_requires_a_token_when_auth_is_on() -> None:
 
     application.state.auth_verifier = Refuse()
     assert TestClient(application).post(URL, json={"query": "shoe"}).status_code == 401
+
+
+def test_every_word_must_match_and_widening_happens_only_when_nothing_does(
+    client: TestClient, cluster: FakeCluster
+) -> None:
+    strict = _post(client, query="running shoe 3").json()
+    assert strict["match"] == "all" and [r["product_id"] for r in strict["results"]] == ["P03"]
+    assert cluster.operators == ["and"]
+
+    cluster.operators.clear()
+    wide = _post(client, query="shoe purple").json()
+    assert wide["match"] == "any" and wide["total_matches"] == 12 and cluster.operators == ["and", "or"]
+
+
+def test_a_single_word_never_widens(client: TestClient, cluster: FakeCluster) -> None:
+    assert _post(client, query="purple").json()["total_matches"] == 0
+    assert cluster.operators == ["and"]
