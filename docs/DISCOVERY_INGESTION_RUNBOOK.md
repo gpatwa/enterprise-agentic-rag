@@ -57,3 +57,16 @@ DISCOVERY_OPENSEARCH_URL=http://localhost:9200 python -m app.opensearch.products
 - Lexical only (multi_match over title, brand, color, bullets, description). No embeddings, no model calls.
 
 Verified on 2026-11-04 against a local OpenSearch 2.15.0 container with a 1000-product synthetic subset (1000 in, 1000 indexed, re-run unchanged). Not verified: the real ESCI files, any scale beyond 1000 documents, the pilot VM, and relevance quality (synthetic titles say nothing about it).
+
+## Searching products (API and web)
+
+`POST /api/discovery/v1/products/search` takes `{query, locale?, page?, page_size?}` and returns ranked products
+(`product_id`, `title`, `brand`, `color`, `snippet`, `rank`, `score`) plus `total_matches`. The web app shows it as
+the "Search products" section. It is BM25 over the index loaded in the previous section.
+
+- Needs `DISCOVERY_SEARCH_BACKEND=opensearch`; otherwise the response is a typed `not_configured` error.
+- A cluster failure returns a typed `search_unavailable` error with no results and no detail. There is no fallback.
+- Paging stops at result 1000. `locale` filters on the ESCI locale code (`us`, `es`, `jp`).
+- Policy: products carry no age or safety gate and no user profile; the body takes no identity. With
+  `DISCOVERY_AUTH_ENABLED=true` a valid bearer token is still required. The owner can overrule the no-gate choice.
+- Verified with an in-process fake cluster only. Not run against a live node or real ESCI data.

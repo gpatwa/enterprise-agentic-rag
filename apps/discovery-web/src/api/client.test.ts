@@ -30,4 +30,13 @@ describe('discovery client', () => {
 
     await expect(createDiscoveryClient().search(request)).rejects.toThrow('status 503');
   });
+
+  it('posts product searches to the product route and raises on failure', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ results: [] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await createDiscoveryClient('http://x').searchProducts({ query: 'shoes', page: 2 });
+    expect(fetchMock).toHaveBeenCalledWith('http://x/api/discovery/v1/products/search', expect.objectContaining({ method: 'POST', body: JSON.stringify({ query: 'shoes', page: 2 }) }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 401 })));
+    await expect(createDiscoveryClient().searchProducts({ query: 'a' })).rejects.toThrow('status 401');
+  });
 });
