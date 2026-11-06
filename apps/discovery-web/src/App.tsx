@@ -2,6 +2,7 @@ import { AlertCircle, ChevronLeft, ChevronRight, Compass, Search, SlidersHorizon
 import { useMemo, useState, type KeyboardEvent } from 'react';
 import { createDiscoveryClient, type SearchRequest, type SearchResponse } from './api/client';
 import { HomeDetailsExperience } from './homeDetails';
+import { ProductSearch } from './productSearch';
 import './styles.css';
 
 const PAGE_SIZE = 6;
@@ -47,6 +48,7 @@ export default function App() {
     <header className="topbar"><div className="brand"><Compass size={22} /><span>COMPASS / DISCOVERY</span></div><span className="status"><span className="dot" /> LOCAL DEMO</span></header>
     <section className="intro"><p className="eyebrow">IMMERSIVE DISCOVERY</p><h1>Find your next world.</h1><p className="lede">A governed search surface for experiences, creators, and communities.</p></section>
     <HomeDetailsExperience />
+    <ProductSearch client={client} />
     <section className="search-panel" aria-label="Discovery search">
       <div className="search-row"><Search size={21} aria-hidden="true" /><label className="sr-only" htmlFor="experience-search">Search experiences</label><input id="experience-search" autoComplete="off" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={handleQueryKeyDown} placeholder="Search by name, genre, or feeling" /><button type="button" onClick={() => void runSearch()} disabled={loading}>{loading ? 'Searching' : 'Explore'}</button></div>
       <div className="filter-row" aria-label="Search filters"><div className="filter-label"><SlidersHorizontal size={15} aria-hidden="true" /><span>Filters</span></div><label>Locale<select aria-label="Locale" value={locale} onChange={(event) => { setLocale(event.target.value); setPage(1); }}><option value="en-US">English (US)</option><option value="en-GB">English (UK)</option><option value="es-ES">Spanish</option></select></label><label>Device<select aria-label="Device" value={device} onChange={(event) => { setDevice(event.target.value); setPage(1); }}><option value="web">Web</option><option value="mobile">Mobile</option><option value="tablet">Tablet</option></select></label></div>

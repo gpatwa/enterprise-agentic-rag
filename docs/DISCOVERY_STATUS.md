@@ -65,7 +65,7 @@ Container Apps did not appear as a cost line. Five days is a short window, cost 
 6. Who else gets access to the pilot.
 
 **Agent work, no decision needed**
-1. Product search is still not reachable through the API or the web UI (ingest, index and evaluation are CLIs only); it also needs the eligibility policy for products, which the agent set to "no age or safety gate" and the owner may change.
+1. Product search now has an API route and a web section (see the ingestion runbook), verified against a fake cluster only; the eligibility policy for products is still the agent's "no age or safety gate" and the owner may change it.
 2. Real-scale ingestion: the Parquet path is untested (pyarrow not installed) and nothing has run on real ESCI files.
 3. PostgreSQL repositories and the outbox are no longer planned (decision 6). Next on the storage side: owner authorization to create the account, then a real push and pull against it.
 4. `GET /explanations/{ref}` needs a token but does not check the decision's tenant.

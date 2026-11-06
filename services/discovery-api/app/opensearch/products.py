@@ -126,6 +126,71 @@ class ProductRetriever:
         return [str(hit["_id"]) for hit in hits]
 
 
+@dataclass(frozen=True)
+class ProductHit:
+    product_id: str
+    title: str
+    brand: str
+    color: str
+    snippet: str
+    score: float
+
+
+@dataclass(frozen=True)
+class ProductPage:
+    total: int
+    hits: tuple[ProductHit, ...]
+
+
+MAX_WINDOW = 1000  # deepest result position a caller can page to; keeps from+size far below OpenSearch's limit
+SNIPPET_CHARS = 240
+
+
+def _snippet(source: dict[str, object]) -> str:
+    text = str(source.get("bullets") or source.get("description") or "").strip()
+    return text if len(text) <= SNIPPET_CHARS else text[: SNIPPET_CHARS - 1].rstrip() + "…"
+
+
+def search_page(
+    client: OpenSearchClient,
+    query: str,
+    *,
+    page: int = 1,
+    page_size: int = 10,
+    locale: str | None = None,
+    index: str = DEFAULT_PRODUCT_INDEX,
+) -> ProductPage:
+    """One page of ranked products with display fields. Raises ``OpenSearchError`` if the cluster fails."""
+    text = query.strip()
+    offset = (page - 1) * page_size
+    if not text or page < 1 or page_size < 1 or offset + page_size > MAX_WINDOW:
+        return ProductPage(total=0, hits=())
+    match = {"multi_match": {"query": text, "fields": list(SEARCH_FIELDS), "type": "best_fields"}}
+    body: dict[str, object] = {
+        "from": offset,
+        "size": page_size,
+        "track_total_hits": True,
+        "_source": ["title", "brand", "color", "bullets", "description"],
+        "query": {"bool": {"must": [match], "filter": [{"term": {"locale": locale}}]}} if locale else match,
+        "sort": ["_score", {"product_id": "asc"}],
+    }
+    result = client.search(index, body).get("hits", {})
+    total = result.get("total", 0)
+    total = int(total.get("value", 0) if isinstance(total, dict) else total)
+    hits = tuple(
+        ProductHit(
+            product_id=str(hit["_id"]),
+            title=str(hit.get("_source", {}).get("title", "")),
+            brand=str(hit.get("_source", {}).get("brand", "")),
+            color=str(hit.get("_source", {}).get("color", "")),
+            snippet=_snippet(hit.get("_source", {})),
+            score=float(hit.get("_score") or 0.0),
+        )
+        for hit in result.get("hits", [])
+    )
+    return ProductPage(total=total, hits=hits)
+
+
 def read_subset_records(subset_dir: Path) -> tuple[list[ProductRecord], int]:
     """Verify the subset against its manifest, then return its records and the expected count."""
     manifest = verify_subset(subset_dir)

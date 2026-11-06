@@ -15,7 +15,7 @@ from app.embedding import create_embedder
 from app.opensearch.client import OpenSearchClient
 from app.opensearch.retriever import OpenSearchRetriever
 from app.opensearch.service import OpenSearchSearchService
-from app.routes import home, interactions, search
+from app.routes import home, interactions, products, search
 from app.security import TokenVerifier
 
 API_PREFIX = "/api/discovery"
@@ -34,6 +34,7 @@ def create_app() -> FastAPI:
             verify_tls=settings.opensearch_verify_tls,
             timeout=settings.request_timeout_seconds,
         )
+        products.service = products.OpenSearchProductService(client)
         search.service = OpenSearchSearchService(
             OpenSearchRetriever(client),
             documents,
@@ -43,6 +44,7 @@ def create_app() -> FastAPI:
             features=settings.features,
         )
     else:
+        products.service = products.UnconfiguredProductService()
         search.service = search.LocalSearchService(documents, users, embedder=embedder, features=settings.features)
     home.service = home.LocalHomeService(experiences, users)
 
@@ -65,7 +67,7 @@ def create_app() -> FastAPI:
 
         return {"service": "discovery-api", "status": "ok"}
 
-    for router in (search.router, home.router, interactions.router):
+    for router in (search.router, products.router, home.router, interactions.router):
         application.include_router(router, prefix=API_PREFIX)
     return application
 
