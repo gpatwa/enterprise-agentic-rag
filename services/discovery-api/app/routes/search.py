@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Protocol
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.candidates.contracts import CandidateSourceResult
@@ -29,6 +29,7 @@ from app.search.fusion import FusionConfig, fuse_candidates
 from app.search.lexical import LexicalRetriever
 from app.search.mapper import CatalogSearchDocument
 from app.search.vector import VectorDocument, VectorQuery, VectorRetriever
+from app.security import Identity, bind_identity, require_identity
 from packages.platform_contracts.discovery import (
     DecisionTrace,
     DiscoveryComponentVersion,
@@ -376,9 +377,9 @@ router = APIRouter(tags=["discovery"])
 
 
 @router.post("/v1/search", response_model=SearchResponse)
-def search(request: SearchRequest) -> SearchResponse:
+def search(request: SearchRequest, identity: Identity | None = Depends(require_identity)) -> SearchResponse:
     """Run local discovery search through the configured provider."""
-    return service.search(request)
+    return service.search(bind_identity(request, identity))
 
 
 __all__ = [

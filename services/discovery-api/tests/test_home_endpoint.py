@@ -86,7 +86,7 @@ def test_missing_profile_fails_closed_without_token():
 
 def test_fastapi_handler_uses_configured_provider(monkeypatch):
     monkeypatch.setattr("app.routes.home.service", LocalHomeService(_experiences(), (_user(),)))
-    response = home(_request(page_size=1))
+    response = home(_request(page_size=1), identity=None)
 
     assert len(response.results) == 1
     assert response.request_id == "request-home-001"

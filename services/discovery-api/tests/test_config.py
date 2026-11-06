@@ -46,6 +46,9 @@ _SAFE_PRODUCTION = {
     "auth_enabled": True,
     "tls_enabled": True,
     "audit_logging_enabled": True,
+    "entra_tenant_id": "tid-1",
+    "entra_audience": "api-client-id",
+    "entra_tenant_map": {"tid-1": "tenant-01"},
 }
 
 

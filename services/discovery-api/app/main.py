@@ -16,6 +16,7 @@ from app.opensearch.client import OpenSearchClient
 from app.opensearch.retriever import OpenSearchRetriever
 from app.opensearch.service import OpenSearchSearchService
 from app.routes import home, interactions, search
+from app.security import TokenVerifier
 
 API_PREFIX = "/api/discovery"
 
@@ -46,6 +47,17 @@ def create_app() -> FastAPI:
     home.service = home.LocalHomeService(experiences, users)
 
     application = FastAPI(title="Compass Discovery API", version="0.1.0")
+    application.state.auth_verifier = (
+        TokenVerifier(
+            entra_tenant_id=settings.entra_tenant_id or "",
+            audience=settings.entra_audience or "",
+            tenant_map=settings.entra_tenant_map,
+            principal_map=settings.entra_principal_map,
+            jwks_url=settings.entra_jwks_url,
+        )
+        if settings.auth_enabled
+        else None
+    )
 
     @application.get("/health")
     async def health() -> dict[str, str]:

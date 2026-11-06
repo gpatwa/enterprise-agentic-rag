@@ -97,7 +97,7 @@ def test_tenant_scope_is_rejected_and_private_query_is_not_echoed_on_error():
 
 def test_fastapi_handler_uses_the_configured_provider(monkeypatch):
     monkeypatch.setattr("app.routes.search.service", LocalSearchService(_documents(), (_user(),)))
-    response = search(_request(page_size=1))
+    response = search(_request(page_size=1), identity=None)
 
     assert len(response.results) == 1
     assert response.request_id == "request-search-001"
