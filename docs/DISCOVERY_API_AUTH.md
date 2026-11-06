@@ -37,3 +37,22 @@ Until one is chosen and deployed, leave `DISCOVERY_AUTH_ENABLED` off in the pilo
 - Single Entra directory per deployment (one `tid`).
 - No token revocation beyond expiry.
 - Tested with locally generated keys and a mock key endpoint; never against Entra.
+
+## Web sign-in (MSAL)
+
+The web app can send an Entra access token. It is off unless all three build settings are set; with none set the app
+sends no token (today's behaviour, so keep `DISCOVERY_AUTH_ENABLED` off then):
+
+| Build arg / env | Meaning |
+|---|---|
+| `VITE_ENTRA_CLIENT_ID` | the SPA app registration's client ID |
+| `VITE_ENTRA_TENANT_ID` | the Entra tenant ID |
+| `VITE_ENTRA_API_SCOPE` | the API scope to request, e.g. `api://<api-app-id>/access_as_user` |
+
+Behaviour: `@azure/msal-browser` (3.28.1, loaded on first request) tries a silent token, otherwise redirects to sign in.
+The token is attached as `Authorization: Bearer` on the search and product-search calls and is kept in
+`sessionStorage` by MSAL only.
+
+**Needs the owner (an Entra change I have not made):** a SPA app registration with the web URL as a redirect URI, an
+API app registration exposing the scope, and that API's client ID as `DISCOVERY_ENTRA_AUDIENCE` on the API with the
+tenant and principal maps set. Not tested against a real tenant; the unit tests cover the config and the header only.
