@@ -140,6 +140,7 @@ class ProductHit:
 class ProductPage:
     total: int
     hits: tuple[ProductHit, ...]
+    match: str = "all"  # "all": every word matched; "any": nothing matched them all, so any single word counts
 
 
 MAX_WINDOW = 1000  # deepest result position a caller can page to; keeps from+size far below OpenSearch's limit
@@ -165,30 +166,41 @@ def search_page(
     offset = (page - 1) * page_size
     if not text or page < 1 or page_size < 1 or offset + page_size > MAX_WINDOW:
         return ProductPage(total=0, hits=())
-    match = {"multi_match": {"query": text, "fields": list(SEARCH_FIELDS), "type": "best_fields"}}
-    body: dict[str, object] = {
-        "from": offset,
-        "size": page_size,
-        "track_total_hits": True,
-        "_source": ["title", "brand", "color", "bullets", "description"],
-        "query": {"bool": {"must": [match], "filter": [{"term": {"locale": locale}}]}} if locale else match,
-        "sort": ["_score", {"product_id": "asc"}],
-    }
-    result = client.search(index, body).get("hits", {})
-    total = result.get("total", 0)
-    total = int(total.get("value", 0) if isinstance(total, dict) else total)
-    hits = tuple(
-        ProductHit(
-            product_id=str(hit["_id"]),
-            title=str(hit.get("_source", {}).get("title", "")),
-            brand=str(hit.get("_source", {}).get("brand", "")),
-            color=str(hit.get("_source", {}).get("color", "")),
-            snippet=_snippet(hit.get("_source", {})),
-            score=float(hit.get("_score") or 0.0),
+
+    def run(operator: str) -> ProductPage:
+        match = {
+            "multi_match": {"query": text, "fields": list(SEARCH_FIELDS), "type": "best_fields", "operator": operator}
+        }
+        body: dict[str, object] = {
+            "from": offset,
+            "size": page_size,
+            "track_total_hits": True,
+            "_source": ["title", "brand", "color", "bullets", "description"],
+            "query": {"bool": {"must": [match], "filter": [{"term": {"locale": locale}}]}} if locale else match,
+            "sort": ["_score", {"product_id": "asc"}],
+        }
+        result = client.search(index, body).get("hits", {})
+        total = result.get("total", 0)
+        total = int(total.get("value", 0) if isinstance(total, dict) else total)
+        hits = tuple(
+            ProductHit(
+                product_id=str(hit["_id"]),
+                title=str(hit.get("_source", {}).get("title", "")),
+                brand=str(hit.get("_source", {}).get("brand", "")),
+                color=str(hit.get("_source", {}).get("color", "")),
+                snippet=_snippet(hit.get("_source", {})),
+                score=float(hit.get("_score") or 0.0),
+            )
+            for hit in result.get("hits", [])
         )
-        for hit in result.get("hits", [])
-    )
-    return ProductPage(total=total, hits=hits)
+        return ProductPage(total=total, hits=hits, match="all" if operator == "and" else "any")
+
+    strict = run("and")
+    # Widen only when no product has every word. ``total`` counts all pages, so an out-of-range page of a
+    # strict result still counts as a strict match and does not widen.
+    if strict.total > 0 or len(text.split()) < 2:
+        return strict
+    return run("or")
 
 
 def read_subset_records(subset_dir: Path) -> tuple[list[ProductRecord], int]:
