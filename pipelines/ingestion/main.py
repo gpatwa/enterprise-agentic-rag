@@ -9,8 +9,8 @@ from pipelines.ingestion.chunking.splitter import split_multimodal, split_text
 from pipelines.ingestion.embedding.compute import BatchEmbedder, MultimodalBatchEmbedder
 from pipelines.ingestion.graph.extractor import GraphExtractor
 from pipelines.ingestion.indexing.neo4j import Neo4jIndexer
-from pipelines.ingestion.indexing.qdrant import QdrantIndexer
 from pipelines.ingestion.indexing.ray_sink import write_rows
+from pipelines.ingestion.indexing.sinks import build_vector_sinks
 from pipelines.ingestion.loaders.pdf import parse_pdf_bytes
 
 # Initialize Ray (Connect to the existing cluster)
@@ -115,7 +115,12 @@ def main(bucket_name: str, prefix: str):
         collection = os.getenv("MULTIMODAL_COLLECTION", "rag_multimodal")
         os.environ["QDRANT_COLLECTION"] = collection
 
-    write_rows(vector_ds, QdrantIndexer())
+    vector_sinks = build_vector_sinks(os.environ)
+    if len(vector_sinks) > 1:
+        # Without this each sink would re-run parsing, chunking and embedding.
+        vector_ds = vector_ds.materialize()
+    for sink in vector_sinks:
+        write_rows(vector_ds, sink)
     write_rows(graph_ds, Neo4jIndexer())
 
     print("Ingestion Job Completed Successfully.")

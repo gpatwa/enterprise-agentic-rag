@@ -159,6 +159,39 @@ def map_chunk(
     )
 
 
+def map_file_chunk(
+    *,
+    tenant_id: str,
+    provider: str,
+    file_id: str,
+    chunk_key: str,
+    title: str,
+    text: str,
+    metadata: dict[str, Any] | None = None,
+    embedding_model_version: str | None = None,
+    permission_version: str = "acl-v1",
+    updated_at: datetime | None = None,
+    redact_pii: bool | None = None,
+) -> SupportSearchDocument:
+    """Map one chunk of an ingested file. ACL is the tenant token only, like every other support chunk."""
+    return _build_document(
+        tenant_id=tenant_id,
+        provider=provider,
+        source_type="file_chunk",
+        source_id=f"{_required(file_id, 'file_id')}:chunk:{_required(chunk_key, 'chunk_key')}",
+        title=title,
+        text=text,
+        source_uri=None,
+        created_at=None,
+        updated_at=updated_at,
+        attributes=SupportSearchAttributes(),
+        metadata=dict(metadata or {}),
+        permission_version=permission_version,
+        embedding_model_version=embedding_model_version,
+        redact_pii=redact_pii,
+    )
+
+
 def _build_document(
     *,
     tenant_id: str,
