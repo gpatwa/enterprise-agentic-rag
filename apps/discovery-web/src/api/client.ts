@@ -52,12 +52,20 @@ export type DiscoveryClient = {
   searchProducts(request: ProductSearchRequest): Promise<ProductSearchResponse>;
 };
 
-export function createDiscoveryClient(baseUrl = ''): DiscoveryClient {
+export function createDiscoveryClient(baseUrl = '', getToken?: () => Promise<string | null>): DiscoveryClient {
+  const base = { 'content-type': 'application/json' };
+  // Without a token source nothing is awaited, so fetch is still called synchronously.
+  function headers(): Record<string, string> | Promise<Record<string, string>> {
+    if (!getToken) return base;
+    return getToken().then((token) => (token ? { ...base, authorization: `Bearer ${token}` } : base));
+  }
   return {
     async search(request) {
+      const pending = headers();
+      const resolved = pending instanceof Promise ? await pending : pending;
       const response = await fetch(`${baseUrl}/api/discovery/v1/search`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: resolved,
         body: JSON.stringify(request),
       });
       if (!response.ok) {
@@ -66,9 +74,11 @@ export function createDiscoveryClient(baseUrl = ''): DiscoveryClient {
       return (await response.json()) as SearchResponse;
     },
     async searchProducts(request) {
+      const pending = headers();
+      const resolved = pending instanceof Promise ? await pending : pending;
       const response = await fetch(`${baseUrl}/api/discovery/v1/products/search`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: resolved,
         body: JSON.stringify(request),
       });
       if (!response.ok) {

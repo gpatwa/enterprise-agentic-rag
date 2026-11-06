@@ -1,5 +1,6 @@
 import { AlertCircle, ChevronLeft, ChevronRight, Compass, Search, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { useMemo, useState, type KeyboardEvent } from 'react';
+import { authConfigFromEnv, createMsalTokenSource } from './api/auth';
 import { createDiscoveryClient, type SearchRequest, type SearchResponse } from './api/client';
 import { HomeDetailsExperience } from './homeDetails';
 import { ProductSearch } from './productSearch';
@@ -17,7 +18,8 @@ const demoResponse: SearchResponse = {
     { experience_id: 'reef-runners', title: 'Reef Runners', rank: 3, score: 0.67, reason_codes: ['safe_catalog_fallback'], evidence: ['genre'] },
   ],
 };
-const client = createDiscoveryClient(import.meta.env.VITE_DISCOVERY_API_URL ?? '');
+const authConfig = authConfigFromEnv(import.meta.env);
+const client = createDiscoveryClient(import.meta.env.VITE_DISCOVERY_API_URL ?? '', authConfig ? createMsalTokenSource(authConfig) : undefined);
 
 function redactedReason(reasonCodes: string[]) { return reasonCodes.map((reason) => reason.replaceAll('_', ' ')).join(' · '); }
 
