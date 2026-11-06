@@ -80,3 +80,13 @@ RO-1 is worth doing even without OpenSearch, since it decides whether the curren
 - Other validators in `SearchDocument` that could reject a `file_chunk` source type (none seen in the fields read).
 - Whether anything in the repository currently runs this pipeline end to end.
 - The runtime behavior of any referenced deploy file; nothing was started.
+
+## 9. Decision record and RO-1 result (2026-11-06)
+
+**Owner choice (2026-11-06, in chat):** "Use my recommended defaults" for D1 to D7, building RO-1 onward as separate PRs and stopping only at a security or spend gate. The defaults I am working to: D1 option A; D2 tenant-only ACL token; D3 BGE-M3 with the real dimension confirmed in RO-4 (not assumed); D4 dual-write while comparing; D5 no multimodal content in the first packet; D6 a synthetic golden set built for this purpose, with real tenant data only on the owner's say; D7 installing Ray locally approved (done: `ray[data]==2.54.0` in a throwaway virtualenv outside the repo, about 500 MB, the version in `Dockerfile.ingestion`). RO-7 and any deployed change still need their own approval.
+
+**RO-1 finding (run on Ray 2.54.0, Python 3.12):**
+- `main.py` called `vector_ds.write_datasource(QdrantIndexer())`. On 2.54.0 a dataset has **no** `write_datasource` (`AttributeError`), so the pipeline as pinned in `Dockerfile.ingestion` could not have written to Qdrant or Neo4j.
+- `write_datasink` expects a `Datasink` whose `write(blocks, ctx)` receives Arrow blocks, not `list[dict]`. `pipelines/ingestion/indexing/ray_sink.py` wraps any plain `write(batch)` indexer so it receives `list[dict]`, and falls back to the old call when `write_datasink` is absent.
+- Tests: 2 without Ray, 3 with a real local Ray (every row of a 25-row dataset reaches the sink as a dict; sink errors fail the write; empty blocks are skipped). All 5 pass with Ray 2.54.0.
+- **Not verified:** Ray 2.9.0/2.9.3 (the cluster and `requirements.txt` versions; no Python 3.11 here), so the fallback is untested; the real `QdrantIndexer`/`Neo4jIndexer` against live services; whether the sink objects pickle cleanly into workers (the test's `FileSink` did; the Qdrant and Neo4j clients were not tried). The version skew (cluster 2.9.0, requirements 2.9.3, image 2.54.0) is the first thing to settle before any deploy.

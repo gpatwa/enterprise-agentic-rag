@@ -10,6 +10,7 @@ from pipelines.ingestion.embedding.compute import BatchEmbedder, MultimodalBatch
 from pipelines.ingestion.graph.extractor import GraphExtractor
 from pipelines.ingestion.indexing.neo4j import Neo4jIndexer
 from pipelines.ingestion.indexing.qdrant import QdrantIndexer
+from pipelines.ingestion.indexing.ray_sink import write_rows
 from pipelines.ingestion.loaders.pdf import parse_pdf_bytes
 
 # Initialize Ray (Connect to the existing cluster)
@@ -114,8 +115,8 @@ def main(bucket_name: str, prefix: str):
         collection = os.getenv("MULTIMODAL_COLLECTION", "rag_multimodal")
         os.environ["QDRANT_COLLECTION"] = collection
 
-    vector_ds.write_datasource(QdrantIndexer())
-    graph_ds.write_datasource(Neo4jIndexer())
+    write_rows(vector_ds, QdrantIndexer())
+    write_rows(graph_ds, Neo4jIndexer())
 
     print("Ingestion Job Completed Successfully.")
 
