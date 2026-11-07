@@ -66,6 +66,14 @@ only when the owner asks in the current task; plan and apply are separate steps.
   `blob.tf` and a synthetic subset push/pull verified. Model deployments
   `gpt-6-luna` and `text-embedding-3-small` were added to `compass-pilot-openai`
   (a Compass resource; see `docs/DISCOVERY_STATUS.md` for undo commands).
+  **Zero-manual setup (2026-11-07, design in `docs/ZERO_MANUAL_SETUP_DESIGN.md`):** Entra
+  scope/SPA redirect, access list, GitHub OIDC for the VM workflow, a Discovery-owned
+  Azure OpenAI account and the GitHub repo settings (auto-merge, a "CI gate" ruleset on
+  `main`, a main-only `discovery-pilot` environment) are Terraform and are applied; see
+  `infra/terraform/azure-discovery-pilot` and `infra/terraform/github-repo`
+  (`make bootstrap-github-repo`, `make discovery-repo-vars`). API auth and web sign-in are
+  still switched off (`enable_api_auth=false`) pending a real-tenant token test.
+  Auto-merge works: use `gh pr merge <n> --auto --merge`.
 - Resolution Intelligence (`apps/support-web`, `services/api`) is not deployed.
 
 ## Discovery State
