@@ -9,6 +9,7 @@ Judgments are restricted to the subset so the ideal ranking never contains produ
 from __future__ import annotations
 
 import hashlib
+import heapq
 import json
 import math
 import re
@@ -20,6 +21,7 @@ from typing import Callable, Mapping, Sequence
 
 from app.ingest.models import ProductRecord
 from app.ingest.pipeline import IngestError, read_rows, verify_subset
+from app.opensearch.client import OpenSearchError
 
 REPORT_VERSION = "product-eval-v1"
 # Graded gains by ESCI label. These follow the task's convention as recalled (Exact 1, Substitute 0.1,
@@ -48,7 +50,7 @@ def load_queries(
     texts: dict[str, str] = {}
     labels: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
     outside = 0
-    for row in read_rows(examples_path, required):
+    for row in read_rows(examples_path, required, required):
         if row["product_locale"].strip().lower() != locale.lower() or row["small_version"].strip() != "1":
             continue
         label = row["esci_label"].strip().upper()
@@ -207,32 +209,34 @@ class Bm25Retriever:
         self._k1, self._b = k1, b
         self._lengths = [len(doc) for doc in self._docs]
         self._avg = (sum(self._lengths) / len(self._lengths)) if self._lengths else 0.0
-        self._df: Counter[str] = Counter()
-        for doc in self._docs:
-            self._df.update(set(doc))
-        self._tf = [Counter(doc) for doc in self._docs]
+        # Inverted index: term -> [(document index, term frequency)]. A query only touches the postings of its own
+        # terms instead of scanning every document, which is what makes a 25k-product evaluation take seconds.
+        self._postings: dict[str, list[tuple[int, int]]] = {}
+        for index, doc in enumerate(self._docs):
+            for term, freq in Counter(doc).items():
+                self._postings.setdefault(term, []).append((index, freq))
+        self._docs = []  # token lists are no longer needed once indexed
 
     @staticmethod
     def _tokens(text: str) -> list[str]:
         return _TOKEN.findall(text.lower())
 
     def __call__(self, query: str, k: int) -> list[str]:
-        terms = self._tokens(query)
         n = len(self._ids)
-        scored: list[tuple[float, str]] = []
-        for index, pid in enumerate(self._ids):
-            score = 0.0
-            for term in terms:
-                freq = self._tf[index].get(term, 0)
-                if not freq:
-                    continue
-                idf = math.log(1 + (n - self._df[term] + 0.5) / (self._df[term] + 0.5))
+        scores: dict[int, float] = {}
+        # Terms are visited in query order (repeats count again) so each document's score is summed in the same
+        # order, and gives the same float, as scoring documents one by one.
+        for term in self._tokens(query):
+            postings = self._postings.get(term)
+            if not postings:
+                continue
+            df = len(postings)
+            idf = math.log(1 + (n - df + 0.5) / (df + 0.5))
+            for index, freq in postings:
                 norm = freq + self._k1 * (1 - self._b + self._b * self._lengths[index] / (self._avg or 1.0))
-                score += idf * freq * (self._k1 + 1) / norm
-            if score > 0.0:
-                scored.append((-score, pid))
-        scored.sort()
-        return [pid for _, pid in scored[:k]]
+                scores[index] = scores.get(index, 0.0) + idf * freq * (self._k1 + 1) / norm
+        ranked = heapq.nsmallest(k, ((-score, self._ids[index]) for index, score in scores.items() if score > 0.0))
+        return [pid for _, pid in ranked]
 
 
 def build_report(
@@ -306,18 +310,40 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--held-out-fraction", type=float, default=0.3)
+    parser.add_argument(
+        "--retriever",
+        choices=("bm25", "opensearch"),
+        default="bm25",
+        help="bm25 is the in-memory baseline; opensearch queries the loaded product index (DISCOVERY_OPENSEARCH_URL)",
+    )
+    parser.add_argument("--index", help="product index for --retriever opensearch (default: the product index)")
     args = parser.parse_args(argv)
     try:
+        factory: Callable[[Sequence[ProductRecord]], Retriever] = Bm25Retriever
+        if args.retriever == "opensearch":
+            from app.opensearch.products import (  # noqa: PLC0415
+                DEFAULT_PRODUCT_INDEX,
+                ProductRetriever,
+                client_from_env,
+            )
+
+            client = client_from_env()
+            if client is None:
+                raise IngestError("--retriever opensearch needs DISCOVERY_OPENSEARCH_URL")
+            index = args.index or DEFAULT_PRODUCT_INDEX
+            factory = lambda records: ProductRetriever(client, index)  # noqa: E731
         report = build_report(
             args.subset,
             args.examples,
+            factory,
+            retriever_name=args.retriever,
             k=args.k,
             seed=args.seed,
             repeats=args.repeats,
             held_out_fraction=args.held_out_fraction,
         )
         write_report(report, args.out)
-    except (IngestError, ValueError) as exc:
+    except (IngestError, ValueError, OpenSearchError) as exc:
         print(f"evaluation failed: {exc}", file=sys.stderr)
         return 1
     held = report["held_out"]

@@ -26,6 +26,7 @@ from app.opensearch.products import (
     product_mapping,
     read_subset_records,
     reconcile,
+    stream_subset_records,
 )
 
 NOW = datetime(2026, 11, 4, tzinfo=timezone.utc)
@@ -184,6 +185,20 @@ def test_read_subset_verifies_before_returning(tmp_path: Path) -> None:
 
     with pytest.raises(IngestError, match="drift"):
         read_subset_records(out)
+
+
+def test_stream_subset_records_is_lazy_and_verified_first(tmp_path: Path) -> None:
+    out = _built_subset(tmp_path)
+    records, expected = stream_subset_records(out)
+    assert iter(records) is records and not isinstance(records, (list, tuple))  # one pass, nothing held in memory
+    assert [r.product_id for r in records] == [r.product_id for r in read_subset_records(out)[0]]
+    assert expected == 6
+    path = out / "products.jsonl"
+    path.write_text("\n".join(path.read_text().splitlines()[:-1]) + "\n", encoding="utf-8")
+    from app.ingest import IngestError
+
+    with pytest.raises(IngestError, match="drift"):
+        stream_subset_records(out)  # verification happens at the call, before any record is yielded
 
 
 URL = os.environ.get("DISCOVERY_TEST_OPENSEARCH_URL")

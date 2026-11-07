@@ -12,6 +12,7 @@ QUARANTINE_REASONS = (
     "empty_title",
     "title_too_long",
     "control_characters",
+    "field_too_long",
     "locale_mismatch",
     "conflicting_duplicate",
 )
