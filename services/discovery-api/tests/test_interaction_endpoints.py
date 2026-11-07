@@ -54,9 +54,7 @@ def _event(*, consent: ConsentState = ConsentState.PERSONALIZATION_ALLOWED) -> I
 
 def test_submit_interactions_accepts_and_replays_idempotently() -> None:
     service = LocalInteractionService()
-    request = InteractionSubmission(
-        tenant_id="tenant-1", user_id="user-1", request_id="request-1", events=(_event(),)
-    )
+    request = InteractionSubmission(tenant_id="tenant-1", user_id="user-1", request_id="request-1", events=(_event(),))
 
     first = service.submit(request)
     second = service.submit(request)
@@ -69,9 +67,7 @@ def test_submit_interactions_accepts_and_replays_idempotently() -> None:
 def test_submit_rejects_mismatched_scope_and_consent() -> None:
     service = LocalInteractionService()
     mismatched = service.submit(
-        InteractionSubmission(
-            tenant_id="other-tenant", user_id="user-1", request_id="request-1", events=(_event(),)
-        )
+        InteractionSubmission(tenant_id="other-tenant", user_id="user-1", request_id="request-1", events=(_event(),))
     )
     denied = service.submit(
         InteractionSubmission(
@@ -172,3 +168,27 @@ def test_explanation_route_models_are_bounded() -> None:
             events=(_event(),),
             history="private",
         )
+
+
+def test_a_decision_is_invisible_to_another_tenant() -> None:
+    record = RankingAuditRecord(
+        event_id="decision-2",
+        tenant_digest=digest("tenant-1"),
+        request_digest=digest("request-1"),
+        decision_digest=digest("decision"),
+        outcome=AuditOutcome.COMPLETED,
+        eligibility_outcome=PolicyOutcome.ALLOWED,
+        policy_outcome=PolicyOutcome.ALLOWED,
+        candidate_count=1,
+        eligible_count=1,
+        selected_count=1,
+        occurred_at=NOW,
+        record_checksum=checksum({"decision": "redacted"}),
+    )
+    service = LocalInteractionService(audit=RankingAuditWriter())
+    service._audit.append(record)
+
+    assert service.explain("decision-2", "tenant-1").decision_ref == "decision-2"
+    assert service.explain("decision-2").decision_ref == "decision-2"  # no tenant known: not checked
+    with pytest.raises(KeyError, match="unknown decision"):
+        service.explain("decision-2", "tenant-2")  # indistinguishable from a missing reference

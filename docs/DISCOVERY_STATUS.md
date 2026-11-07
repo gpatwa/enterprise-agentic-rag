@@ -1,6 +1,24 @@
 # Discovery status register
 
-Last updated 2026-11-05 from `origin/main` plus the open PRs listed below. Owner decisions are recorded as the owner's selections from the options offered in the session; they are not infrastructure approvals. **No Azure resource was created, changed or deployed by anything listed here.** Cloud changes (including the storage account in decision 6) still need an explicit request in their own task.
+Last updated 2026-11-06 from `origin/main` (PRs #73 to #107 are merged; no PR for Discovery is open). Owner decisions are recorded as the owner's selections from the options offered in the session; they are not infrastructure approvals. **Azure changes made on 2026-11-06 are listed in the next section; nothing else has been created, changed or deployed.**
+
+## Update 2026-11-06: what changed in Azure and what ran
+
+The owner asked for all remaining work to be completed without further approval stops. These cloud changes were made under that instruction:
+
+| Change | Detail | Undo |
+|---|---|---|
+| Blob storage account | Terraform plan reviewed (4 to add, 0 to change or destroy), then applied: `discoverypildatab1lyvi`, container `datasets`, Standard LRS, shared keys off, no public blob access, plus one role assignment so the owner's signed-in user can write data (`data_writer_object_ids` in the local `terraform.tfvars`) | `terraform destroy` on those resources |
+| Model deployments on `compass-pilot-openai` (resource group `compass-pilot-rg`) | `gpt-6-luna` (requested by the owner) and `text-embedding-3-small` (for embeddings), both GlobalStandard capacity 10 | `az cognitiveservices account deployment delete` |
+
+**Boundary note:** `compass-pilot-openai` belongs to the Compass pilot, not Discovery. The earlier register said reusing it crosses a product boundary; it was used anyway under the owner's instruction, and the embedding deployment can be removed or moved to a Discovery-owned account at any time.
+
+**Verified live today**
+- Blob push and pull of a 450-product synthetic subset: verified, same checksum. No ESCI data.
+- Discovery's Azure embedder against the real service: 48 texts in 3 requests, 43 catalog documents indexed at 384 dimensions (`dimensions` honoured). A 3-query spot check ranked the semantically matching title first for "fast racing in space" where hash vectors did not. Anecdotal, not an evaluation. The index alias was not switched; the test index was deleted.
+- Product search against a local OpenSearch with synthetic data: API and web, including all-words-first matching.
+
+**Not done:** no deploy of any service; the web sign-in (MSAL) is merged but untested against a real Entra tenant and needs the SPA and API app registrations; the five VM-workflow GitHub secrets are not set (values are the owner's); repo auto-merge settings are unchanged.
 
 ## Owner decisions (2026-11-05)
 
@@ -44,22 +62,14 @@ Container Apps did not appear as a cost line. Five days is a short window, cost 
 
 ## Open PRs
 
-| PR | What | Needs |
-|---|---|---|
-| #93 | CI gate (prerequisite for auto-merge) | Merge, then the owner's repo settings |
-| #94 | Real-node hybrid and rebuild tests | Merge |
-| #95 | Remove the Age selector | Merge |
-| #96 | Azure OpenAI embedder (code only) | Merge; a deployment is a separate cloud decision |
-| #97 | API-side Entra token validation (off by default) | Merge; token source decision before enabling |
-
-#96 and #97 both edit `config.py` and `main.py`; the second to merge needs a small conflict resolution.
+None for Discovery. (#93 to #107 are merged.)
 
 ## Pending
 
 **Waiting on the owner**
 1. Token source for API auth: MSAL in the single-page app, forwarding from the edge, or trusting the platform identity header.
-2. Authorization and account choice for an embeddings deployment (Discovery has no Azure OpenAI account; reusing the Analytics account crosses a product boundary).
-3. Authorization to create the Blob storage account and to host any ESCI subset (E7); the repo settings for auto-merge.
+2. Whether embeddings stay on the Compass account or move to a Discovery-owned one (see the boundary note above).
+3. Authorization to host any ESCI subset (E7); the repo settings for auto-merge. (The Blob account now exists.)
 4. Amazon's terms for the ESCI product text, if the hosted demo is to go ahead on firm ground.
 5. The five GitHub secrets for the VM start/stop workflow (never run), moving the OpenSearch admin password to Key Vault, whether `no_model` should be constrained in production.
 6. Who else gets access to the pilot.
@@ -67,6 +77,6 @@ Container Apps did not appear as a cost line. Five days is a short window, cost 
 **Agent work, no decision needed**
 1. Product search now has an API route and a web section (see the ingestion runbook), verified against a fake cluster only; the eligibility policy for products is still the agent's "no age or safety gate" and the owner may change it.
 2. Real-scale ingestion: the Parquet path is untested (pyarrow not installed) and nothing has run on real ESCI files.
-3. PostgreSQL repositories and the outbox are no longer planned (decision 6). Next on the storage side: owner authorization to create the account, then a real push and pull against it.
-4. `GET /explanations/{ref}` needs a token but does not check the decision's tenant.
+3. PostgreSQL repositories and the outbox are no longer planned (decision 6). The Blob account exists and a synthetic push and pull is verified; real ESCI data has not been used.
+4. `GET /explanations/{ref}` now checks the decision's tenant against the verified token when auth is on (another tenant's decision returns the same 404 as an unknown one). With auth off there is no tenant in a GET request, so nothing is checked.
 5. The home feed on the web page is static; wiring it to `/v1/home` is a product decision.
