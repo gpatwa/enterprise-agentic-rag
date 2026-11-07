@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from types import SimpleNamespace
 
@@ -29,11 +30,13 @@ class FakeGraph:
 
 
 class FakeSearch:
-    def __init__(self, texts=("o one", "q one"), fail=False, tenant=None):
-        self.texts, self.fail, self.tenant, self.requests = texts, fail, tenant, []
+    def __init__(self, texts=("o one", "q one"), fail=False, tenant=None, delay=0.0):
+        self.texts, self.fail, self.tenant, self.requests, self.delay = texts, fail, tenant, [], delay
 
     async def search(self, request):
         self.requests.append(request)
+        if self.delay:
+            await asyncio.sleep(self.delay)
         if self.fail:
             raise RuntimeError("opensearch down")
         tenant = self.tenant or request.scope.tenant_id
@@ -48,6 +51,9 @@ def _reset(monkeypatch):
     monkeypatch.setattr(settings, "OPENSEARCH_SHADOW_ENABLED", False)
     monkeypatch.setattr(settings, "OPENSEARCH_SHADOW_PERCENT", 0)
     monkeypatch.setattr(settings, "OPENSEARCH_ROLLBACK", False)
+    monkeypatch.setattr(settings, "OPENSEARCH_CANARY_TENANTS", "")
+    monkeypatch.setattr(settings, "OPENSEARCH_SHADOW_TENANTS", "")
+    monkeypatch.setattr(settings, "OPENSEARCH_RETRIEVAL_TIMEOUT_SECONDS", 1.5)
     monkeypatch.setattr(settings, "SINGLE_TENANT_MODE", False)
     monkeypatch.setattr(settings, "MULTIMODAL_ENABLED", False)
     yield
@@ -138,4 +144,52 @@ async def test_shadow_failure_never_changes_the_reply(monkeypatch) -> None:
     monkeypatch.setattr(settings, "OPENSEARCH_SHADOW_ENABLED", True)
     monkeypatch.setattr(settings, "OPENSEARCH_SHADOW_PERCENT", 100)
     docs = await _run(FakeQdrant(), FakeSearch(fail=True))
+    assert docs == ["q one [Source: q.pdf]", "q two [Source: q.pdf]"]
+
+
+async def test_a_named_canary_tenant_is_served_from_opensearch_at_zero_percent(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "OPENSEARCH_CANARY_TENANTS", " default , other ")
+    search = FakeSearch()
+    docs = await _run(FakeQdrant(), search, tenant="default")
+    assert docs[0] == "o one [Source: o.pdf]" and len(search.requests) == 1
+    outside = FakeSearch()
+    assert (await _run(FakeQdrant(), outside, tenant="acme"))[0].startswith("q one") and outside.requests == []
+
+
+async def test_the_named_cohorts_obey_enabled_and_rollback(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "OPENSEARCH_CANARY_TENANTS", "default")
+    monkeypatch.setattr(settings, "OPENSEARCH_SHADOW_TENANTS", "default")
+    monkeypatch.setattr(settings, "OPENSEARCH_SHADOW_ENABLED", True)
+    for name, value in (("OPENSEARCH_ENABLED", False), ("OPENSEARCH_ROLLBACK", True)):
+        monkeypatch.setattr(settings, "OPENSEARCH_ENABLED", True)
+        monkeypatch.setattr(settings, "OPENSEARCH_ROLLBACK", False)
+        monkeypatch.setattr(settings, name, value)
+        search = FakeSearch()
+        docs = await _run(FakeQdrant(), search, tenant="default")
+        assert docs[0].startswith("q one") and search.requests == [], name
+
+
+async def test_a_named_shadow_tenant_is_shadowed_at_zero_percent(monkeypatch, caplog) -> None:
+    monkeypatch.setattr(settings, "OPENSEARCH_SHADOW_ENABLED", True)
+    monkeypatch.setattr(settings, "OPENSEARCH_SHADOW_TENANTS", "default")
+    search = FakeSearch()
+    with caplog.at_level(logging.INFO, logger=retriever.logger.name):
+        docs = await _run(FakeQdrant(), search, tenant="default")
+    assert docs[0].startswith("q one") and len(search.requests) == 1
+    line = next(r.getMessage() for r in caplog.records if "Retrieval shadow" in r.getMessage())
+    assert "qdrant_ms=" in line and "opensearch_ms=" in line
+
+
+async def test_a_slow_opensearch_times_out_and_qdrant_answers(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "OPENSEARCH_CANARY_PERCENT", 100)
+    monkeypatch.setattr(settings, "OPENSEARCH_RETRIEVAL_TIMEOUT_SECONDS", 0.05)
+    docs = await _run(FakeQdrant(), FakeSearch(delay=1.0))
+    assert docs == ["q one [Source: q.pdf]", "q two [Source: q.pdf]"]
+
+
+async def test_a_slow_shadow_cannot_change_the_reply(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "OPENSEARCH_SHADOW_ENABLED", True)
+    monkeypatch.setattr(settings, "OPENSEARCH_SHADOW_PERCENT", 100)
+    monkeypatch.setattr(settings, "OPENSEARCH_RETRIEVAL_TIMEOUT_SECONDS", 0.05)
+    docs = await _run(FakeQdrant(), FakeSearch(delay=1.0))
     assert docs == ["q one [Source: q.pdf]", "q two [Source: q.pdf]"]

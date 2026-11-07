@@ -102,6 +102,11 @@ class Settings(BaseSettings):
     OPENSEARCH_SHADOW_ENABLED: bool = False
     OPENSEARCH_SHADOW_PERCENT: int = 0
     OPENSEARCH_CANARY_PERCENT: int = 0
+    # Named cohorts for the first stages, while only one tenant exists. Comma-separated tenant IDs; percent buckets cannot
+    # name a tenant. Both are ignored when OPENSEARCH_ENABLED is false or OPENSEARCH_ROLLBACK is true.
+    OPENSEARCH_CANARY_TENANTS: str = ""  # always served from OpenSearch (Qdrant fallback on error)
+    OPENSEARCH_SHADOW_TENANTS: str = ""  # always shadowed when OPENSEARCH_SHADOW_ENABLED
+    OPENSEARCH_RETRIEVAL_TIMEOUT_SECONDS: float = 1.5  # per chat-retrieval query; on timeout Qdrant answers
     OPENSEARCH_ROLLBACK: bool = False  # forces chat retrieval back to Qdrant regardless of the canary
 
     # -----------------------------------------------------------------

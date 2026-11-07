@@ -2,7 +2,7 @@
 
 **Status: APPROVED by the owner on 2026-11-06 ("approve the RO-7 canary plan"). Nothing here is deployed or enabled.**
 
-**Scope of the approval.** The owner approved this plan as written: the stages, gates, rollback triggers and the stated percent steps. It does **not** authorize any cloud change, turning on any flag in a deployed environment, running a stage, or retiring Qdrant. Each deployed change needs its own request in its own task, and the Qdrant retirement section remains a set of criteria, not a decision. The items under "Not decided here" (latency budget, error thresholds beyond the 5% nDCG rule, canary tenant) are still open and block Stage 1 and later.
+**Scope of the approval.** The owner approved this plan as written: the stages, gates, rollback triggers and the stated percent steps. It does **not** authorize any cloud change, turning on any flag in a deployed environment, running a stage, or retiring Qdrant. Each deployed change needs its own request in its own task, and the Qdrant retirement section remains a set of criteria, not a decision. The canary tenant and latency budget were then set on the owner's instruction (section "Defaults set 2026-11-06"); error thresholds beyond those in the stage table are still open and block Stage 1.
 
 It follows `docs/RAG_PIPELINE_OPENSEARCH_INDEXER_PLAN.md` (RO-1 to RO-6 are merged) and does not retire Qdrant.
 
@@ -33,6 +33,24 @@ At 100% for at least 30 days with the gates above held, the multimodal image pat
 
 ## Metrics to collect (none are wired to a dashboard yet)
 Shadow overlap ratio (logged by `retrieve_node`), per-backend error counts and latency, fallback count, golden-set nDCG@10 and recall@10 per stage, document-count reconcile result.
+
+## Defaults set 2026-11-06 (owner: "set the canary tenant and latency budget to your recommended defaults")
+
+These are my recommended values, adopted on the owner's instruction. **None is measured**: no OpenSearch chunk latency has been observed anywhere, so treat them as starting points and change them only by recording a new dated entry here.
+
+**Canary tenant: `default`.** It is the only tenant that exists (no customers yet), it is the tenant the ingestion sink writes today, and single-tenant mode already maps to it, so a canary on it affects no customer. Percent buckets cannot name a tenant (`default` sits at canary bucket 75 and shadow bucket 18, so the 10% and 5% steps would never include it), so the first two stages use named cohorts:
+- Stage 1 (shadow): `OPENSEARCH_SHADOW_ENABLED=true`, `OPENSEARCH_SHADOW_TENANTS=default`.
+- Stage 2 (canary): `OPENSEARCH_CANARY_TENANTS=default`.
+- The percent steps in the table apply from the point a second tenant exists; until then the stages run on the named cohort alone.
+- **Limit of a one-tenant canary:** it cannot show live cross-tenant isolation. Before Stage 2, re-run `tests/pipelines/test_opensearch_indexer_integration.py` (the two-tenant isolation case) against the deployed index, and keep the zero-leakage rule.
+
+**Latency budget** (OpenSearch chunk query only; the query embedding is shared with Qdrant and excluded):
+- p95 at most **300 ms**, p99 at most **800 ms**, and p95 no more than **1.5x Qdrant's p95** in the same shadow window.
+- Hard per-request timeout **1.5 s** (`OPENSEARCH_RETRIEVAL_TIMEOUT_SECONDS`, default now 1.5): on timeout Qdrant answers, and the timeout counts as an error toward the 1% error gate.
+- Why: chat retrieval runs before an LLM call that takes seconds, so a few hundred milliseconds is a small share; the API-wide search timeout (10 s) is far too loose for chat.
+- Measured by the log lines `Retrieval shadow: ... qdrant_ms= opensearch_ms=` and `Retrieval opensearch: ... ms=` (added with these defaults). Nothing aggregates them yet; a dashboard or log query is still to be built.
+
+**Still open:** error thresholds beyond what the stage table already states (1% errors, 5% nDCG, zero cross-tenant results), for example a ceiling on the Qdrant-fallback rate. These block Stage 1 until set.
 
 ## Not decided here
 Percent steps and week-long holds are proposals. Latency budget, error thresholds beyond the 5% nDCG rule, and the canary tenant choice are the owner's.
