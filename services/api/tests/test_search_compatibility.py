@@ -56,3 +56,14 @@ def test_additive_and_breaking_changes_are_breaking_together():
     assert result.kind is MappingCompatibilityKind.BREAKING
     assert "field added: new_filter" in result.reasons
     assert "field definition changed: title" in result.reasons
+
+
+def test_the_servers_string_form_of_dynamic_is_not_drift():
+    proposed = build_support_index_definition(8)["mappings"]
+    reported = {**proposed, "dynamic": "false"}  # what a real node returns for dynamic=False
+
+    assert classify_mapping_compatibility(reported, proposed).kind == MappingCompatibilityKind.IDENTICAL
+    assert (
+        classify_mapping_compatibility({**proposed, "dynamic": "strict"}, proposed).kind
+        == MappingCompatibilityKind.BREAKING
+    )

@@ -101,3 +101,14 @@ RO-1 is worth doing even without OpenSearch, since it decides whether the curren
 - **Dual-write** materializes the vector dataset once so each sink does not recompute embeddings. That path is not exercised at any scale.
 - **Tenant:** `main.py` builds the indexer with the default tenant `default`, exactly as the Qdrant sink does today. Real per-tenant ingestion is not in this packet.
 - Tests: 15 new, with a fake provider only (full API suite 639 passed). **Not verified:** a real OpenSearch node (RO-3), the real Ray run with this sink, and that the pipeline image has `opensearch-py` and the API modules (`pipelines/ingestion/requirements.txt` does not list `opensearch-py`).
+
+### RO-3 result (2026-11-06)
+
+Run against a local OpenSearch **2.15.0** container (`docker compose --profile search up -d opensearch`), opt-in with `OPENSEARCH_INTEGRATION=1` (`services/api/tests/pipelines/test_opensearch_indexer_integration.py`, 3 tests, all pass; each test's index is deleted, none left over):
+- 30 chunks written; a re-run leaves the count at 30; stored documents carry `source_type=file_chunk`, `acl_tokens=["tenant:acme"]`, an 8-value embedding, the model version and a 64-character content hash.
+- A second tenant's chunks do not appear in the first tenant's search and the reverse (searched through the API's `OpenSearchProvider`, lexical mode).
+- A vector-dimension mismatch against an existing index writes nothing and fails with `field definition changed: embedding`.
+
+**Bug found and fixed:** the API's `classify_mapping_compatibility` treated a real node's `dynamic: "false"` (string) as different from the proposed `dynamic: False`, so `ensure_index` on any existing index raised "breaking drift". A second write, and any API-side re-run of `ensure_index`, would have failed on a real cluster. Normalized in `compatibility.py` with a unit test. Unit tests with fakes had never caught it.
+
+Still not verified: vector or hybrid search over pipeline-written chunks, scale beyond 30 documents, and the real Ray job end to end.
