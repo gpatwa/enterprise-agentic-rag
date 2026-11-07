@@ -10,7 +10,7 @@ Usage:
 
 Note: Switching embed providers requires re-indexing documents in Qdrant
 because different models produce different vector dimensions.
-  - BGE-M3 (Ray): 4096 dims
+  - BGE-M3 (Ray): 1024 dims (published model config; not 4096)
   - text-embedding-3-small: 1536 dims
   - text-embedding-3-large: 3072 dims
 """

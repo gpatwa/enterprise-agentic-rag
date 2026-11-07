@@ -58,7 +58,11 @@ class OpenSearchIndexer:
 
         self.tenant_id = tenant_id
         self.index = index or os.getenv("INGEST_OPENSEARCH_INDEX") or ""
-        self.dimensions = dimensions or settings.OPENSEARCH_VECTOR_DIMENSIONS
+        # Precedence: argument, INGEST_VECTOR_DIMENSIONS, the API's OPENSEARCH_VECTOR_DIMENSIONS (default 768).
+        env_dimensions = os.getenv("INGEST_VECTOR_DIMENSIONS")
+        self.dimensions = dimensions or (
+            int(env_dimensions) if env_dimensions else settings.OPENSEARCH_VECTOR_DIMENSIONS
+        )
         self.embedding_model_version = embedding_model_version or settings.OPENSEARCH_EMBEDDING_MODEL_VERSION
         self._provider_factory = provider_factory
         self._sleep = sleep
@@ -77,7 +81,8 @@ class OpenSearchIndexer:
                 continue
             if len(vector) != self.dimensions:
                 raise IndexerError(
-                    f"vector has {len(vector)} dimensions but the index expects {self.dimensions}; nothing was written"
+                    f"vector has {len(vector)} dimensions but the index expects {self.dimensions}; nothing was written "
+                    "(set INGEST_VECTOR_DIMENSIONS to the embedding model's size: BGE-M3 is 1024, the Gemini path defaults to 768)"
                 )
             meta = dict(row.get("metadata") or {})
             filename = str(meta.get("filename") or "").strip()

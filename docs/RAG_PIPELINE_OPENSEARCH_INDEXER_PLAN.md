@@ -112,3 +112,13 @@ Run against a local OpenSearch **2.15.0** container (`docker compose --profile s
 **Bug found and fixed:** the API's `classify_mapping_compatibility` treated a real node's `dynamic: "false"` (string) as different from the proposed `dynamic: False`, so `ensure_index` on any existing index raised "breaking drift". A second write, and any API-side re-run of `ensure_index`, would have failed on a real cluster. Normalized in `compatibility.py` with a unit test. Unit tests with fakes had never caught it.
 
 Still not verified: vector or hybrid search over pipeline-written chunks, scale beyond 30 documents, and the real Ray job end to end.
+### RO-4 result (2026-11-06)
+
+**Dimensions by embedding path:**
+- **BGE-M3 on Ray Serve** (`services/api/app/models/embedding_engine.py`, used by `BatchEmbedder` for text): **1024**. Source: the model's published `config.json` (`hidden_size` 1024) and its sentence-transformers pooling config (`word_embedding_dimension` 1024), read from Hugging Face on 2026-11-06. The repo comment in `openai_embed.py` saying 4096 was wrong and is corrected. **Not probed:** the deployed `ray-serve-embed` endpoint (nothing is deployed) and the model weights themselves.
+- **Gemini multimodal path** (`MultimodalBatchEmbedder`): `GEMINI_EMBED_DIMENSIONS`, default **768**.
+- **OpenAI** `text-embedding-3-small` 1536 / `-large` 3072 (documented sizes).
+
+**Consequence:** the API default `OPENSEARCH_VECTOR_DIMENSIONS=768` and Helm `enterpriseSearch.vectorDimensions: 768` do not match the BGE-M3 text path. With the defaults the new indexer rejects every text batch (the dimension guard doing its job). Set `INGEST_VECTOR_DIMENSIONS=1024` for BGE-M3 (new; precedence: argument, this variable, then the API setting). One index holds one dimension, so BGE-M3 text and Gemini multimodal vectors cannot share an index.
+
+**Not changed:** the Helm default and any deployed value. Whether the API's own support-search path embeds with BGE-M3 at 1024 against a 768 index is **not verified**; check it before enabling OpenSearch for chunk retrieval.
