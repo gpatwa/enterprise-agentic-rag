@@ -1,6 +1,7 @@
 # services/api/app/agents/nodes/retriever.py
 import asyncio
 import logging
+import time
 from typing import Dict
 
 from langchain_core.runnables import RunnableConfig
@@ -31,10 +32,20 @@ def set_search_service(service) -> None:
     _search_service = service
 
 
+def _tenants(csv: str) -> frozenset[str]:
+    return frozenset(part.strip() for part in csv.split(",") if part.strip())
+
+
 def vector_backend(tenant_id: str) -> str:
     """"qdrant" (default), "opensearch" (canary tenant) or "shadow" (Qdrant answers, OpenSearch is only compared)."""
     if _search_service is None:
         return "qdrant"
+    if (
+        settings.OPENSEARCH_ENABLED
+        and not settings.OPENSEARCH_ROLLBACK
+        and tenant_id in _tenants(settings.OPENSEARCH_CANARY_TENANTS)
+    ):
+        return "opensearch"
     if use_opensearch(
         tenant_id,
         canary_percent=settings.OPENSEARCH_CANARY_PERCENT,
@@ -46,7 +57,10 @@ def vector_backend(tenant_id: str) -> str:
         settings.OPENSEARCH_ENABLED
         and settings.OPENSEARCH_SHADOW_ENABLED
         and not settings.OPENSEARCH_ROLLBACK
-        and rollout_bucket(tenant_id, salt="opensearch-shadow-v1") < settings.OPENSEARCH_SHADOW_PERCENT
+        and (
+            tenant_id in _tenants(settings.OPENSEARCH_SHADOW_TENANTS)
+            or rollout_bucket(tenant_id, salt="opensearch-shadow-v1") < settings.OPENSEARCH_SHADOW_PERCENT
+        )
     ):
         return "shadow"
     return "qdrant"
@@ -130,7 +144,8 @@ async def retrieve_node(state: AgentState, config: RunnableConfig) -> Dict:
         from app.search.models import FilterOperator, SearchFilter, SearchMode, SearchRequest, SearchScope
 
         search_tenant = DEFAULT_TENANT_ID if settings.SINGLE_TENANT_MODE else tenant_id
-        response = await _search_service.search(
+        response = await asyncio.wait_for(
+            _search_service.search(
             SearchRequest(
                 text=query,
                 scope=SearchScope(
@@ -144,6 +159,8 @@ async def retrieve_node(state: AgentState, config: RunnableConfig) -> Dict:
                 limit=15,
                 query_vector=tuple(query_vector),
             )
+            ),
+            timeout=settings.OPENSEARCH_RETRIEVAL_TIMEOUT_SECONDS,
         )
         seen_texts = set()
         unique_docs = []
@@ -156,29 +173,40 @@ async def retrieve_node(state: AgentState, config: RunnableConfig) -> Dict:
                 break
         return unique_docs
 
+    async def timed(coro):
+        started = time.perf_counter()
+        try:
+            return await coro, (time.perf_counter() - started) * 1000
+        except Exception as exc:
+            return exc, (time.perf_counter() - started) * 1000
+
     async def run_vector_search():
         backend = vector_backend(tenant_id)
         if backend == "qdrant":
             return await run_qdrant_search()
         if backend == "opensearch":
-            try:
-                return await run_opensearch_search()
-            except Exception as e:  # any provider failure falls back to the existing Qdrant path
-                logger.warning(f"OpenSearch retrieval failed, falling back to Qdrant: {type(e).__name__}")
-                return await run_qdrant_search()
+            result, ms = await timed(run_opensearch_search())
+            if not isinstance(result, BaseException):
+                logger.info(f"Retrieval opensearch: tenant={tenant_id} ms={ms:.0f} docs={len(result)}")
+                return result
+            # any provider failure or timeout falls back to the existing Qdrant path
+            logger.warning(
+                f"OpenSearch retrieval failed, falling back to Qdrant: {type(result).__name__} after {ms:.0f} ms"
+            )
+            return await run_qdrant_search()
         # shadow: Qdrant's answer is returned; OpenSearch is only compared and can never affect the reply
-        primary, shadow = await asyncio.gather(
-            run_qdrant_search(), run_opensearch_search(), return_exceptions=True
+        (primary, qdrant_ms), (shadow, shadow_ms) = await asyncio.gather(
+            timed(run_qdrant_search()), timed(run_opensearch_search())
         )
         if isinstance(primary, BaseException):
             return []
         if isinstance(shadow, BaseException):
-            logger.warning(f"Shadow retrieval failed: {type(shadow).__name__}")
+            logger.warning(f"Shadow retrieval failed: {type(shadow).__name__} after {shadow_ms:.0f} ms")
         else:
             overlap = len(set(primary) & set(shadow)) / max(len(primary), 1)
             logger.info(
-                f"Retrieval shadow: tenant={tenant_id} qdrant={len(primary)} "
-                f"opensearch={len(shadow)} overlap={overlap:.2f}"
+                f"Retrieval shadow: tenant={tenant_id} qdrant={len(primary)} opensearch={len(shadow)} "
+                f"overlap={overlap:.2f} qdrant_ms={qdrant_ms:.0f} opensearch_ms={shadow_ms:.0f}"
             )
         return primary
 

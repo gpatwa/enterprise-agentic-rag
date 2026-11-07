@@ -444,9 +444,10 @@ words in the program manifest.
   behind `INGEST_VECTOR_SINKS`, real-node test that also fixed an `ensure_index`
   drift bug, vector-dimension finding, reader behind rollout flags, golden-corpus
   comparison). `docs/RAG_OPENSEARCH_CANARY_PLAN.md` (RO-7) was approved by the owner on
-  2026-11-06 as written; that covers the plan only. Its latency budget, extra
-  error thresholds and canary tenant are still open, and every deployed change
-  needs its own request. Nothing is deployed or enabled; Ray 2.9.x was not tested.
+  2026-11-06 as written; that covers the plan only. The canary tenant (`default`, named cohorts) and
+  latency budget (p95 300 ms, p99 800 ms, 1.5 s timeout; unmeasured) were set to
+  my recommended defaults on the owner's instruction; extra error thresholds are
+  still open, and every deployed change needs its own request. Nothing is deployed or enabled; Ray 2.9.x was not tested.
 - Analytics warehouses: which warehouse first, sandbox accounts and credentials for
   W8, whether to include W9.
 - Landing: the owner sets the Static Web Apps deploy secret; the leadership
