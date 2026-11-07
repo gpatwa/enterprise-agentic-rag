@@ -89,6 +89,31 @@ resource "github_repository_ruleset" "default_branch" {
   }
 }
 
+# Environments that hold cloud identities. The Entra federated credential trusts repo + environment, so restricting which
+# branches may deploy to the environment is what stops an arbitrary branch's workflow from using that identity.
+variable "protected_environments" {
+  type    = set(string)
+  default = ["discovery-pilot"]
+}
+
+resource "github_repository_environment" "protected" {
+  for_each    = var.protected_environments
+  repository  = github_repository.this.name
+  environment = each.value
+
+  deployment_branch_policy {
+    protected_branches     = false
+    custom_branch_policies = true
+  }
+}
+
+resource "github_repository_deployment_branch_policy" "main_only" {
+  for_each         = var.protected_environments
+  repository       = github_repository.this.name
+  environment_name = github_repository_environment.protected[each.value].environment
+  name             = "main"
+}
+
 output "ruleset_id" {
   value = github_repository_ruleset.default_branch.ruleset_id
 }
