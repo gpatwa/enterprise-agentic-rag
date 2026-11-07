@@ -14,7 +14,7 @@ import argparse
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Iterable, Iterator, Sequence
 
 from app.config import settings_from_env
 from app.ingest import IngestError, ProductRecord, verify_subset
@@ -205,12 +205,24 @@ def search_page(
 
 def read_subset_records(subset_dir: Path) -> tuple[list[ProductRecord], int]:
     """Verify the subset against its manifest, then return its records and the expected count."""
+    records, expected = stream_subset_records(subset_dir)
+    return list(records), expected
+
+
+def stream_subset_records(subset_dir: Path) -> tuple[Iterator[ProductRecord], int]:
+    """Verify the subset, then return a one-pass iterator over its records (bounded memory) and the expected count."""
     manifest = verify_subset(subset_dir)
-    lines = (subset_dir / "products.jsonl").read_text(encoding="utf-8").splitlines()
-    return [ProductRecord.model_validate_json(line) for line in lines if line.strip()], manifest.selected
+
+    def records() -> Iterator[ProductRecord]:
+        with (subset_dir / "products.jsonl").open("r", encoding="utf-8") as handle:
+            for line in handle:
+                if line.strip():
+                    yield ProductRecord.model_validate_json(line)
+
+    return records(), manifest.selected
 
 
-def _client_from_env() -> OpenSearchClient | None:
+def client_from_env() -> OpenSearchClient | None:
     settings = settings_from_env()
     if not settings.opensearch_url:
         return None
@@ -230,12 +242,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     load.add_argument("--subset", type=Path, required=True)
     load.add_argument("--index", default=DEFAULT_PRODUCT_INDEX)
     args = parser.parse_args(argv)
-    client = _client_from_env()
+    client = client_from_env()
     if client is None:
         print("DISCOVERY_OPENSEARCH_URL is not set", file=sys.stderr)
         return 2
     try:
-        records, expected = read_subset_records(args.subset)
+        records, expected = stream_subset_records(args.subset)
         evidence = load_products(client, records, args.index)
         result = reconcile(client, expected, args.index)
     except (IngestError, OpenSearchError) as exc:

@@ -196,3 +196,72 @@ def test_cli_dry_run_writes_nothing_and_build_then_verify(
     assert "license_status=unconfirmed" in capsys.readouterr().out
     assert cli_main(["verify", "--out", str(out)]) == 0
     assert cli_main([*base, "--out", str(out)]) == 1
+
+
+def test_more_than_ten_thousand_products_build_and_verify(tmp_path: Path) -> None:
+    # Regression: the checksum used to come from the experience catalog's rebuild module, which caps a
+    # collection at 10,000 ids, so the default --limit of 25,000 raised MaintenanceError on any real-sized input.
+    ids = [f"B{n:06d}" for n in range(12_000)]
+    products = _write(tmp_path / "p.csv", PRODUCT_FIELDS, [_product(pid) for pid in ids])
+    examples = _write(tmp_path / "e.csv", EXAMPLE_FIELDS, [_example(pid) for pid in ids])
+    result = ingest(products, examples, provenance=PROVENANCE, limit=11_000, now=NOW)
+    assert result.manifest.selected == 11_000
+    write_subset(result, tmp_path / "subset")
+    assert verify_subset(tmp_path / "subset").selected == 11_000
+
+
+def test_checksum_matches_the_catalog_digest_so_older_manifests_still_verify() -> None:
+    from app.indexing.maintenance import checksum_ids as catalog_checksum
+    from app.ingest.pipeline import checksum_ids
+
+    assert checksum_ids(["b", "a", "a", "c"]) == catalog_checksum(["a", "b", "c"])
+
+
+def test_fields_over_the_model_limits_are_quarantined_not_raised(tmp_path: Path) -> None:
+    # A 20,001 character description used to escape as a raw pydantic ValidationError and abort the whole build.
+    rows = [
+        _product("OK"),
+        _product("BIGDESC", product_description="d" * 20_001),
+        _product("BIGBRAND", product_brand="b" * 256),
+        _product("BIGBUL", product_bullet_point="u" * 20_001),
+    ]
+    products = _write(tmp_path / "p.csv", PRODUCT_FIELDS, rows)
+    examples = _write(tmp_path / "e.csv", EXAMPLE_FIELDS, [_example(r["product_id"]) for r in rows])
+    result = ingest(products, examples, provenance=PROVENANCE, now=NOW)
+    assert [r.product_id for r in result.records] == ["OK"]
+    assert result.manifest.quarantined["field_too_long"] == 3
+    assert {item.reason for item in result.quarantine} == {"field_too_long"}
+
+
+def test_csv_cell_larger_than_the_csv_default_limit_is_read(tmp_path: Path) -> None:
+    # The csv module's default field limit is 128 KiB; a bigger description raised csv.Error and aborted the build.
+    products = _write(
+        tmp_path / "p.csv",
+        PRODUCT_FIELDS,
+        [_product("OK"), _product("HUGE", product_description="h" * 300_000)],
+    )
+    examples = _write(tmp_path / "e.csv", EXAMPLE_FIELDS, [_example("OK"), _example("HUGE")])
+    result = ingest(products, examples, provenance=PROVENANCE, now=NOW)
+    assert [r.product_id for r in result.records] == ["OK"]
+    assert result.manifest.quarantined["field_too_long"] == 1
+
+
+def test_a_valid_repeat_of_a_quarantined_row_is_still_selected(tmp_path: Path) -> None:
+    # The second pass must apply the same validation as the first, not take the first row it sees for an id.
+    rows = [_product("DUP", product_title=""), _product("DUP", product_title="Real title")]
+    products = _write(tmp_path / "p.csv", PRODUCT_FIELDS, rows)
+    examples = _write(tmp_path / "e.csv", EXAMPLE_FIELDS, [_example("DUP")])
+    result = ingest(products, examples, provenance=PROVENANCE, now=NOW)
+    assert [(r.product_id, r.title) for r in result.records] == [("DUP", "Real title")]
+    assert result.manifest.quarantined["empty_title"] == 1
+
+
+def test_jsonl_numbers_and_nulls_are_read_like_csv_cells(tmp_path: Path) -> None:
+    products = tmp_path / "p.jsonl"
+    products.write_text(
+        json.dumps({**_product("A"), "product_brand": None, "product_color": None}) + "\n", encoding="utf-8"
+    )
+    examples = tmp_path / "e.jsonl"
+    examples.write_text(json.dumps({**_example("A"), "small_version": 1.0}) + "\n", encoding="utf-8")
+    result = ingest(products, examples, provenance=PROVENANCE, now=NOW)
+    assert [(r.product_id, r.brand, r.color) for r in result.records] == [("A", "", "")]

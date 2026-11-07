@@ -255,3 +255,88 @@ def test_cli_writes_a_report(built: tuple[Path, Path], tmp_path: Path, capsys: p
     assert eval_main(args) == 0
     assert "held_out_queries=" in capsys.readouterr().out and out.exists()
     assert eval_main(args) == 1  # an existing report is never overwritten
+
+
+def _reference_bm25(records, query: str, k: int, k1: float = 1.5, b: float = 0.75) -> list[str]:
+    """The original scan-every-document implementation, kept here to pin the inverted-index version to it."""
+    import math
+    from collections import Counter
+
+    token = Bm25Retriever._tokens
+    docs = [token(" ".join((r.title, r.title, r.brand, r.color, r.bullets, r.description))) for r in records]
+    lengths = [len(d) for d in docs]
+    avg = sum(lengths) / len(lengths)
+    df: Counter[str] = Counter()
+    for d in docs:
+        df.update(set(d))
+    tfs = [Counter(d) for d in docs]
+    scored = []
+    for i, r in enumerate(records):
+        score = 0.0
+        for term in token(query):
+            freq = tfs[i].get(term, 0)
+            if not freq:
+                continue
+            idf = math.log(1 + (len(records) - df[term] + 0.5) / (df[term] + 0.5))
+            score += idf * freq * (k1 + 1) / (freq + k1 * (1 - b + b * lengths[i] / (avg or 1.0)))
+        if score > 0.0:
+            scored.append((-score, r.product_id))
+    scored.sort()
+    return [pid for _, pid in scored[:k]]
+
+
+def test_bm25_inverted_index_ranks_exactly_like_the_full_scan() -> None:
+    import random
+
+    from app.ingest import ProductRecord
+
+    rng = random.Random(5)
+    words = "red blue green kettle lamp desk chair quiet mini max pro steel oak".split()
+    records = [
+        ProductRecord(
+            product_id=f"P{n:03d}",
+            locale="us",
+            title=" ".join(rng.choices(words, k=rng.randint(1, 4))),
+            description=" ".join(rng.choices(words, k=rng.randint(0, 8))),
+            brand=rng.choice(["Acme", "Zed", ""]),
+        )
+        for n in range(150)
+    ]
+    retriever = Bm25Retriever(records)
+    for query in ["red kettle", "kettle kettle lamp", "quiet oak desk chair", "nothing here", "acme", "pro"]:
+        for k in (1, 5, 200):
+            assert retriever(query, k) == _reference_bm25(records, query, k), (query, k)
+
+
+def test_cli_can_evaluate_the_opensearch_retriever(
+    built: tuple[Path, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import httpx
+
+    from app.opensearch import products as products_module
+    from app.opensearch.client import OpenSearchClient
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/custom-index/_search"
+        return httpx.Response(200, json={"hits": {"hits": [{"_id": "P1"}, {"_id": "P2"}]}})
+
+    client = OpenSearchClient("http://fake:9200", transport=httpx.MockTransport(handler))
+    monkeypatch.setattr(products_module, "client_from_env", lambda: client)
+
+    def argv(name: str) -> list[str]:
+        return [
+            "--subset", str(built[0]), "--examples", str(built[1]), "--out", str(tmp_path / name),
+            "--held-out-fraction", "0.99", "--retriever", "opensearch",
+        ]  # fmt: skip
+
+    assert eval_main([*argv("os.json"), "--index", "custom-index"]) == 0
+    assert json.loads((tmp_path / "os.json").read_text())["retriever"] == "opensearch"
+
+    monkeypatch.setattr(products_module, "client_from_env", lambda: None)
+    assert eval_main(argv("none.json")) == 1
+    assert "DISCOVERY_OPENSEARCH_URL" in capsys.readouterr().err
+
+    down = OpenSearchClient("http://fake:9200", transport=httpx.MockTransport(lambda r: httpx.Response(503)))
+    monkeypatch.setattr(products_module, "client_from_env", lambda: down)
+    assert eval_main(argv("down.json")) == 1
+    assert "opensearch unavailable" in capsys.readouterr().err

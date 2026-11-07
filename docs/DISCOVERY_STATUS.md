@@ -76,7 +76,25 @@ None for Discovery. (#93 to #107 are merged.)
 
 **Agent work, no decision needed**
 1. Product search now has an API route and a web section (see the ingestion runbook), verified against a fake cluster only; the eligibility policy for products is still the agent's "no age or safety gate" and the owner may change it.
-2. Real-scale ingestion: the Parquet path is untested (pyarrow not installed) and nothing has run on real ESCI files.
+2. Real-scale ingestion: Parquet and a 25,000-product build now run on synthetic data (see the 2026-11-06 data-operations section below); nothing has run on real ESCI files.
 3. PostgreSQL repositories and the outbox are no longer planned (decision 6). The Blob account exists and a synthetic push and pull is verified; real ESCI data has not been used.
 4. `GET /explanations/{ref}` now checks the decision's tenant against the verified token when auth is on (another tenant's decision returns the same 404 as an unknown one). With auth off there is no tenant in a GET request, so nothing is checked.
 5. The home feed on the web page is static; wiring it to `/v1/home` is a product decision.
+
+## Update 2026-11-06 (later): data operations at scale and product-search web coverage
+
+Local only; no Azure or other cloud resource, paid API or ESCI file was touched. Full numbers and commands are in `docs/DISCOVERY_INGESTION_RUNBOOK.md`.
+
+**Verified (all on synthetic, fictional data)**
+- A 200,374-row product file and a 1,019,267-row example file built into a 25,000-product subset (CSV and Parquet gave the same checksum), verified, loaded into a local OpenSearch 2.15.0 node (25,000 in, 25,000 indexed), and searched through the real API route: 200 varied queries, 0 errors, sequential p50 5.9 to 7.4 ms, p95 17 to 44 ms, p99 62 to 88 ms (same laptop for client, API and OpenSearch). The E4 harness ran BM25 versus the OpenSearch retriever on 5,274 held-out queries (nDCG@10 0.0836 versus 0.0839). **Synthetic labels say nothing about real relevance.**
+- Parquet input, run for the first time with a throwaway virtualenv that already had pyarrow (nothing installed). The new Parquet tests skip when pyarrow is absent, so CI does not run them.
+- The product-search web section: new vitest coverage for names and keyboard reachability, live-region and busy semantics, loading, empty, error and partial-match states, locale change returning to page 1, and a journey through `App`. `npm run test`, `npm run typecheck` and `npm run build` pass; the Discovery API suite passes (491 passed, 9 skipped without pyarrow or a live node).
+
+**Defects found and fixed**
+- Any product build above 10,000 products failed, including the default `--limit 25000` (the checksum came from a module capped for experience-catalog manifests). The earlier verification only ever used 1,000 products.
+- An over-long field aborted a whole build with a raw error; it is now quarantined as `field_too_long`.
+- Build memory scaled with all candidates (452 MiB at 177k) and now with the subset (150 MiB); BM25 evaluation was 4.5 times slower than needed; the OpenSearch load held the whole subset in memory.
+- The Parquet reader materialized whole files and mis-read float flag columns.
+- Web: the results list sat inside a live region that was mounted only after the first answer (so the first results and loading were not reliably announced, and every result would be re-read on each change); a slow earlier response could overwrite a newer one; paging, a locale change and Retry used whatever was typed in the box instead of the search that was sent, and Retry after a failed page 2 asked for the old page; keyboard focus was lost when the pressed pager button became disabled.
+
+**Not verified:** real ESCI files and their Parquet column types; any index above 25,000 documents; the pilot VM; real relevance; screen-reader behavior in a real browser (the web checks are jsdom attribute and focus assertions, not an assistive-technology test); the CI results of this change (see the pull request).
