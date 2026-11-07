@@ -2,7 +2,7 @@
 
 **Status: APPROVED by the owner on 2026-11-06 ("approve the RO-7 canary plan"). Nothing here is deployed or enabled.**
 
-**Scope of the approval.** The owner approved this plan as written: the stages, gates, rollback triggers and the stated percent steps. It does **not** authorize any cloud change, turning on any flag in a deployed environment, running a stage, or retiring Qdrant. Each deployed change needs its own request in its own task, and the Qdrant retirement section remains a set of criteria, not a decision. The canary tenant and latency budget were then set on the owner's instruction (section "Defaults set 2026-11-06"); error thresholds beyond those in the stage table are still open and block Stage 1.
+**Scope of the approval.** The owner approved this plan as written: the stages, gates, rollback triggers and the stated percent steps. It does **not** authorize any cloud change, turning on any flag in a deployed environment, running a stage, or retiring Qdrant. Each deployed change needs its own request in its own task, and the Qdrant retirement section remains a set of criteria, not a decision. The canary tenant and latency budget were then set on the owner's instruction (section "Defaults set 2026-11-06"); the remaining error thresholds were then set the same way (section "Error thresholds set 2026-11-06"). Nothing in the plan is now undecided; Stage 0 and Stage 1 are blocked only by the preconditions and by building the log query or dashboard.
 
 It follows `docs/RAG_PIPELINE_OPENSEARCH_INDEXER_PLAN.md` (RO-1 to RO-6 are merged) and does not retire Qdrant.
 
@@ -50,7 +50,22 @@ These are my recommended values, adopted on the owner's instruction. **None is m
 - Why: chat retrieval runs before an LLM call that takes seconds, so a few hundred milliseconds is a small share; the API-wide search timeout (10 s) is far too loose for chat.
 - Measured by the log lines `Retrieval shadow: ... qdrant_ms= opensearch_ms=` and `Retrieval opensearch: ... ms=` (added with these defaults). Nothing aggregates them yet; a dashboard or log query is still to be built.
 
-**Still open:** error thresholds beyond what the stage table already states (1% errors, 5% nDCG, zero cross-tenant results), for example a ceiling on the Qdrant-fallback rate. These block Stage 1 until set.
+## Error thresholds set 2026-11-06 (owner: "set the remaining error thresholds to your recommended defaults")
+
+Again my recommended values on the owner's instruction, **unmeasured**, and changeable only by a new dated entry. They add to the stage table's existing gates (errors 1%, golden-set nDCG@10 within 5% of Qdrant, zero cross-tenant results).
+
+| Signal | Threshold | Action |
+|---|---|---|
+| Error rate (provider error or timeout; each one makes Qdrant answer) | at most 1% over the stage window (existing gate); **above 5% over any rolling 15 minutes** | window gate: do not advance. Burst: set `OPENSEARCH_ROLLBACK=true` the same working day |
+| Qdrant-fallback rate | the same events as the error rate, so it is not a separate budget | none beyond the row above |
+| Empty results where Qdrant had at least one (from the shadow log counts) | at most 2% of shadowed requests | above 2%: do not advance; investigate before Stage 2 |
+| Golden-set recall@10 | not worse than Qdrant by more than 5% (the same rule as nDCG@10) | do not advance |
+| Shadow overlap (mean, chunk text) | **alarm only below 0.30**; it is a comparison, not a quality measure, since both systems chunk and rank differently | investigate; never a rollback trigger alone |
+| Index/source document count (Stage 0 reconcile) | exactly equal; any failed bulk write fails the job | fix and re-run before Stage 1 |
+| Cross-tenant result | zero tolerance (existing) | immediate `OPENSEARCH_ROLLBACK=true` |
+| Sample size | decide a stage only after **at least 200 retrievals** and its minimum hold; fewer means extend the hold | with one tenant and low volume, expect longer holds |
+
+**What is and is not automated:** the retrieval path falls back to Qdrant per request, and the OpenSearch provider has its own circuit breaker (opens after 3 consecutive failures). There is **no automatic rollback and no aggregation**: error rate, empty-result rate and overlap come from log lines (`Retrieval shadow`, `Retrieval opensearch`, and the fallback warning) that nobody queries yet. Until a log query or dashboard exists these thresholds cannot be checked, so building it is a precondition for Stage 1.
 
 ## Not decided here
 Percent steps and week-long holds are proposals. Latency budget, error thresholds beyond the 5% nDCG rule, and the canary tenant choice are the owner's.

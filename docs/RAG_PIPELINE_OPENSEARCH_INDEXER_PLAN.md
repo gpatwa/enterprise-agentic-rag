@@ -136,4 +136,6 @@ Still not verified: vector or hybrid search over pipeline-written chunks, scale 
 
 `docs/RAG_OPENSEARCH_CANARY_PLAN.md` was approved by the owner as written ("approve the RO-7 canary plan"). The approval covers the plan only; every deployed change, flag change in a deployed environment and Qdrant retirement still needs its own request. The latency budget, extra error thresholds and canary tenant remain open and block Stage 1.
 
-**Update 2026-11-06:** on the owner's instruction ("set the canary tenant and latency budget to your recommended defaults") the canary tenant is `default` (named cohorts via `OPENSEARCH_CANARY_TENANTS` / `OPENSEARCH_SHADOW_TENANTS`) and the latency budget is p95 300 ms / p99 800 ms / 1.5 s timeout; see the canary plan. Unmeasured defaults. Extra error thresholds remain open.
+**Update 2026-11-06:** on the owner's instruction ("set the canary tenant and latency budget to your recommended defaults") the canary tenant is `default` (named cohorts via `OPENSEARCH_CANARY_TENANTS` / `OPENSEARCH_SHADOW_TENANTS`) and the latency budget is p95 300 ms / p99 800 ms / 1.5 s timeout; see the canary plan. Unmeasured defaults.
+
+**Update 2026-11-06 (later):** the remaining error thresholds were set to recommended defaults on the owner's instruction (empty-result rate, recall@10, a 15-minute burst rule, overlap alarm, minimum sample size); see the canary plan. Nothing in the canary plan is now undecided. They cannot be checked until request logs are aggregated, which is a Stage 1 precondition.
