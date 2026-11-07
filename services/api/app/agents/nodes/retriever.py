@@ -8,6 +8,7 @@ from langchain_core.runnables import RunnableConfig
 from app.agents.state import AgentState
 from app.clients.ray_embed import embed_client
 from app.config import settings
+from app.search.rollout import rollout_bucket, use_opensearch
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,34 @@ _graphdb_client = None
 _reranker_client = None
 _storage_client = None
 _gemini_embed_client = None
+_search_service = None  # enterprise OpenSearch SearchService; None keeps chat retrieval on Qdrant only
+
+
+def set_search_service(service) -> None:
+    """Called at startup when OPENSEARCH_ENABLED; without it the OpenSearch reader is never used."""
+    global _search_service
+    _search_service = service
+
+
+def vector_backend(tenant_id: str) -> str:
+    """"qdrant" (default), "opensearch" (canary tenant) or "shadow" (Qdrant answers, OpenSearch is only compared)."""
+    if _search_service is None:
+        return "qdrant"
+    if use_opensearch(
+        tenant_id,
+        canary_percent=settings.OPENSEARCH_CANARY_PERCENT,
+        enabled=settings.OPENSEARCH_ENABLED,
+        rollback=settings.OPENSEARCH_ROLLBACK,
+    ):
+        return "opensearch"
+    if (
+        settings.OPENSEARCH_ENABLED
+        and settings.OPENSEARCH_SHADOW_ENABLED
+        and not settings.OPENSEARCH_ROLLBACK
+        and rollout_bucket(tenant_id, salt="opensearch-shadow-v1") < settings.OPENSEARCH_SHADOW_PERCENT
+    ):
+        return "shadow"
+    return "qdrant"
 
 
 def set_clients(vectordb, graphdb, reranker=None, storage=None, gemini_embed=None):
@@ -71,7 +100,7 @@ async def retrieve_node(state: AgentState, config: RunnableConfig) -> Dict:
     # Alpha deploys without Qdrant installed will hit this path and continue
     # to the answer step with no retrieved docs (LLM will respond from prior
     # context only).
-    async def run_vector_search():
+    async def run_qdrant_search():
         try:
             results = await _vectordb_client.search(
                 collection=settings.QDRANT_COLLECTION,
@@ -95,6 +124,63 @@ async def retrieve_node(state: AgentState, config: RunnableConfig) -> Dict:
             if len(unique_docs) >= 8:
                 break
         return unique_docs
+
+    # Chunk retrieval from OpenSearch (file chunks only), same output format as the Qdrant path.
+    async def run_opensearch_search():
+        from app.search.models import FilterOperator, SearchFilter, SearchMode, SearchRequest, SearchScope
+
+        search_tenant = DEFAULT_TENANT_ID if settings.SINGLE_TENANT_MODE else tenant_id
+        response = await _search_service.search(
+            SearchRequest(
+                text=query,
+                scope=SearchScope(
+                    tenant_id=search_tenant,
+                    principal_id="rag-retrieval",
+                    purpose="chat_retrieval",
+                    acl_tokens=(f"tenant:{search_tenant}",),
+                ),
+                mode=SearchMode.HYBRID,
+                filters=(SearchFilter(field="source_type", operator=FilterOperator.EQ, value="file_chunk"),),
+                limit=15,
+                query_vector=tuple(query_vector),
+            )
+        )
+        seen_texts = set()
+        unique_docs = []
+        for r in response.results:
+            if r.tenant_id != search_tenant or r.text in seen_texts:
+                continue
+            seen_texts.add(r.text)
+            unique_docs.append(f"{r.text} [Source: {r.metadata.get('filename', 'unknown')}]")
+            if len(unique_docs) >= 8:
+                break
+        return unique_docs
+
+    async def run_vector_search():
+        backend = vector_backend(tenant_id)
+        if backend == "qdrant":
+            return await run_qdrant_search()
+        if backend == "opensearch":
+            try:
+                return await run_opensearch_search()
+            except Exception as e:  # any provider failure falls back to the existing Qdrant path
+                logger.warning(f"OpenSearch retrieval failed, falling back to Qdrant: {type(e).__name__}")
+                return await run_qdrant_search()
+        # shadow: Qdrant's answer is returned; OpenSearch is only compared and can never affect the reply
+        primary, shadow = await asyncio.gather(
+            run_qdrant_search(), run_opensearch_search(), return_exceptions=True
+        )
+        if isinstance(primary, BaseException):
+            return []
+        if isinstance(shadow, BaseException):
+            logger.warning(f"Shadow retrieval failed: {type(shadow).__name__}")
+        else:
+            overlap = len(set(primary) & set(shadow)) / max(len(primary), 1)
+            logger.info(
+                f"Retrieval shadow: tenant={tenant_id} qdrant={len(primary)} "
+                f"opensearch={len(shadow)} overlap={overlap:.2f}"
+            )
+        return primary
 
     # Task B: Graph Search (Structural Relationships) — filtered by tenant_id
     graph_tenant = None if settings.SINGLE_TENANT_MODE else tenant_id

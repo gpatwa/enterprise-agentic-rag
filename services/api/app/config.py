@@ -102,6 +102,7 @@ class Settings(BaseSettings):
     OPENSEARCH_SHADOW_ENABLED: bool = False
     OPENSEARCH_SHADOW_PERCENT: int = 0
     OPENSEARCH_CANARY_PERCENT: int = 0
+    OPENSEARCH_ROLLBACK: bool = False  # forces chat retrieval back to Qdrant regardless of the canary
 
     # -----------------------------------------------------------------
     # Enterprise search indexing worker

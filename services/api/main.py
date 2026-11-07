@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 
 from app.agents.nodes.retriever import set_clients as set_retriever_clients
+from app.agents.nodes.retriever import set_search_service as set_retriever_search_service
 from app.cache.redis import redis_client
 from app.cache.semantic import set_vectordb_client as set_semantic_vectordb
 from app.clients.graphdb.factory import create_graphdb_client
@@ -198,6 +199,7 @@ async def lifespan(app: FastAPI):
                 timeout_seconds=settings.OPENSEARCH_REQUEST_TIMEOUT_SECONDS,
             )
             set_enterprise_search_service(enterprise_search_service)
+            set_retriever_search_service(enterprise_search_service)
             logger.info("Enterprise OpenSearch support retrieval enabled")
         except Exception:
             logger.exception("OpenSearch enabled but enterprise retrieval could not start")
