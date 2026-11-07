@@ -75,10 +75,15 @@ export async function sessionLoginHint(): Promise<string | undefined> {
   }
 }
 
+/** Must equal the SPA redirect URI registered in Terraform exactly, including the trailing slash. */
+export function redirectUriFor(origin: string): string {
+  return `${origin}/`;
+}
+
 async function loadRealApp(config: AuthConfig): Promise<MsalApp> {
   const { PublicClientApplication } = await import('@azure/msal-browser');
   return new PublicClientApplication({
-    auth: { clientId: config.clientId, authority: `https://login.microsoftonline.com/${config.tenantId}`, redirectUri: window.location.origin },
+    auth: { clientId: config.clientId, authority: `https://login.microsoftonline.com/${config.tenantId}`, redirectUri: redirectUriFor(window.location.origin) },
     cache: { cacheLocation: 'sessionStorage' },
   });
 }
