@@ -122,3 +122,12 @@ Still not verified: vector or hybrid search over pipeline-written chunks, scale 
 **Consequence:** the API default `OPENSEARCH_VECTOR_DIMENSIONS=768` and Helm `enterpriseSearch.vectorDimensions: 768` do not match the BGE-M3 text path. With the defaults the new indexer rejects every text batch (the dimension guard doing its job). Set `INGEST_VECTOR_DIMENSIONS=1024` for BGE-M3 (new; precedence: argument, this variable, then the API setting). One index holds one dimension, so BGE-M3 text and Gemini multimodal vectors cannot share an index.
 
 **Not changed:** the Helm default and any deployed value. Whether the API's own support-search path embeds with BGE-M3 at 1024 against a 768 index is **not verified**; check it before enabling OpenSearch for chunk retrieval.
+
+### RO-5 result (2026-11-06)
+
+`retrieve_node` (`services/api/app/agents/nodes/retriever.py`) now chooses a vector backend per tenant, with graph search, merging and the reranker unchanged:
+- **qdrant (default):** unchanged behaviour. Also the result when no search service was injected, `OPENSEARCH_ENABLED` is false, the canary is 0, or the new `OPENSEARCH_ROLLBACK=true` is set.
+- **opensearch:** tenant is inside `OPENSEARCH_CANARY_PERCENT` (the existing `use_opensearch` bucket). Hybrid query through `SearchService`, scoped to the tenant, filtered to `source_type = file_chunk`, using the query embedding already computed. Results from any other tenant are dropped. Any provider error falls back to the Qdrant path for that request.
+- **shadow:** tenant is inside `OPENSEARCH_SHADOW_PERCENT` (separate bucket salt) with `OPENSEARCH_SHADOW_ENABLED`. Qdrant's answer is returned; OpenSearch runs alongside and only an overlap line is logged (counts and ratio, no document text). A shadow failure cannot change the reply.
+- `main.py` injects the enterprise search service into the retriever when OpenSearch is enabled. Single-tenant mode queries tenant `default`, matching what the ingestion sink writes.
+- Tests: 10 new, fakes only (full API suite 652 passed). **Not verified:** a real node through this path, the shadow overlap on real data (RO-6), and latency. Overlap compares chunk text, since the two systems use different IDs; chunks split differently would count as different.
