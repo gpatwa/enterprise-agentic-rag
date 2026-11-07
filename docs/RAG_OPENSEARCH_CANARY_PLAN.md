@@ -1,6 +1,10 @@
 # Canary plan: OpenSearch for chat retrieval over file chunks (RO-7)
 
-**Status: DRAFT for the owner's approval. Nothing here is deployed or enabled.** It follows `docs/RAG_PIPELINE_OPENSEARCH_INDEXER_PLAN.md` (RO-1 to RO-6 are merged) and does not retire Qdrant.
+**Status: APPROVED by the owner on 2026-11-06 ("approve the RO-7 canary plan"). Nothing here is deployed or enabled.**
+
+**Scope of the approval.** The owner approved this plan as written: the stages, gates, rollback triggers and the stated percent steps. It does **not** authorize any cloud change, turning on any flag in a deployed environment, running a stage, or retiring Qdrant. Each deployed change needs its own request in its own task, and the Qdrant retirement section remains a set of criteria, not a decision. The items under "Not decided here" (latency budget, error thresholds beyond the 5% nDCG rule, canary tenant) are still open and block Stage 1 and later.
+
+It follows `docs/RAG_PIPELINE_OPENSEARCH_INDEXER_PLAN.md` (RO-1 to RO-6 are merged) and does not retire Qdrant.
 
 ## What exists now
 - **Writer (RO-2):** `INGEST_VECTOR_SINKS=qdrant,opensearch` dual-writes chunks (needs `INGEST_OPENSEARCH_INDEX`, `INGEST_VECTOR_DIMENSIONS`, `services/api` on `PYTHONPATH`).
