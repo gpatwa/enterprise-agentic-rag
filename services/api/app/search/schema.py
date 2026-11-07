@@ -11,6 +11,18 @@ from app.search.models import SearchDocument, SearchModel
 SUPPORT_SEARCH_SCHEMA_VERSION = "support-search-v1"
 _CONTENT_HASH = re.compile(r"^[a-f0-9]{64}$")
 
+# File-chunk documents written by the ingestion pipeline can carry a run stamp in ``tags`` (the only mapped keyword
+# array a pipeline may set). The stale-chunk sweep keeps what carries the current run's stamp.
+INGEST_RUN_TAG_PREFIX = "ingest-run:"
+_RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+
+
+def ingest_run_tag(run_id: str) -> str:
+    """The tag that marks a document as written by ingestion run ``run_id``; raises on an unusable id."""
+    if not isinstance(run_id, str) or not _RUN_ID.match(run_id):
+        raise ValueError("run_id must be 1-64 characters of letters, digits, '.', '_' or '-'")
+    return f"{INGEST_RUN_TAG_PREFIX}{run_id}"
+
 
 class SupportSearchAttributes(SearchModel):
     """Typed support fields used for filtering and ranking."""

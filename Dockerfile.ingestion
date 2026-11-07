@@ -42,5 +42,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy pipeline code (root .dockerignore excludes infra/, deploy/, services/, etc.)
 COPY . .
 
-ENV PYTHONPATH=/app
+# services/api/app is copied too (see .dockerignore): the OpenSearch sink shares the support API's document schema.
+# Only that one directory goes on the path; do not add other services, several of them define a package named "app".
+ENV PYTHONPATH=/app:/app/services/api
 ENV RAY_ADDRESS=local

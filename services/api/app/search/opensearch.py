@@ -7,6 +7,7 @@ import hashlib
 import json
 import time
 from collections.abc import Callable, Sequence
+from datetime import datetime
 from typing import Any, Awaitable
 from urllib.parse import urlsplit
 
@@ -30,6 +31,16 @@ from app.search.models import (
     SearchWriteError,
 )
 from app.search.schema import SUPPORT_SEARCH_SCHEMA_VERSION
+from app.search.sweep import (
+    FILES_PER_QUERY,
+    MAX_FILES_PER_SWEEP,
+    StaleFileChunks,
+    SweepRefused,
+    check_hit,
+    run_files_query,
+    stale_chunks_query,
+    validate_sweep_inputs,
+)
 
 try:
     from opensearchpy import AsyncOpenSearch
@@ -161,11 +172,20 @@ class OpenSearchProvider:
         }
 
         if not await self._index_exists(index_name):
-            await self._with_retry(
-                "create_index",
-                lambda: self._client.indices.create(index=index_name, body=definition),
-            )
-            return
+
+            async def create() -> bool:
+                try:
+                    await self._client.indices.create(index=index_name, body=definition)
+                except Exception as error:
+                    # Concurrent writers (parallel Ray write tasks, several workers) can all see "missing" and
+                    # race to create. The loser must validate the winner's mapping, not fail.
+                    if _is_already_exists(error):
+                        return False
+                    raise
+                return True
+
+            if await self._with_retry("create_index", create):
+                return
 
         existing = await self._with_retry(
             "get_mapping",
@@ -306,6 +326,93 @@ class OpenSearchProvider:
             failed=len(errors),
             errors=errors,
         )
+
+    async def find_stale_file_chunks(
+        self,
+        *,
+        index: str,
+        tenant_id: str,
+        provider_name: str,
+        run_id: str,
+        run_started_at: datetime,
+        max_documents: int,
+        page_size: int = 500,
+    ) -> StaleFileChunks:
+        """List chunks of the files ``run_id`` wrote that an older run left behind. Read-only; deletes nothing.
+
+        Pinned to one tenant, one provider and ``file_chunk``; refuses (``SweepRefused``) rather than guessing when
+        inputs are ambiguous, when it would return more than ``max_documents``, or when a hit is outside the pins.
+        Pass the result's ids to ``delete`` with the same tenant, which re-checks tenant ownership per document.
+        """
+        self._require_connected()
+        run_tag = validate_sweep_inputs(
+            index=index,
+            tenant_id=tenant_id,
+            provider_name=provider_name,
+            run_id=run_id,
+            run_started_at=run_started_at,
+            max_documents=max_documents,
+        )
+        await self._with_retry("sweep_refresh", lambda: self._client.indices.refresh(index=index))
+
+        files: list[str] = []
+        after: dict[str, Any] | None = None
+        while True:
+            files_body = run_files_query(tenant_id, provider_name, run_tag, after)
+            response = await self._with_retry(
+                "sweep_files", lambda body=files_body: self._client.search(index=index, body=body)
+            )
+            aggregation = (response.get("aggregations") or {}).get("files") if isinstance(response, dict) else None
+            if not isinstance(aggregation, dict):
+                raise SweepRefused("the cluster returned no file aggregation; refusing to sweep")
+            buckets = aggregation.get("buckets") or []
+            files.extend(str(bucket["key"]["file"]) for bucket in buckets)
+            if len(files) > MAX_FILES_PER_SWEEP:
+                raise SweepRefused(f"this run touched more than {MAX_FILES_PER_SWEEP} files; refusing to sweep")
+            after = aggregation.get("after_key")
+            if not buckets or not after:
+                break
+        if not files:
+            return StaleFileChunks(document_ids=(), files=())
+
+        found: list[str] = []
+        for start in range(0, len(files), FILES_PER_QUERY):
+            batch = files[start : start + FILES_PER_QUERY]
+            search_after: list[Any] | None = None
+            while True:
+                stale_body = stale_chunks_query(
+                    tenant_id,
+                    provider_name,
+                    run_tag,
+                    run_started_at,
+                    batch,
+                    page_size=page_size,
+                    search_after=search_after,
+                )
+                response = await self._with_retry(
+                    "sweep_stale", lambda body=stale_body: self._client.search(index=index, body=body)
+                )
+                hits = ((response.get("hits") or {}).get("hits") or []) if isinstance(response, dict) else []
+                for hit in hits:
+                    found.append(
+                        check_hit(
+                            hit.get("_source") if isinstance(hit, dict) else None,
+                            tenant_id=tenant_id,
+                            provider_name=provider_name,
+                            run_tag=run_tag,
+                        )
+                    )
+                if len(found) > max_documents:
+                    raise SweepRefused(
+                        f"the sweep would delete more than {max_documents} chunks; refusing. "
+                        "Raise INGEST_OPENSEARCH_SWEEP_MAX_DELETE only after checking why so many are stale"
+                    )
+                if len(hits) < page_size:
+                    break
+                search_after = hits[-1].get("sort")
+                if not search_after:
+                    raise SweepRefused("the cluster returned no sort values to page with; refusing to sweep")
+        return StaleFileChunks(document_ids=tuple(dict.fromkeys(found)), files=tuple(files))
 
     async def search(self, request: SearchRequest) -> SearchResponse:
         """Execute lexical, vector, or deterministic hybrid retrieval."""
@@ -970,6 +1077,13 @@ class OpenSearchProvider:
         """Close the local circuit after an operator or readiness reset."""
         self._consecutive_failures = 0
         self._circuit_open_until = None
+
+
+def _is_already_exists(error: BaseException) -> bool:
+    info = getattr(error, "info", None)
+    nested = info.get("error") if isinstance(info, dict) else None
+    error_type = nested.get("type") if isinstance(nested, dict) else None
+    return error_type == "resource_already_exists_exception" or "resource_already_exists_exception" in str(error)
 
 
 def _is_not_found(error: BaseException) -> bool:

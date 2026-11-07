@@ -141,3 +141,70 @@ Still not verified: vector or hybrid search over pipeline-written chunks, scale 
 **Update 2026-11-06 (later):** the remaining error thresholds were set to recommended defaults on the owner's instruction (empty-result rate, recall@10, a 15-minute burst rule, overlap alarm, minimum sample size); see the canary plan. Nothing in the canary plan is now undecided. They cannot be checked until request logs are aggregated, which is a Stage 1 precondition.
 
 **Update 2026-11-06 (observability):** Prometheus metrics, alert rules (promtool-tested) and a Grafana dashboard for the canary thresholds were built and checked against a real Prometheus fed by the real retrieval code; see the canary plan. Not deployed, Grafana rendering unseen, no alert receiver configured.
+
+## 10. Hardening follow-up (2026-11-06)
+
+Four items after RO-1 to RO-7. Nothing here enables a flag in a deployed environment or changes the canary plan.
+
+### 10.1 Real sinks on a real Ray (pickling check)
+
+Run on Ray 2.54.0 (Python 3.12), Qdrant 1.7.3 and OpenSearch 2.15.0 in local containers, with `opensearch-py` 2.8.0 and `qdrant-client` 1.7.3, 24 synthetic rows in four blocks (so four write tasks ran at once). Opt-in tests: `services/api/tests/pipelines/test_ray_real_sinks_integration.py` (`RAY_SINK_INTEGRATION=1`; the file header has the commands). Defects found by running the real classes, and fixed:
+
+| Defect | Effect | Fix |
+|---|---|---|
+| `QdrantIndexer` built its `QdrantClient` in `__init__`; the client holds a thread lock | `write_rows(ds, QdrantIndexer())` failed before writing anything ("cannot pickle `_thread.RLock`") | Client created on first use, dropped from pickled state. Same pattern in `Neo4jIndexer` (tested with a stand-in module; the real `neo4j` driver was not installed here) |
+| Qdrant point IDs were `uuid4` | Every re-run added a second copy of every chunk | `uuid5` of tenant, file name, page, content type and content hash. The same chunk upserts in place; another tenant's identical file is a different point |
+| Parallel write tasks all called `ensure_index` on a fresh index | Losers failed with `resource_already_exists_exception` | `OpenSearchProvider.ensure_index` now validates the winner's mapping instead (an incompatible winner still raises) |
+| `OpenSearchError` used keyword-only construction | Any provider error raised in a worker reached the driver as "Failed to deserialize exception" | `__reduce__` added (the `cause` is not carried across processes) |
+
+Results: both sinks wrote exactly 24 rows; a second identical run left 24; a second tenant's identical file added 24 under its own tenant tag (counts 24/24/48); OpenSearch documents carried `source_type=file_chunk`, `acl_tokens=["tenant:<t>"]` and the vector; a wrong-length vector in one block failed the job with a readable message and wrote nothing.
+
+### 10.2 What the pipeline image ships
+
+`Dockerfile.ingestion` installs the **root** `requirements-ingestion.txt` (not `pipelines/ingestion/requirements.txt`, which nothing reads except as documentation) and copies the repository under `.dockerignore`, which excluded `services/api`. So the OpenSearch sink could not import in the image. A real run also showed that plain `opensearch-py` is not enough: without `aiohttp` (the `[async]` extra) the provider fails at its first write with "opensearch-py is required to construct the OpenSearch provider".
+
+Changed: `opensearch-py[async]>=2.4,<3.0`, `pydantic==2.6.0`, `pydantic-settings==2.1.0` (the API's pins) in both requirements files, `pipelines/jobs/ray_job.yaml` and the S3 job handler's `runtime_env.pip`; `.dockerignore` ships `services/api/app` only; `PYTHONPATH=/app:/app/services/api` in the Dockerfile and compose; and the sink adds `services/api` to `sys.path` itself when a Ray `working_dir` ships the repository without a `PYTHONPATH`.
+
+Checked without building the image: `tests/pipelines/test_image_dependencies.py` (pins agree with the API; the sink modules import in a subprocess that blocks every module the declared requirements do not provide, and the same check fails when the new lines are removed), and a trivial `FROM scratch` build with the repository as context showed only `services/api/app` is copied. **Not verified:** that pip resolves the whole file together (ray 2.54.0, unstructured 0.12.0, pydantic 2.6.0), that the image builds, and the Ray 2.9.x cluster. Also noticed and left alone: `httpx`, `google-genai`, `python-docx` and `sqlalchemy` are imported under `pipelines/` but not declared in `requirements-ingestion.txt` (httpx arrives with qdrant-client; the others may be missing), and `ray_job.yaml` pins older `qdrant-client`/`neo4j` than the image.
+
+**Defect left for the owner: the pipeline cannot run end to end.** `process_batch` reads `batch["filename"]`, but `ray.data.read_binary_files(..., include_paths=True)` yields the columns `bytes` and `path` (checked on Ray 2.54.0), so the first block raises `KeyError`. Fixing it also decides what a "file name" is (full object key or base name), which is the identity used by chunk IDs and the sweep below; it was not changed here.
+
+### 10.3 Stale chunks on re-ingest (opt-in sweep)
+
+**Problem.** A chunk's document ID includes a hash of its text. Editing a file gives changed chunks new IDs; the old ones stayed indexed.
+
+**Design.** `INGEST_OPENSEARCH_SWEEP=true` (off by default; anything but a recognised true/false value fails at start; setting it without `opensearch` in `INGEST_VECTOR_SINKS` fails at start).
+1. At construction on the driver the indexer fixes a run id (`INGEST_RUN_ID`, else a random one; must be unique per run) and the run start time. Every chunk of the run is written with tag `ingest-run:<id>` and `updated_at = run start`. The index mapping is unchanged (`dynamic: false` makes `tags` and `updated_at` the only usable fields). Nothing is stamped when the flag is off.
+2. `main.py` calls `finalize_sinks` only after every sink wrote. A failed job never sweeps.
+3. The sweep (`OpenSearchProvider.find_stale_file_chunks`, read-only) lists the files the run actually wrote (a composite aggregation over the stamped chunks, so only what landed counts), then the chunks of those files that carry **another** stamp or none **and** are older than the run start. Every query is pinned to the indexer's tenant, provider `ray-ingest` and `file_chunk`.
+4. The ids go to the provider's existing `delete(..., scope=<tenant>)`, which re-reads each document and refuses any that is not that tenant's.
+
+**Fail closed.** One concrete index name only (no wildcard, list or system index). Blank tenant, provider or run id refuses. More stale chunks than `INGEST_OPENSEARCH_SWEEP_MAX_DELETE` (default 10000) refuses and deletes nothing. Each returned hit is re-checked against tenant, provider, source type and run stamp, and one foreign hit aborts the whole sweep. A run that wrote nothing, or a missing index, deletes nothing. Any error fails the job after the new chunks are written; the old ones are simply still there for the next run.
+
+**Limits.**
+- A file is identified by its `filename` metadata (stored as the title). Two different files with the same name in one tenant are one file to the sweep; ingesting only one of them deletes the other's chunks. Use the full object key as the name before enabling this.
+- A file whose new version has no chunks, and a deleted file, are not swept (the run never writes that file). File deletion is a separate feature.
+- Names longer than 512 characters have no keyword form and are never swept (safe direction).
+- Qdrant is not swept; with dual write its stale points remain.
+- The time guard protects a chunk written after this run began (a second job for the same file). Two jobs for one tenant and file at the same time are still not supported.
+- Stamping adds `updated_at` to file chunks, which the API's recency scoring may read; compare ranking before enabling on a tenant that is on the canary.
+- Documents written before this feature have no stamp or `updated_at` and count as older, so the first sweep of a file also removes its pre-existing stale chunks.
+
+**Evidence.** Unit tests with a fake provider and a recording fake client, plus 7 tests on a real OpenSearch 2.15.0 node and one real Ray run: editing a file with 10 chunks into 6 (4 unchanged) deletes exactly the 6 old chunks while leaving another file of the same tenant, the same file name under another tenant, and another provider's chunk untouched; the delete cap refuses and deletes nothing; a chunk written by a later-starting run survives; dropping the tenant filter from the query makes the test fail (checked by mutation). Dropping the "not this run's stamp" clause alone does not fail them, because the time guard also excludes the run's own chunks; the two are independent guards.
+
+### 10.4 Open question from RO-4: query embedding vs the 768 index
+
+Read from code only; nothing was run or changed. The API's support search (`SupportIndexer._search_enterprise` in `app/support/indexer.py`) embeds the query with the global `embed_client`, which `EMBED_PROVIDER` selects, and always asks for a hybrid search. `OpenSearchProvider._search_vector` rejects a query vector whose length differs from `OPENSEARCH_VECTOR_DIMENSIONS` (config default and Helm `enterpriseSearch.vectorDimensions`: 768) with a `ValueError`, which `_search_enterprise` turns into "enterprise search is unavailable"; there is no lexical fallback in that method. What each configuration in the repository produces:
+
+| Configuration | Query vector | Against 768 |
+|---|---|---|
+| Default (`EMBED_PROVIDER=ray`, `EMBED_MODEL=nomic-embed-text`, Ollama-style endpoint) | 768 | matches |
+| `values-azure.yaml` (`EMBED_PROVIDER=openai`, default `text-embedding-3-small`, no `dimensions` argument) | 1536 | **fails** |
+| `values-prod.yaml` (`EMBED_MODEL=bge-m3`, provider `ray`) | 1024 if the endpoint is BGE-M3 | **fails** |
+| `EMBED_PROVIDER=gemini` (`GEMINI_EMBED_DIMENSIONS`) | 768 by default | matches |
+
+So the answer is: not "BGE-M3 against 768" by default, but every deployed values file in the repository that sets an embedder produces a vector that does not match the 768 default, and with enterprise search enabled that makes support search fail rather than degrade. Two more observations: (1) `RayEmbedClient` sends `{"model", "prompt"}` and reads `"embedding"` (Ollama's shape), while the repository's own Ray Serve BGE-M3 deployment (`app/models/embedding_engine.py`) takes `{"text"}` and returns `{"embeddings"}`; the two do not speak to each other as written, and which endpoint a deployment really uses is not in the repository. (2) Nothing in the API populates `SupportSearchDocument.vector` for tickets, comments or articles (the mapper, outbox worker, backfill and reindex never embed), so support documents are indexed without embeddings and the vector half of a hybrid query finds only file chunks written by this pipeline. Three numbers must agree before enabling vectors anywhere: the index mapping dimension, `OPENSEARCH_VECTOR_DIMENSIONS` in the API, and the length of the query embedder's output; `INGEST_VECTOR_DIMENSIONS` only sets the first for the pipeline. **Not verified:** the deployed endpoint, the actual output length of any embedder, and behaviour at runtime.
+
+### 10.5 Not verified in this follow-up
+
+Ray 2.9.x; the real Neo4j driver; a Ray cluster (only local Ray); pip resolution and a real image build; Qdrant or OpenSearch beyond the single local nodes; scale beyond a few dozen documents; concurrent sweeps; vector or hybrid search over swept data.

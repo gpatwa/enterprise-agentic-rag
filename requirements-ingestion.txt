@@ -6,6 +6,13 @@ langchain-text-splitters  # Used by chunking/splitter.py
 qdrant-client==1.7.3
 neo4j==5.16.0
 
+# OpenSearch sink (INGEST_VECTOR_SINKS=opensearch). It imports services/api/app/search and app.config, so these
+# match services/api/requirements.txt (tests/pipelines/test_image_dependencies.py enforces that).
+# The [async] extra is required: without aiohttp the provider cannot construct its client.
+opensearch-py[async]>=2.4,<3.0
+pydantic==2.6.0
+pydantic-settings==2.1.0
+
 # Cloud Storage — multi-cloud (AWS + Azure)
 boto3==1.34.34                 # AWS S3 access & credential chain
 azure-storage-blob>=12.19.0   # Azure Blob Storage support

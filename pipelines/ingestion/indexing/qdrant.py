@@ -1,4 +1,5 @@
 # pipelines/ingestion/indexing/qdrant.py
+import hashlib
 import logging
 import os
 import uuid
@@ -10,6 +11,10 @@ from qdrant_client.http import models
 logger = logging.getLogger(__name__)
 
 DEFAULT_TENANT_ID = "default"
+
+# Fixed namespace for deterministic point IDs: the same chunk of the same file for the same tenant always maps to the
+# same point, so re-running an ingestion upserts in place instead of adding a second copy.
+_POINT_NAMESPACE = uuid.UUID("5d0b6b52-3c3e-4a0c-9d7e-0a6f3f1d2b11")
 
 _MIME_TO_EXT = {
     "image/png": "png",
@@ -31,11 +36,31 @@ class QdrantIndexer:
         port = int(os.getenv("QDRANT_PORT", 6333))
         self.collection_name = os.getenv("QDRANT_COLLECTION", "rag_collection")
         self.tenant_id = tenant_id
-        self.client = QdrantClient(host=host, port=port)
+        self._host = host
+        self._port = port
+        # Live clients hold locks and sockets, so they are created on first use inside the process that writes
+        # (Ray pickles this object into workers) and are never part of the pickled state.
+        self._client = None
 
         # S3 client for image storage (lazy-init)
         self._s3_client = None
         self._s3_bucket = os.getenv("S3_BUCKET_NAME")
+
+    @property
+    def client(self) -> QdrantClient:
+        if self._client is None:
+            self._client = QdrantClient(host=self._host, port=self._port)
+        return self._client
+
+    @client.setter
+    def client(self, value: Any) -> None:
+        self._client = value
+
+    def __getstate__(self) -> Dict[str, Any]:
+        state = self.__dict__.copy()
+        state["_client"] = None
+        state["_s3_client"] = None
+        return state
 
     def _get_s3_client(self):
         """Lazy-init S3 client for image uploads."""
@@ -60,6 +85,14 @@ class QdrantIndexer:
             ContentType=mime_type,
         )
 
+    def _point_id(self, row: Dict[str, Any], payload: Dict[str, Any]) -> str:
+        image = row.get("image_bytes") if payload["content_type"] == "image" else None
+        digest = hashlib.sha256(image or str(payload["text"]).encode("utf-8")).hexdigest()
+        key = "|".join(
+            [self.tenant_id, str(payload["filename"]), str(payload["page"]), payload["content_type"], digest]
+        )
+        return str(uuid.uuid5(_POINT_NAMESPACE, key))
+
     def write(self, batch: List[Dict[str, Any]]):
         """
         Uploads points in batch, each tagged with tenant_id.
@@ -70,7 +103,8 @@ class QdrantIndexer:
 
         for row in batch:
             # Skip if embedding failed
-            if "vector" not in row or not row["vector"]:
+            vector = row.get("vector")
+            if vector is None or len(vector) == 0:
                 continue
 
             content_type = row.get("content_type", "text")
@@ -84,11 +118,13 @@ class QdrantIndexer:
                 "tenant_id": self.tenant_id,
             }
 
+            point_id = self._point_id(row, payload)
+
             # For images: upload to S3 and store reference
             if content_type == "image" and row.get("image_bytes"):
                 mime_type = row.get("mime_type", "image/png")
                 ext = _MIME_TO_EXT.get(mime_type, "png")
-                object_key = f"{image_prefix}/{self.tenant_id}/{uuid.uuid4()}.{ext}"
+                object_key = f"{image_prefix}/{self.tenant_id}/{point_id}.{ext}"
 
                 try:
                     self._upload_image_to_storage(
@@ -102,8 +138,8 @@ class QdrantIndexer:
 
             # Create Point
             points.append(models.PointStruct(
-                id=str(uuid.uuid4()),
-                vector=row["vector"],
+                id=point_id,
+                vector=[float(x) for x in vector],
                 payload=payload,
             ))
 

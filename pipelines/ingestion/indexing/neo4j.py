@@ -19,8 +19,26 @@ class Neo4jIndexer:
         user = os.getenv("NEO4J_USER", "neo4j")
         password = os.getenv("NEO4J_PASSWORD", "changeme")
         self.tenant_id = tenant_id
+        self._uri = uri
+        self._auth = (user, password)
+        # The driver holds locks and sockets, so it is created on first use in the process that writes and is
+        # never part of the pickled state (Ray pickles this object into workers).
+        self._driver = None
 
-        self.driver = GraphDatabase.driver(uri, auth=(user, password))
+    @property
+    def driver(self):
+        if self._driver is None:
+            self._driver = GraphDatabase.driver(self._uri, auth=self._auth)
+        return self._driver
+
+    @driver.setter
+    def driver(self, value) -> None:
+        self._driver = value
+
+    def __getstate__(self) -> Dict[str, Any]:
+        state = self.__dict__.copy()
+        state["_driver"] = None
+        return state
 
     def write(self, batch: List[Dict[str, Any]]):
         """

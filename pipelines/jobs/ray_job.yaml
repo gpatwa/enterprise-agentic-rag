@@ -14,6 +14,10 @@ runtime_env:
     - langchain==0.1.0
     - unstructured[pdf,docx]==0.11.0 # Heavy dependency for parsing
     - sentence-transformers==2.2.2
+    # OpenSearch sink (INGEST_VECTOR_SINKS=opensearch); same pins as services/api/requirements.txt
+    - opensearch-py[async]>=2.4,<3.0
+    - pydantic==2.6.0
+    - pydantic-settings==2.1.0
     
   env_vars:
     # Environment variables injected into workers
