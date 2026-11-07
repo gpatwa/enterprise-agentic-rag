@@ -1,6 +1,7 @@
 import { AlertCircle, ChevronLeft, ChevronRight, Package, Search } from 'lucide-react';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { DiscoveryClient, ProductSearchResponse } from './api/client';
+import { authFailureOf } from './api/errors';
 
 const PAGE_SIZE = 10;
 const LOCALES = [['', 'All locales'], ['us', 'US'], ['es', 'Spain'], ['jp', 'Japan']] as const;
@@ -30,9 +31,10 @@ export function ProductSearch({ client }: { client: Pick<DiscoveryClient, 'searc
       const body = await client.searchProducts({ query: next.text, page: next.page, page_size: PAGE_SIZE, ...(next.locale ? { locale: next.locale } : {}) });
       if (id !== latest.current) return;
       setResponse(body); setPage(next.page);
-    } catch {
+    } catch (error) {
       if (id !== latest.current) return;
-      focusResults.current = false; setFailed(true);
+      // A sign-in problem is shown by the page-level notice, not as "unavailable".
+      focusResults.current = false; setFailed(!authFailureOf(error));
     } finally { if (id === latest.current) setLoading(false); }
   }
   // After paging, put keyboard focus on the new results; the pager button the user pressed may now be disabled.

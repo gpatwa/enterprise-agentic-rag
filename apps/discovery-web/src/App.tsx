@@ -1,7 +1,9 @@
 import { AlertCircle, ChevronLeft, ChevronRight, Compass, Search, SlidersHorizontal, Sparkles } from 'lucide-react';
-import { useMemo, useState, type KeyboardEvent } from 'react';
-import { authConfigFromEnv, createMsalTokenSource } from './api/auth';
-import { createDiscoveryClient, type SearchRequest, type SearchResponse } from './api/client';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import type { SearchRequest, SearchResponse } from './api/client';
+import { authFailureOf } from './api/errors';
+import { createSession, type Session } from './api/session';
+import { AuthPanel, useAuthPhase } from './authPanel';
 import { HomeDetailsExperience } from './homeDetails';
 import { ProductSearch } from './productSearch';
 import './styles.css';
@@ -18,12 +20,14 @@ const demoResponse: SearchResponse = {
     { experience_id: 'reef-runners', title: 'Reef Runners', rank: 3, score: 0.67, reason_codes: ['safe_catalog_fallback'], evidence: ['genre'] },
   ],
 };
-const authConfig = authConfigFromEnv(import.meta.env);
-const client = createDiscoveryClient(import.meta.env.VITE_DISCOVERY_API_URL ?? '', authConfig ? createMsalTokenSource(authConfig) : undefined);
+const defaultSession = createSession(import.meta.env);
 
 function redactedReason(reasonCodes: string[]) { return reasonCodes.map((reason) => reason.replaceAll('_', ' ')).join(' · '); }
 
-export default function App() {
+export default function App({ session = defaultSession }: { session?: Session } = {}) {
+  const { client } = session;
+  const authPhase = useAuthPhase(session.status);
+  useEffect(() => { session.start(); }, [session]);
   const [query, setQuery] = useState('cozy building games');
   const [locale, setLocale] = useState('en-US');
   const [device, setDevice] = useState('web');
@@ -39,7 +43,8 @@ export default function App() {
   async function runSearch(nextPage = 1) {
     setLoading(true); setError(null);
     try { const next = await client.search({ ...request, page: nextPage }); setResponse(next); setPage(nextPage); }
-    catch { setError('Search is unavailable right now. Try again in a moment.'); }
+    // A sign-in problem is shown by the page-level notice, not as "unavailable".
+    catch (failure) { setError(authFailureOf(failure) ? null : 'Search is unavailable right now. Try again in a moment.'); }
     finally { setLoading(false); }
   }
   function handleQueryKeyDown(event: KeyboardEvent<HTMLInputElement>) { if (event.key === 'Enter') void runSearch(); if (event.key === 'Escape') setQuery(''); }
@@ -48,6 +53,7 @@ export default function App() {
 
   return <main className="shell">
     <header className="topbar"><div className="brand"><Compass size={22} /><span>COMPASS / DISCOVERY</span></div><span className="status"><span className="dot" /> LOCAL DEMO</span></header>
+    <AuthPanel phase={authPhase} onSignIn={() => session.signIn()} />
     <section className="intro"><p className="eyebrow">IMMERSIVE DISCOVERY</p><h1>Find your next world.</h1><p className="lede">A governed search surface for experiences, creators, and communities.</p></section>
     <HomeDetailsExperience />
     <ProductSearch client={client} />

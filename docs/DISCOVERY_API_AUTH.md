@@ -56,3 +56,42 @@ The token is attached as `Authorization: Bearer` on the search and product-searc
 **Needs the owner (an Entra change I have not made):** a SPA app registration with the web URL as a redirect URI, an
 API app registration exposing the scope, and that API's client ID as `DISCOVERY_ENTRA_AUDIENCE` on the API with the
 tenant and principal maps set. Not tested against a real tenant; the unit tests cover the config and the header only.
+
+## Web sign-in states and the one-redirect rule (2026-11-07)
+
+Applies only when the three `VITE_ENTRA_*` settings are set. With them unset nothing below runs: no token source, no
+extra requests, `fetch` is still called synchronously, and a 401 or 403 from the edge is still shown with the states below
+(the button then reloads the page so the edge sign-in takes over).
+
+**No visible second sign-in.** The web app already sits behind Entra easy-auth, so a person arrives with an Entra session.
+At page load the SPA tries, in order: a cached MSAL token; `ssoSilent` against the existing session, with a login hint
+read from easy-auth's `/.auth/me` when present (a 404 or the SPA's own index.html in local dev means no hint; only an
+email-shaped identity claim is read, any token in that response is ignored); then, as a last resort, **one** automatic
+redirect. A silent refresh after a 401 never redirects.
+
+**One automatic redirect per page load.** Before redirecting, the app claims a flag in `sessionStorage`
+(`discovery.auth.redirect-attempt`, a timestamp). While the flag is fresh (5 minutes) no second automatic redirect
+happens. A good token clears it. If `sessionStorage` cannot be written, no automatic redirect happens at all. Concurrent
+requests share one attempt. A redirect that returns with an error is remembered by code only, is never retried
+automatically, and `access_denied` maps to the no-access state. `interaction_in_progress` never starts a second
+interaction. Only the person pressing the button starts another redirect (and, for a stale `interaction_in_progress`,
+reloads the page, which MSAL clears on load). The hidden sign-in frame (our own origin loaded with a response hash) does
+not run the app, so it cannot consume that hash.
+
+**States** (one page-level panel; experience search and product search share it):
+
+| State | When | Copy | Behaviour |
+|---|---|---|---|
+| Signing in | token acquisition still pending after 400 ms, or a redirect under way | "Signing you in..." | polite live region, always mounted; not an alert; never shown for a quick sign-in |
+| Session ended | 401 after one silent refresh and one retry; silent sign-in needs the person; redirect returned an error | "Your session ended. Sign in again." | `role="alert"`, focus moves to the single "Sign in again" button |
+| No access | 403 (no refresh, no retry); redirect returned `access_denied` | "You don't have access to this demo. Ask the owner to add you." | `role="alert"`, focus moves to the notice (no button) |
+| API unavailable | any other failure | the existing "... is unavailable right now. Try again in a moment." with Retry | unchanged |
+
+No status code, provider error or token content is shown; the status lives on a typed `DiscoveryApiError` for logic only.
+A later good answer clears the session-ended or no-access panel.
+
+**Not tested:** a real tenant or real Entra tokens (MSAL is faked in unit tests); a real `/.auth/me` response shape from
+Container Apps (the parser follows the documented array of `user_claims` and tolerates absence); real browsers (tests run
+in jsdom, so third-party-cookie and iframe `ssoSilent` behaviour, and the real redirect round trip, are unverified); screen
+readers (roles, live regions and focus are asserted, not heard); visual layout of the new panel at real viewport sizes.
+The Entra side (SPA redirect URI, exposed scope, v2 tokens) is owned by the Terraform work item and is not part of this change.
