@@ -24,11 +24,20 @@ class MappingCompatibility:
         }
 
 
+def _normalize_setting(key: str, value: Any) -> Any:
+    # OpenSearch reports ``dynamic`` as a string ("false", "strict") even when it was created from a boolean.
+    if key == "dynamic" and isinstance(value, (bool, str)):
+        return str(value).lower()
+    return value
+
+
 def classify_mapping_compatibility(
     existing: dict[str, Any],
     proposed: dict[str, Any],
 ) -> MappingCompatibility:
     """Classify whether a proposed OpenSearch mapping adds or breaks fields."""
+    existing = {key: _normalize_setting(key, value) for key, value in existing.items()}
+    proposed = {key: _normalize_setting(key, value) for key, value in proposed.items()}
     if existing == proposed:
         return MappingCompatibility(MappingCompatibilityKind.IDENTICAL)
 
