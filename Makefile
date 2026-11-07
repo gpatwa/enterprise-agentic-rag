@@ -2,7 +2,7 @@
 
 .PHONY: help install install-analytics analytics-reference-smoke analytics-reference-up analytics-golden analytics-triage-eval analytics-proposals-eval analytics-dbt-eval analytics-prompts-eval analytics-review-eval analytics-evaluation-eval analytics-rollout-eval analytics-drift-eval analytics-poisoning-eval analytics-security-eval analytics-resilience-drill dev dev-support-web dev-analytics-api dev-analytics-web dev-products up down stop init support-demo demo-ready-local deploy infra build bootstrap init-cloud smoke-test verify destroy test test-analytics ingest \
        infra-staging bootstrap-staging deploy-staging deploy-aws \
-       deploy-azure infra-azure build-azure bootstrap-azure deploy-api-azure deploy-analytics-azure deploy-landing-azure destroy-azure \
+       deploy-azure infra-azure build-azure bootstrap-azure bootstrap-github-repo deploy-api-azure deploy-analytics-azure deploy-landing-azure destroy-azure \
        pause-azure resume-azure import-azure \
        azure-dev-up azure-dev-sync azure-dev-start azure-dev-stop azure-dev-status azure-dev-ssh azure-dev-tunnel azure-dev-destroy observability-up observability-down \
        verify-cleanup verify-cleanup-delete verify-cleanup-azure verify-cleanup-azure-delete \
@@ -358,6 +358,10 @@ bootstrap:
 	./scripts/bootstrap_cluster.sh
 
 # Initialize cloud databases (Qdrant collections, Neo4j indexes)
+# Plan the repository settings stack (auto-merge, branch cleanup, CI gate ruleset). APPLY=1 applies it.
+bootstrap-github-repo:
+	@APPLY=$(APPLY) ./scripts/bootstrap_github_repo.sh
+
 init-cloud:
 	python3 scripts/init_cloud.py
 

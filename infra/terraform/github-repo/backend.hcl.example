@@ -1,0 +1,6 @@
+# terraform init -backend-config=backend.hcl   (the make target writes backend.hcl from the discovery stack's backend)
+# Use a state key of its own; never share a state file with another stack.
+resource_group_name  = "<state-resource-group>"
+storage_account_name = "<state-storage-account>"
+container_name       = "tfstate"
+key                  = "github-repo/terraform.tfstate"
