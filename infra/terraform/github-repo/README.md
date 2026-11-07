@@ -7,6 +7,7 @@ Declares the repository settings that used to be clicked in the GitHub UI:
 | Allow auto-merge | on | PRs can merge themselves once the required check passes |
 | Delete branch on merge | on | no stale branches |
 | Ruleset `main requires CI gate` | active on the default branch | the "CI gate" check must pass; deleting or force-pushing `main` is blocked |
+| Environment `discovery-pilot` | deployments only from `main` | the Entra federated credential trusts repo + environment, so this stops other branches from using the VM identity |
 | Ruleset bypass | repository **admin** role, always | a wrong rule can never lock the owner out |
 
 Everything else about the repository is imported and **ignored**, so applying cannot reset other settings. `terraform plan` must show changes only to the two settings and the ruleset.
