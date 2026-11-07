@@ -20,8 +20,15 @@ def parse_sink_names(environ: Mapping[str, str]) -> list[str]:
 
 def build_vector_sinks(environ: Mapping[str, str]) -> list[Any]:
     """Build every sink before any work starts, so a bad setting fails the job immediately."""
+    names = parse_sink_names(environ)
+    if "opensearch" not in names:
+        # A sweep flag with no OpenSearch sink is a mistake, not a no-op.
+        from pipelines.ingestion.indexing.opensearch import parse_sweep_flag
+
+        if parse_sweep_flag(environ):
+            raise ValueError("INGEST_OPENSEARCH_SWEEP is on but opensearch is not in INGEST_VECTOR_SINKS")
     sinks: list[Any] = []
-    for name in parse_sink_names(environ):
+    for name in names:
         if name == "qdrant":
             from pipelines.ingestion.indexing.qdrant import QdrantIndexer
 
@@ -31,3 +38,14 @@ def build_vector_sinks(environ: Mapping[str, str]) -> list[Any]:
 
             sinks.append(OpenSearchIndexer())
     return sinks
+
+
+def finalize_sinks(sinks: list[Any]) -> list[Any]:
+    """Run each sink's optional ``finalize`` (for example the stale-chunk sweep). Call after every write succeeded."""
+    reports = []
+    for sink in sinks:
+        finalize = getattr(sink, "finalize", None)
+        report = finalize() if finalize else None
+        if report is not None:
+            reports.append(report)
+    return reports

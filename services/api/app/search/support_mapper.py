@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import html
 import re
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
@@ -172,8 +173,12 @@ def map_file_chunk(
     permission_version: str = "acl-v1",
     updated_at: datetime | None = None,
     redact_pii: bool | None = None,
+    tags: Sequence[str] = (),
 ) -> SupportSearchDocument:
-    """Map one chunk of an ingested file. ACL is the tenant token only, like every other support chunk."""
+    """Map one chunk of an ingested file. ACL is the tenant token only, like every other support chunk.
+
+    ``tags`` carries the ingestion run stamp (see ``app.search.schema.ingest_run_tag``) when stale-chunk sweeping is on.
+    """
     return _build_document(
         tenant_id=tenant_id,
         provider=provider,
@@ -184,7 +189,7 @@ def map_file_chunk(
         source_uri=None,
         created_at=None,
         updated_at=updated_at,
-        attributes=SupportSearchAttributes(),
+        attributes=SupportSearchAttributes(tags=tuple(tags)),
         metadata=dict(metadata or {}),
         permission_version=permission_version,
         embedding_model_version=embedding_model_version,

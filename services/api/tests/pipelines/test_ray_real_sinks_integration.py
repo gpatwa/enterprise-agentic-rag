@@ -186,3 +186,30 @@ def _os_count_or_zero(index: str) -> int:
 
     response = httpx.post(f"{_url()}/{index}/_refresh", timeout=30)
     return 0 if response.status_code == 404 else _os_count(index)
+
+
+def test_a_real_ray_job_that_edits_a_file_sweeps_the_old_chunks_after_the_write(ray_cluster, os_index) -> None:
+    """Parallel writes through Ray, then the driver-side sweep, as ``main.py`` runs them."""
+    import time
+
+    from pipelines.ingestion.indexing.opensearch import OpenSearchIndexer
+    from pipelines.ingestion.indexing.ray_sink import write_rows
+    from pipelines.ingestion.indexing.sinks import finalize_sinks
+
+    def indexer(run_id: str):
+        return OpenSearchIndexer(
+            "acme", index=os_index, dimensions=DIM, embedding_model_version="par-ray", sweep=True, run_id=run_id
+        )
+
+    first = indexer("run-1")
+    write_rows(_dataset(_rows(n=ROWS)), first)
+    assert [r.deleted for r in finalize_sinks([first])] == [0]
+    assert _os_count(os_index) == ROWS
+
+    time.sleep(0.05)
+    edited = _rows(n=ROWS)[:10] + _rows(prefix="edited", n=4)  # ten chunks unchanged, fourteen replaced by four
+    second = indexer("run-2")
+    write_rows(_dataset(edited), second)
+    assert _os_count(os_index) == ROWS + 4, "before the sweep the replaced chunks are still indexed"
+    assert [r.deleted for r in finalize_sinks([second])] == [14]
+    assert _os_count(os_index) == 14
