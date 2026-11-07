@@ -148,6 +148,27 @@ resource "azurerm_cognitive_deployment" "intent" {
   }
 }
 
+# A second deployment on the same account, created by hand with the Azure CLI and imported (see README.md and
+# import-gpt6-deployment.sh). Not wired into the API's environment: AZURE_OPENAI_DEPLOYMENT still names the `intent` one.
+# rai_policy_name matches what the CLI assigned, so importing it plans no change. Account operations are serialized
+# (depends_on) because Azure rejects concurrent deployment writes on one account.
+resource "azurerm_cognitive_deployment" "intent_gpt6" {
+  count                = var.create_openai ? 1 : 0
+  name                 = var.azure_openai_gpt6_deployment
+  cognitive_account_id = azurerm_cognitive_account.openai[0].id
+  rai_policy_name      = "Microsoft.DefaultV2"
+  model {
+    format  = "OpenAI"
+    name    = var.azure_openai_gpt6_model
+    version = var.azure_openai_gpt6_model_version
+  }
+  scale {
+    type     = "GlobalStandard"
+    capacity = var.openai_capacity
+  }
+  depends_on = [azurerm_cognitive_deployment.intent]
+}
+
 # ---- Entra ID app registration for the API (optional) ----
 resource "azuread_application" "api" {
   count            = var.create_entra_app ? 1 : 0

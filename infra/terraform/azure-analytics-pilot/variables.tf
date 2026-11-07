@@ -117,6 +117,22 @@ variable "azure_openai_deployment" {
   default = "gpt-5.6-luna"
 }
 
+variable "azure_openai_gpt6_model" {
+  description = "Model of the second (gpt-6-luna) deployment on the same account. Declared here only so the hand-made deployment is managed; the API still uses azure_openai_deployment."
+  type        = string
+  default     = "gpt-6-luna"
+}
+
+variable "azure_openai_gpt6_model_version" {
+  type    = string
+  default = "2026-09-22"
+}
+
+variable "azure_openai_gpt6_deployment" {
+  type    = string
+  default = "gpt-6-luna"
+}
+
 variable "create_entra_app" {
   description = "Create the API app registration with the Analytics.Analyst and Analytics.Reviewer app roles (needs directory permissions)."
   type        = bool

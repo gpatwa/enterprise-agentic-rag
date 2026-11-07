@@ -64,6 +64,57 @@ Container App, and deploys the web app.
 - `min_cohort = 10` follows the security persona's recommendation for finding F-03; changing it is the security owner's decision.
 - Backups: PostgreSQL point-in-time restore (7 days). The logical backup and restore drill (ADS-068) can also be run against it.
 
+## Model deployments on the Azure OpenAI account
+
+With `create_openai = true` the account `<prefix>-<env>-openai` (`compass-pilot-openai`, resource group `compass-pilot-rg`) holds:
+
+| Deployment | Managed here | Notes |
+|---|---|---|
+| `gpt-5.6-luna` | `azurerm_cognitive_deployment.intent` | The intent model the API uses (`AZURE_OPENAI_DEPLOYMENT`). |
+| `gpt-6-luna` (model version `2026-09-22`, GlobalStandard, capacity 10) | `azurerm_cognitive_deployment.intent_gpt6` | Created by hand with the Azure CLI, then declared here. The API does not use it yet; switching `azure_openai_deployment` is a separate, deliberate change. Variables: `azure_openai_gpt6_deployment`, `azure_openai_gpt6_model`, `azure_openai_gpt6_model_version`; capacity shares `openai_capacity`. |
+| `text-embedding-3-small` | **No, temporary** | Created by hand for the Discovery product. Deliberately not in Terraform; see below. |
+
+### Importing the hand-made `gpt-6-luna` deployment
+
+The deployment already exists in Azure, so the first apply must adopt it instead of creating it. From this directory, after
+`terraform init -backend-config=backend.hcl` and with your usual `terraform.tfvars` / `secrets.auto.tfvars` present:
+
+```bash
+./import-gpt6-deployment.sh --dry-run   # prints the import command, changes nothing
+./import-gpt6-deployment.sh             # imports only if the resource is not already in state
+terraform plan                          # expect no change to the deployment
+```
+
+The script runs exactly this (the resource has `count`, so the address carries an index; the import ID is the ARM ID of the
+deployment under its account):
+
+```bash
+terraform import 'azurerm_cognitive_deployment.intent_gpt6[0]' \
+  "/subscriptions/<subscription-id>/resourceGroups/compass-pilot-rg/providers/Microsoft.CognitiveServices/accounts/compass-pilot-openai/deployments/gpt-6-luna"
+```
+
+Do not `terraform apply` before the import: Azure would reject creating a deployment that already exists. `rai_policy_name` is set to
+`Microsoft.DefaultV2`, the value the CLI assigned, so the plan after the import has no diff on that attribute.
+
+### Removing the temporary `text-embedding-3-small` deployment
+
+`text-embedding-3-small` on this account was created by hand so Discovery could embed before it had its own account. It is not
+declared in this stack, so removing it causes no Terraform drift. Run this **only after all of these are true**: the Discovery stack
+(`../azure-discovery-pilot`) has created its own Discovery-owned Azure OpenAI account with its own `text-embedding-3-small`
+deployment; Discovery's embedding endpoint and deployment settings point at that account; and an embedding call against the new
+account has succeeded. Nothing may still be using the Compass copy.
+
+```bash
+az cognitiveservices account deployment delete \
+  --resource-group compass-pilot-rg \
+  --name compass-pilot-openai \
+  --deployment-name text-embedding-3-small
+```
+
+Check afterwards with `az cognitiveservices account deployment list -g compass-pilot-rg -n compass-pilot-openai -o table`: only
+`gpt-5.6-luna` and `gpt-6-luna` should remain. Deleting a deployment is destructive (it frees the capacity and its endpoint stops
+answering), so the stack owner runs it, not automation.
+
 ## The review assistant (optional)
 
 `python -m app.decision_support.agent --api <api_url> --token <token> --api-key <api_key>` lists pending reviews and prints one note per
