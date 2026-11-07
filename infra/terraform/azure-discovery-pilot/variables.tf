@@ -24,12 +24,9 @@ variable "web_image_tag" {
 }
 
 variable "allowed_user_object_ids" {
-  description = "Entra object IDs of the people who may sign in (for a guest, the object ID of their guest account in this tenant). Required and non-empty: the pilot is sign-in-only, never public."
+  description = "Entra object IDs of extra people who may sign in, in addition to the access list. Optional: prefer the access list (access.auto.tfvars), which also maps each person to a demo profile. The pilot is sign-in-only, never public: the access list and this list together must name at least one account."
   type        = list(string)
-  validation {
-    condition     = length(var.allowed_user_object_ids) > 0
-    error_message = "allowed_user_object_ids must list at least one account."
-  }
+  default     = []
 }
 
 variable "allowed_cidrs" {

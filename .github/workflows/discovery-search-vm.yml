@@ -14,7 +14,7 @@ on:
           - stop
           - status
       environment:
-        description: GitHub deployment environment
+        description: GitHub deployment environment (must be one Terraform allows to sign in; default setup is discovery-pilot)
         required: true
         type: environment
 
@@ -27,16 +27,29 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
+      # OIDC only: no client secret exists. The identity can start, deallocate and read this one VM and nothing else.
+      # All five values are repository variables (identifiers, not secrets) set by `make discovery-repo-vars`.
+      - name: Check the repository variables are set
+        env:
+          CLIENT_ID: ${{ vars.DISCOVERY_AZURE_CLIENT_ID }}
+          TENANT_ID: ${{ vars.DISCOVERY_AZURE_TENANT_ID }}
+          SUBSCRIPTION_ID: ${{ vars.DISCOVERY_AZURE_SUBSCRIPTION_ID }}
+          RG: ${{ vars.DISCOVERY_RESOURCE_GROUP }}
+          VM: ${{ vars.DISCOVERY_SEARCH_VM_NAME }}
+        run: |
+          for name in CLIENT_ID TENANT_ID SUBSCRIPTION_ID RG VM; do
+            [ -n "${!name}" ] || { echo "::error::A repository variable is not set ($name). Run 'make discovery-repo-vars' from a checkout where 'terraform apply' has been done."; exit 1; }
+          done
       - uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.DISCOVERY_AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.DISCOVERY_AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.DISCOVERY_AZURE_SUBSCRIPTION_ID }}
       - name: Apply the requested action
         env:
           ACTION: ${{ inputs.action }}
-          RG: ${{ secrets.DISCOVERY_RESOURCE_GROUP }}
-          VM: ${{ secrets.DISCOVERY_SEARCH_VM_NAME }}
+          RG: ${{ vars.DISCOVERY_RESOURCE_GROUP }}
+          VM: ${{ vars.DISCOVERY_SEARCH_VM_NAME }}
         run: |
           case "$ACTION" in
             start)  az vm start -g "$RG" -n "$VM" ;;

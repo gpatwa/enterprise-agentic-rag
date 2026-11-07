@@ -20,6 +20,10 @@ build/
 !*.tfvars.example
 !infra/terraform/envs/*.tfvars
 !infra/terraform/azure/envs/*.tfvars
+# The Discovery access list is names only (no secrets) and is meant to be reviewed in pull requests.
+!infra/terraform/azure-discovery-pilot/access.auto.tfvars
+# Backend config names the state account; keep it local (see backend.hcl.example)
+infra/terraform/azure-discovery-pilot/backend.hcl
 
 # ============================================================
 # Terraform

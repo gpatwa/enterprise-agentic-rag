@@ -275,3 +275,161 @@ def test_fallback_when_the_cluster_is_down_is_lexical_only_and_never_calls_the_e
     assert response.fallback is True and response.error is None
     assert response.results and all("workshop" in r.title.lower() for r in response.results[:1])
     assert calls == []  # no billable call while the cluster is unreachable
+
+
+# ---- managed identity / Azure CLI token authentication ---------------------------------------------------------
+
+
+class Clock:
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+def _token_embedder(fake: Fake, provider, **kw) -> AzureOpenAIEmbedder:
+    return AzureOpenAIEmbedder(
+        ENDPOINT,
+        "emb",
+        token_provider=provider,
+        dimensions=DIMS,
+        transport=httpx.MockTransport(fake),
+        sleep=lambda s: None,
+        **kw,
+    )
+
+
+def test_token_auth_sends_a_bearer_header_and_no_api_key() -> None:
+    fake = Fake()
+    _token_embedder(fake, lambda: "tok-1").embed("hello")
+    headers = fake.requests[0].headers
+    assert headers["authorization"] == "Bearer tok-1" and "api-key" not in headers
+
+
+def test_the_token_is_cached_then_refreshed_after_the_ttl() -> None:
+    fake, clock, issued = Fake(), Clock(), []
+
+    def provider() -> str:
+        issued.append(1)
+        return f"tok-{len(issued)}"
+
+    embedder = _token_embedder(fake, provider, clock=clock)
+    embedder.embed("a")
+    embedder.embed("b")
+    assert len(issued) == 1
+    clock.now += 1000
+    embedder.embed("c")
+    assert len(issued) == 2 and fake.requests[-1].headers["authorization"] == "Bearer tok-2"
+
+
+def test_a_401_fetches_one_fresh_token_and_retries_once() -> None:
+    fake, issued = Fake([401]), []
+
+    def provider() -> str:
+        issued.append(1)
+        return f"tok-{len(issued)}"
+
+    assert _token_embedder(fake, provider).embed("x")
+    assert [r.headers["authorization"] for r in fake.requests] == ["Bearer tok-1", "Bearer tok-2"]
+
+
+def test_a_403_names_the_missing_role_without_secrets_and_is_not_retried() -> None:
+    fake = Fake([403])
+    with pytest.raises(EmbeddingError) as raised:
+        _token_embedder(fake, lambda: "tok-secret").embed("private query text")
+    message = str(raised.value)
+    assert "Cognitive Services OpenAI User" in message and "HTTP 403" in message
+    assert "tok-secret" not in message and "private query text" not in message and "secret echo" not in message
+    assert len(fake.requests) == 1
+
+
+def test_a_persistent_401_stops_after_one_refresh() -> None:
+    fake = Fake([401, 401, 401])
+    with pytest.raises(EmbeddingError, match="HTTP 401"):
+        _token_embedder(fake, lambda: "tok").embed("x")
+    assert len(fake.requests) == 2
+
+
+def test_a_missing_token_fails_before_any_request_with_a_clear_message() -> None:
+    from app.ingest.store import StoreError
+
+    def provider() -> str:
+        raise StoreError("managed identity token request failed (HTTP 400)")
+
+    fake = Fake()
+    with pytest.raises(EmbeddingError, match="Entra token") as raised:
+        _token_embedder(fake, provider).embed("x")
+    assert fake.requests == [] and "HTTP 400" not in str(raised.value)
+
+
+def test_exactly_one_credential_kind_is_required() -> None:
+    with pytest.raises(ValueError, match="either"):
+        AzureOpenAIEmbedder(ENDPOINT, "emb")
+    with pytest.raises(ValueError, match="either"):
+        AzureOpenAIEmbedder(ENDPOINT, "emb", KEY, token_provider=lambda: "t")
+
+
+def test_token_providers_ask_for_the_cognitive_services_resource(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.embedding.azure_openai import token_provider_for
+    from app.ingest import store as store_module
+
+    monkeypatch.setenv("IDENTITY_ENDPOINT", "http://localhost:42356/msi/token")
+    monkeypatch.setenv("IDENTITY_HEADER", "hdr")
+    seen: list[httpx.Request] = []
+    real_client = httpx.Client
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json={"access_token": "mi-token"})
+
+    monkeypatch.setattr(
+        store_module.httpx, "Client", lambda **kw: real_client(**{**kw, "transport": httpx.MockTransport(handler)})
+    )
+    assert token_provider_for("managed_identity")() == "mi-token"
+    assert seen[0].url.params["resource"] == "https://cognitiveservices.azure.com"
+
+    calls: list[list[str]] = []
+
+    class Done:
+        returncode, stdout = 0, "cli-token\n"
+
+    monkeypatch.setattr(store_module.subprocess, "run", lambda cmd, **kw: calls.append(cmd) or Done())
+    assert token_provider_for("az_cli")() == "cli-token"
+    assert calls[0][calls[0].index("--resource") + 1] == "https://cognitiveservices.azure.com"
+    with pytest.raises(ValueError):
+        token_provider_for("key")
+
+
+def test_settings_validate_the_auth_mode() -> None:
+    assert (
+        _azure(azure_openai_api_key=None, azure_openai_auth="managed_identity").azure_openai_auth == "managed_identity"
+    )
+    assert _azure(azure_openai_api_key=None, azure_openai_auth="az_cli").azure_openai_auth == "az_cli"
+    assert _azure().azure_openai_auth == "key"  # the default
+    with pytest.raises(ValueError, match="needs an api key"):
+        _azure(azure_openai_api_key=None)
+    with pytest.raises(ValueError, match="api key is set"):
+        _azure(azure_openai_auth="managed_identity")
+    with pytest.raises(ValueError):
+        _azure(azure_openai_auth="password")
+
+
+def test_the_factory_builds_a_token_embedder_without_a_key_or_network() -> None:
+    embedder = create_embedder(_azure(azure_openai_api_key=None, azure_openai_auth="managed_identity"))
+    assert isinstance(embedder, AzureOpenAIEmbedder) and embedder.texts_sent == 0
+
+
+def test_the_auth_mode_comes_from_the_environment() -> None:
+    env = {
+        "DISCOVERY_NO_MODEL": "false",
+        "DISCOVERY_SEARCH_BACKEND": "opensearch",
+        "DISCOVERY_OPENSEARCH_URL": "http://search.test:9200",
+        "DISCOVERY_EMBEDDING_PROVIDER": "azure_openai",
+        "DISCOVERY_AZURE_OPENAI_ENDPOINT": ENDPOINT,
+        "DISCOVERY_AZURE_OPENAI_DEPLOYMENT": "emb",
+        "DISCOVERY_AZURE_OPENAI_AUTH": "Managed_Identity",
+    }
+    assert settings_from_env(env).azure_openai_auth == "managed_identity"
+    with pytest.raises(ValueError):
+        settings_from_env({**env, "DISCOVERY_AZURE_OPENAI_AUTH": "nope"})

@@ -1,5 +1,7 @@
 """Azure OpenAI text embeddings behind the same interface as the hashing embedder.
 
+Authentication is an API key (the default) or an Entra token for ``https://cognitiveservices.azure.com`` from
+the managed identity or the Azure CLI (the account can then keep key auth disabled).
 This is a billable model call. Guards: a hard cap on texts sent per process (``max_texts``), a small cache
 so repeated text is never sent twice, batching, and bounded retries on throttling or server errors only.
 Error messages carry the HTTP status and nothing else: never the input text, the key, or the response body.
@@ -15,7 +17,10 @@ from typing import Callable, Sequence
 
 import httpx
 
+from app.ingest.store import COGNITIVE_RESOURCE, StoreError, az_cli_token, managed_identity_token
+
 BATCH_SIZE = 16
+TOKEN_TTL_SECONDS = 900.0  # tokens last an hour or more; refreshing every 15 minutes keeps a margin
 RETRYABLE = {429, 500, 502, 503, 504}
 
 
@@ -27,6 +32,15 @@ class EmbeddingBudgetExceeded(EmbeddingError):
     """The per-process cap on embedded texts was reached; nothing further is sent."""
 
 
+def token_provider_for(mode: str) -> Callable[[], str]:
+    """The token source for ``managed_identity`` or ``az_cli`` (the key mode has none)."""
+    if mode == "managed_identity":
+        return lambda: managed_identity_token(resource=COGNITIVE_RESOURCE)
+    if mode == "az_cli":
+        return lambda: az_cli_token(resource=COGNITIVE_RESOURCE)
+    raise ValueError(f"no token provider for azure_openai_auth={mode!r}")
+
+
 class AzureOpenAIEmbedder:
     is_billable = True
 
@@ -34,8 +48,10 @@ class AzureOpenAIEmbedder:
         self,
         endpoint: str,
         deployment: str,
-        api_key: str,
+        api_key: str | None = None,
         *,
+        token_provider: Callable[[], str] | None = None,
+        clock: Callable[[], float] = time.monotonic,
         dimensions: int = 384,
         api_version: str = "2024-10-21",
         model_label: str = "text-embedding-3-small",
@@ -48,8 +64,10 @@ class AzureOpenAIEmbedder:
     ) -> None:
         if not endpoint.startswith("https://"):
             raise ValueError("the Azure OpenAI endpoint must be https")
-        if not deployment.strip() or not api_key.strip():
-            raise ValueError("deployment and api_key are required")
+        if not deployment.strip():
+            raise ValueError("deployment is required")
+        if bool(api_key and api_key.strip()) == (token_provider is not None):
+            raise ValueError("give either an api_key or a token_provider")
         if not 8 <= dimensions <= 4096:
             raise ValueError("dimensions must be between 8 and 4096")
         self.dimensions = dimensions
@@ -57,6 +75,10 @@ class AzureOpenAIEmbedder:
         self._url = f"{endpoint.rstrip('/')}/openai/deployments/{deployment}/embeddings"
         self._api_version = api_version
         self._key = api_key
+        self._token_provider = token_provider
+        self._clock = clock
+        self._token: str | None = None
+        self._token_at = 0.0
         self._max_retries = max_retries
         self._max_texts = max_texts
         self._sent = 0
@@ -103,17 +125,34 @@ class AzureOpenAIEmbedder:
             out.append(self._cache[text])
         return out
 
+    def _auth_headers(self, *, refresh: bool = False) -> dict[str, str]:
+        if self._token_provider is None:
+            return {"api-key": self._key or ""}
+        now = self._clock()
+        if refresh or self._token is None or now - self._token_at > TOKEN_TTL_SECONDS:
+            try:
+                self._token = self._token_provider()
+            except (StoreError, OSError) as exc:
+                self._token = None
+                raise EmbeddingError(
+                    "could not get an Entra token for Azure OpenAI "
+                    "(managed identity unavailable or Azure CLI not signed in); no request was sent"
+                ) from exc
+            self._token_at = now
+        return {"Authorization": f"Bearer {self._token}"}
+
     def _request(self, batch: list[str]) -> list[tuple[float, ...]]:
         if self._max_texts is not None and self._sent + len(batch) > self._max_texts:
             raise EmbeddingBudgetExceeded(f"embedding cap of {self._max_texts} texts reached")
         self._sent += len(batch)
         status = None
+        refreshed = False
         for attempt in range(self._max_retries + 1):
             try:
                 response = self._http.post(
                     self._url,
                     params={"api-version": self._api_version},
-                    headers={"api-key": self._key},
+                    headers=self._auth_headers(),
                     json={"input": batch, "dimensions": self.dimensions},
                 )
             except httpx.TransportError as exc:
@@ -122,6 +161,16 @@ class AzureOpenAIEmbedder:
                 status = response.status_code
                 if status == 200:
                     return self._parse(response, len(batch))
+                if self._token_provider is not None and status in (401, 403):
+                    if status == 401 and not refreshed:  # a stale token: fetch one fresh token and try once more
+                        refreshed = True
+                        self._auth_headers(refresh=True)
+                        continue
+                    raise EmbeddingError(
+                        f"embedding request not authorized (HTTP {status}): the identity needs the "
+                        "'Cognitive Services OpenAI User' role on the account; a new role assignment can take "
+                        "several minutes to apply"
+                    )
                 if status not in RETRYABLE:
                     raise EmbeddingError(f"embedding request rejected (HTTP {status})")
             if attempt < self._max_retries:

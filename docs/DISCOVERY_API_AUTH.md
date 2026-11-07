@@ -21,6 +21,9 @@ Before this, the API performed no authentication. Sign-in existed only at the ed
 | `DISCOVERY_ENTRA_TENANT_MAP` | JSON `{ "<entra tenant id>": "<discovery tenant>" }`; must include the directory above. |
 | `DISCOVERY_ENTRA_PRINCIPAL_MAP` | Optional JSON `{ "<oid>": "<discovery user id>" }`. |
 | `DISCOVERY_ENTRA_JWKS_URL` | Optional; defaults to the directory's v2.0 key endpoint. https is required in staging and production. |
+| `DISCOVERY_ENTRA_REQUIRED_SCOPE` | Optional (2026-11-07). When set, the token's `scp` must contain it (for example `access_as_user`). An ID token for the same app has the same audience and issuer but no `scp`, so this keeps it from working as an API token. The Terraform stack sets it whenever `enable_api_auth` is true. |
+
+**Token version.** The defaults match a **version 2** access token: `aud` is the app's client id (a GUID, not `api://<id>`) and `iss` is `https://login.microsoftonline.com/<tenant>/v2.0`. The app registration must have `requested_access_token_version = 2` (declared in `infra/terraform/azure-discovery-pilot`); a version 1 token (`aud = api://<id>`, `iss = https://sts.windows.net/<tenant>/`) is refused, so a missing setting fails closed with a 401. Checked against the real tenant's published metadata (issuer and key endpoint match; the keys parse) and in `tests/test_entra_v2_tokens.py` with a realistic v2 claim set; never against a token issued by Entra for this app.
 
 Production settings validation already required `auth_enabled`; it now means something.
 

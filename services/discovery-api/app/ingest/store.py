@@ -25,6 +25,7 @@ from app.ingest.pipeline import MANIFEST_NAME, PRODUCTS_NAME, QUARANTINE_NAME, I
 
 FILES = (PRODUCTS_NAME, QUARANTINE_NAME, MANIFEST_NAME)  # manifest last: its presence marks a complete subset
 STORAGE_RESOURCE = "https://storage.azure.com/"
+COGNITIVE_RESOURCE = "https://cognitiveservices.azure.com"  # the resource behind the .default scope
 BLOB_API_VERSION = "2023-11-03"
 
 
@@ -93,18 +94,18 @@ class LocalStore:
         return sorted(p.parent.relative_to(self.root).as_posix() for p in self.root.rglob(MANIFEST_NAME))
 
 
-def managed_identity_token(transport: httpx.BaseTransport | None = None) -> str:
-    """A storage token from the Container Apps/App Service endpoint, or the VM metadata service."""
+def managed_identity_token(transport: httpx.BaseTransport | None = None, resource: str = STORAGE_RESOURCE) -> str:
+    """A token for ``resource`` (storage by default) from the Container Apps/App Service endpoint or the VM metadata service."""
     client_id = os.environ.get("AZURE_CLIENT_ID")
     with httpx.Client(timeout=5.0, transport=transport) as http:
         endpoint, header = os.environ.get("IDENTITY_ENDPOINT"), os.environ.get("IDENTITY_HEADER")
         if endpoint and header:
-            params = {"resource": STORAGE_RESOURCE, "api-version": "2019-08-01"}
+            params = {"resource": resource, "api-version": "2019-08-01"}
             if client_id:
                 params["client_id"] = client_id
             response = http.get(endpoint, params=params, headers={"X-IDENTITY-HEADER": header})
         else:
-            params = {"resource": STORAGE_RESOURCE, "api-version": "2018-02-01"}
+            params = {"resource": resource, "api-version": "2018-02-01"}
             if client_id:
                 params["client_id"] = client_id
             response = http.get(
@@ -118,16 +119,16 @@ def managed_identity_token(transport: httpx.BaseTransport | None = None) -> str:
         raise StoreError("managed identity token response was not in the expected shape") from exc
 
 
-def az_cli_token() -> str:
-    """A storage token for the signed-in Azure CLI user (laptop use)."""
+def az_cli_token(resource: str = STORAGE_RESOURCE) -> str:
+    """A token for ``resource`` (storage by default) for the signed-in Azure CLI user (laptop use)."""
     result = subprocess.run(
-        ["az", "account", "get-access-token", "--resource", STORAGE_RESOURCE, "--query", "accessToken", "-o", "tsv"],
+        ["az", "account", "get-access-token", "--resource", resource, "--query", "accessToken", "-o", "tsv"],
         capture_output=True,
         text=True,
     )
     token = result.stdout.strip()
     if result.returncode != 0 or not token:
-        raise StoreError("could not get a storage token from the Azure CLI (are you signed in?)")
+        raise StoreError("could not get a token from the Azure CLI (are you signed in?)")
     return token
 
 

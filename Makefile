@@ -7,7 +7,8 @@
        azure-dev-up azure-dev-sync azure-dev-start azure-dev-stop azure-dev-status azure-dev-ssh azure-dev-tunnel azure-dev-destroy observability-up observability-down \
        verify-cleanup verify-cleanup-delete verify-cleanup-azure verify-cleanup-azure-delete \
        setup lint format architecture-check architecture-build verify-context-local \
-       dev-control-plane dev-data-plane dev-split test-control-plane test-data-plane test-all
+       dev-control-plane dev-data-plane dev-split test-control-plane test-data-plane test-all \
+       discovery-repo-vars discovery-repo-vars-plan
 
 help:
 	@echo "RAG Platform Commands:"
@@ -70,6 +71,8 @@ help:
 	@echo "    make resume-azure      - Resume: start Postgres + App Service back up (Redis recreated on next deploy)"
 	@echo "    make import-azure      - Import manually-created resources into Terraform state (run once)"
 	@echo "    make destroy-azure     - Tear down ALL Azure resources + verify"
+	@echo "    make discovery-repo-vars-plan - Show the GitHub repo variables the Discovery workflows need (from terraform output)"
+	@echo "    make discovery-repo-vars      - Set them (idempotent; uses your gh session)"
 	@echo "    make azure-dev-up      - Provision/update remote Docker development VM and start Compose"
 	@echo "    make azure-dev-sync    - Sync this checkout to the remote Docker VM"
 	@echo "    make azure-dev-start   - Start the VM and remote Compose services"
@@ -539,3 +542,11 @@ test-all:
 	(cd services/analytics-api && PYTHONPATH=.:../.. pytest -x -q) && \
 	pytest services/control-plane/tests/ -x -q && \
 	pytest services/data-plane/tests/ -x -q
+
+# Discovery pilot: set the GitHub repository variables the Discovery workflows read from `terraform output`
+# (identifiers and names only, no secrets; uses your own `gh` session). Idempotent. Run after `terraform apply`.
+discovery-repo-vars-plan:
+	DRY_RUN=1 ./scripts/discovery_repo_vars.sh
+
+discovery-repo-vars:
+	./scripts/discovery_repo_vars.sh
