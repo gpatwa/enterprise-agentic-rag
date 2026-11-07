@@ -2,7 +2,7 @@
 
 **Status: APPROVED by the owner on 2026-11-06 ("approve the RO-7 canary plan"). Nothing here is deployed or enabled.**
 
-**Scope of the approval.** The owner approved this plan as written: the stages, gates, rollback triggers and the stated percent steps. It does **not** authorize any cloud change, turning on any flag in a deployed environment, running a stage, or retiring Qdrant. Each deployed change needs its own request in its own task, and the Qdrant retirement section remains a set of criteria, not a decision. The canary tenant and latency budget were then set on the owner's instruction (section "Defaults set 2026-11-06"); the remaining error thresholds were then set the same way (section "Error thresholds set 2026-11-06"). Nothing in the plan is now undecided; Stage 0 and Stage 1 are blocked only by the preconditions and by building the log query or dashboard.
+**Scope of the approval.** The owner approved this plan as written: the stages, gates, rollback triggers and the stated percent steps. It does **not** authorize any cloud change, turning on any flag in a deployed environment, running a stage, or retiring Qdrant. Each deployed change needs its own request in its own task, and the Qdrant retirement section remains a set of criteria, not a decision. The canary tenant and latency budget were then set on the owner's instruction (section "Defaults set 2026-11-06"); the remaining error thresholds were then set the same way (section "Error thresholds set 2026-11-06"). Nothing in the plan is now undecided; Stage 0 and Stage 1 are blocked only by the preconditions and by deploying and wiring the observability below (including an alert receiver).
 
 It follows `docs/RAG_PIPELINE_OPENSEARCH_INDEXER_PLAN.md` (RO-1 to RO-6 are merged) and does not retire Qdrant.
 
@@ -31,8 +31,8 @@ Cross-tenant leakage has no tolerance: one occurrence stops the rollout and trig
 ## Exit criteria for retiring Qdrant from chunk retrieval (not part of this plan's approval)
 At 100% for at least 30 days with the gates above held, the multimodal image path (Qdrant plus Gemini, 768) has a defined OpenSearch equivalent or stays on Qdrant, a restore-from-source rebuild has been rehearsed, and the owner records a go/no-go. Until then Qdrant keeps receiving writes.
 
-## Metrics to collect (none are wired to a dashboard yet)
-Shadow overlap ratio (logged by `retrieve_node`), per-backend error counts and latency, fallback count, golden-set nDCG@10 and recall@10 per stage, document-count reconcile result.
+## Metrics to collect
+The Prometheus metrics above, plus, from outside the API, golden-set nDCG@10 and recall@10 per stage and the document-count reconcile result.
 
 ## Defaults set 2026-11-06 (owner: "set the canary tenant and latency budget to your recommended defaults")
 
@@ -48,7 +48,7 @@ These are my recommended values, adopted on the owner's instruction. **None is m
 - p95 at most **300 ms**, p99 at most **800 ms**, and p95 no more than **1.5x Qdrant's p95** in the same shadow window.
 - Hard per-request timeout **1.5 s** (`OPENSEARCH_RETRIEVAL_TIMEOUT_SECONDS`, default now 1.5): on timeout Qdrant answers, and the timeout counts as an error toward the 1% error gate.
 - Why: chat retrieval runs before an LLM call that takes seconds, so a few hundred milliseconds is a small share; the API-wide search timeout (10 s) is far too loose for chat.
-- Measured by the log lines `Retrieval shadow: ... qdrant_ms= opensearch_ms=` and `Retrieval opensearch: ... ms=` (added with these defaults). Nothing aggregates them yet; a dashboard or log query is still to be built.
+- Measured by the `rag_retrieval_latency_seconds` histogram (see "Observability" below); the log lines `Retrieval shadow: ... qdrant_ms= opensearch_ms=` and `Retrieval opensearch: ... ms=` remain for debugging.
 
 ## Error thresholds set 2026-11-06 (owner: "set the remaining error thresholds to your recommended defaults")
 
@@ -65,7 +65,14 @@ Again my recommended values on the owner's instruction, **unmeasured**, and chan
 | Cross-tenant result | zero tolerance (existing) | immediate `OPENSEARCH_ROLLBACK=true` |
 | Sample size | decide a stage only after **at least 200 retrievals** and its minimum hold; fewer means extend the hold | with one tenant and low volume, expect longer holds |
 
-**What is and is not automated:** the retrieval path falls back to Qdrant per request, and the OpenSearch provider has its own circuit breaker (opens after 3 consecutive failures). There is **no automatic rollback and no aggregation**: error rate, empty-result rate and overlap come from log lines (`Retrieval shadow`, `Retrieval opensearch`, and the fallback warning) that nobody queries yet. Until a log query or dashboard exists these thresholds cannot be checked, so building it is a precondition for Stage 1.
+**What is and is not automated:** the retrieval path falls back to Qdrant per request, and the OpenSearch provider has its own circuit breaker (opens after 3 consecutive failures). There is **no automatic rollback**: the alerts below only notify, and `OPENSEARCH_ROLLBACK=true` is set by a person. The Prometheus rules need a running Prometheus that scrapes the API (see below).
+
+## Observability (built 2026-11-06)
+- **Metrics** (`services/api/app/search/retrieval_metrics.py`, exposed on the API's existing `/health/metrics`): `rag_retrieval_requests_total{backend,role,outcome}`, `rag_retrieval_latency_seconds{backend,role}`, `rag_shadow_requests_total{result}`, `rag_shadow_overlap_ratio`, `rag_shadow_empty_mismatch_total`, `rag_retrieval_cross_tenant_dropped_total`. No tenant, query or document labels. `role` is `served`, `shadow` or `fallback`; a Qdrant fallback is the same event as an OpenSearch error or timeout.
+- **Alerts** (`infra/observability/alerts/rag-opensearch-canary.rules.yml`, loaded by `prometheus.yml`, mounted by the compose `observability` profile): one per threshold in this plan, each with a minimum-sample guard (20 requests for the 15-minute and 1-hour rules, 200 for the 24-hour ones, so a handful of requests cannot trip them). Severities: critical (error burst, cross-tenant), warning (window gates, latency, empty mismatch), info (overlap).
+- **Dashboard** (`grafana/dashboards/rag-opensearch-canary.json`, provisioned automatically): gate stats over the selected time range (set it to the stage window), plus error, latency, fallback and shadow time series.
+- **Verified:** `promtool check rules` and `promtool test rules` (11 cases, including the quiet cases; a mutation of two thresholds made the tests fail) on Prometheus v3.1.0; then a real Prometheus scraped metrics produced by the real retrieval code under simulated canary and shadow traffic, all 21 dashboard queries returned data, and the error-burst alert fired while the cross-tenant alert stayed quiet. Repo tests keep the rules and dashboard consistent with the metrics the code emits.
+- **Not verified:** the Grafana rendering (no Grafana image was available locally, so panel layout and colours were never seen), the compose Prometheus (v2.53.0; rules tested on v3.1.0), any real traffic, and delivery of alerts (no Alertmanager route or receiver is configured; alerts show in Prometheus only). Dashboard and rules are not deployed anywhere.
 
 ## Not decided here
 Percent steps and week-long holds are proposals. Latency budget, error thresholds beyond the 5% nDCG rule, and the canary tenant choice are the owner's.

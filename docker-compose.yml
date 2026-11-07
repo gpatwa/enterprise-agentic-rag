@@ -221,6 +221,7 @@ services:
       - "9090:9090"
     volumes:
       - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/observability/alerts:/etc/prometheus/alerts:ro
       - prometheus_data:/prometheus
     profiles: ["observability"]
 

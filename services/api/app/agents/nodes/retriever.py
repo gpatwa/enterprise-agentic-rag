@@ -9,6 +9,7 @@ from langchain_core.runnables import RunnableConfig
 from app.agents.state import AgentState
 from app.clients.ray_embed import embed_client
 from app.config import settings
+from app.search.retrieval_metrics import CROSS_TENANT_DROPPED, record_call, record_shadow
 from app.search.rollout import rollout_bucket, use_opensearch
 
 logger = logging.getLogger(__name__)
@@ -114,7 +115,8 @@ async def retrieve_node(state: AgentState, config: RunnableConfig) -> Dict:
     # Alpha deploys without Qdrant installed will hit this path and continue
     # to the answer step with no retrieved docs (LLM will respond from prior
     # context only).
-    async def run_qdrant_search():
+    async def run_qdrant_search(role="served"):
+        started = time.perf_counter()
         try:
             results = await _vectordb_client.search(
                 collection=settings.QDRANT_COLLECTION,
@@ -123,8 +125,10 @@ async def retrieve_node(state: AgentState, config: RunnableConfig) -> Dict:
                 filters=tenant_filter,
             )
         except Exception as e:
+            record_call("qdrant", role, e, time.perf_counter() - started)
             logger.warning(f"Vector search failed (continuing without docs): {e}")
             return []
+        record_call("qdrant", role, results, time.perf_counter() - started)
         # Deduplicate by text content
         seen_texts = set()
         unique_docs = []
@@ -165,7 +169,10 @@ async def retrieve_node(state: AgentState, config: RunnableConfig) -> Dict:
         seen_texts = set()
         unique_docs = []
         for r in response.results:
-            if r.tenant_id != search_tenant or r.text in seen_texts:
+            if r.tenant_id != search_tenant:
+                CROSS_TENANT_DROPPED.inc()
+                continue
+            if r.text in seen_texts:
                 continue
             seen_texts.add(r.text)
             unique_docs.append(f"{r.text} [Source: {r.metadata.get('filename', 'unknown')}]")
@@ -186,6 +193,7 @@ async def retrieve_node(state: AgentState, config: RunnableConfig) -> Dict:
             return await run_qdrant_search()
         if backend == "opensearch":
             result, ms = await timed(run_opensearch_search())
+            record_call("opensearch", "served", result, ms / 1000)
             if not isinstance(result, BaseException):
                 logger.info(f"Retrieval opensearch: tenant={tenant_id} ms={ms:.0f} docs={len(result)}")
                 return result
@@ -193,13 +201,15 @@ async def retrieve_node(state: AgentState, config: RunnableConfig) -> Dict:
             logger.warning(
                 f"OpenSearch retrieval failed, falling back to Qdrant: {type(result).__name__} after {ms:.0f} ms"
             )
-            return await run_qdrant_search()
+            return await run_qdrant_search("fallback")
         # shadow: Qdrant's answer is returned; OpenSearch is only compared and can never affect the reply
         (primary, qdrant_ms), (shadow, shadow_ms) = await asyncio.gather(
             timed(run_qdrant_search()), timed(run_opensearch_search())
         )
+        record_call("opensearch", "shadow", shadow, shadow_ms / 1000)
         if isinstance(primary, BaseException):
             return []
+        record_shadow(primary, shadow)
         if isinstance(shadow, BaseException):
             logger.warning(f"Shadow retrieval failed: {type(shadow).__name__} after {shadow_ms:.0f} ms")
         else:

@@ -30,8 +30,9 @@ class FakeGraph:
 
 
 class FakeSearch:
-    def __init__(self, texts=("o one", "q one"), fail=False, tenant=None, delay=0.0):
+    def __init__(self, texts=("o one", "q one"), fail=False, tenant=None, delay=0.0, filename="o.pdf"):
         self.texts, self.fail, self.tenant, self.requests, self.delay = texts, fail, tenant, [], delay
+        self.filename = filename
 
     async def search(self, request):
         self.requests.append(request)
@@ -40,7 +41,7 @@ class FakeSearch:
         if self.fail:
             raise RuntimeError("opensearch down")
         tenant = self.tenant or request.scope.tenant_id
-        results = [SimpleNamespace(tenant_id=tenant, text=t, metadata={"filename": "o.pdf"}) for t in self.texts]
+        results = [SimpleNamespace(tenant_id=tenant, text=t, metadata={"filename": self.filename}) for t in self.texts]
         return SimpleNamespace(results=results)
 
 
@@ -193,3 +194,72 @@ async def test_a_slow_shadow_cannot_change_the_reply(monkeypatch) -> None:
     monkeypatch.setattr(settings, "OPENSEARCH_RETRIEVAL_TIMEOUT_SECONDS", 0.05)
     docs = await _run(FakeQdrant(), FakeSearch(delay=1.0))
     assert docs == ["q one [Source: q.pdf]", "q two [Source: q.pdf]"]
+
+
+def _sample(name: str, **labels) -> float:
+    from prometheus_client import REGISTRY
+
+    return REGISTRY.get_sample_value(name, labels) or 0.0
+
+
+class _Delta:
+    """Reads a metric sample as the change since this object was created."""
+
+    def __init__(self, name: str, **labels) -> None:
+        self.name, self.labels, self.start = name, labels, _sample(name, **labels)
+
+    def __call__(self) -> float:
+        return _sample(self.name, **self.labels) - self.start
+
+
+async def test_canary_success_and_fallback_are_counted_with_latency(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "OPENSEARCH_CANARY_PERCENT", 100)
+    ok = _Delta("rag_retrieval_requests_total", backend="opensearch", role="served", outcome="ok")
+    err = _Delta("rag_retrieval_requests_total", backend="opensearch", role="served", outcome="error")
+    fallback = _Delta("rag_retrieval_requests_total", backend="qdrant", role="fallback", outcome="ok")
+    latency = _Delta("rag_retrieval_latency_seconds_count", backend="opensearch", role="served")
+
+    await _run(FakeQdrant(), FakeSearch())
+    assert (ok(), err(), fallback()) == (1, 0, 0)
+    await _run(FakeQdrant(), FakeSearch(fail=True))
+    assert (ok(), err(), fallback()) == (1, 1, 1) and latency() == 2
+
+
+async def test_a_timeout_is_counted_as_a_timeout_not_an_error(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "OPENSEARCH_CANARY_PERCENT", 100)
+    monkeypatch.setattr(settings, "OPENSEARCH_RETRIEVAL_TIMEOUT_SECONDS", 0.05)
+    timeout = _Delta("rag_retrieval_requests_total", backend="opensearch", role="served", outcome="timeout")
+    error = _Delta("rag_retrieval_requests_total", backend="opensearch", role="served", outcome="error")
+    await _run(FakeQdrant(), FakeSearch(delay=1.0))
+    assert (timeout(), error()) == (1, 0)
+
+
+async def test_shadow_records_overlap_empty_mismatch_and_errors(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "OPENSEARCH_SHADOW_ENABLED", True)
+    monkeypatch.setattr(settings, "OPENSEARCH_SHADOW_PERCENT", 100)
+    compared = _Delta("rag_shadow_requests_total", result="compared")
+    errored = _Delta("rag_shadow_requests_total", result="opensearch_error")
+    mismatch = _Delta("rag_shadow_empty_mismatch_total")
+    overlap_sum = _Delta("rag_shadow_overlap_ratio_sum")
+    shadow_calls = _Delta("rag_retrieval_requests_total", backend="opensearch", role="shadow", outcome="ok")
+
+    await _run(FakeQdrant(texts=("a", "b")), FakeSearch(texts=()))  # OpenSearch empty, Qdrant not
+    assert (compared(), mismatch(), overlap_sum(), shadow_calls()) == (1, 1, 0.0, 1)
+    await _run(FakeQdrant(texts=("a", "b")), FakeSearch(texts=("a",), filename="q.pdf"))  # half overlap, no mismatch
+    assert (compared(), mismatch(), overlap_sum()) == (2, 1, 0.5)
+    await _run(FakeQdrant(), FakeSearch(fail=True))
+    assert errored() == 1 and compared() == 2
+
+
+async def test_cross_tenant_results_are_counted_when_dropped(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "OPENSEARCH_CANARY_PERCENT", 100)
+    dropped = _Delta("rag_retrieval_cross_tenant_dropped_total")
+    await _run(FakeQdrant(), FakeSearch(tenant="someone-else"))
+    assert dropped() == 2
+
+
+async def test_default_qdrant_path_counts_a_served_call_and_never_touches_opensearch_metrics() -> None:
+    served = _Delta("rag_retrieval_requests_total", backend="qdrant", role="served", outcome="ok")
+    os_any = _Delta("rag_retrieval_latency_seconds_count", backend="opensearch", role="served")
+    await _run(FakeQdrant(), FakeSearch())
+    assert served() == 1 and os_any() == 0

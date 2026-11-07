@@ -1,0 +1,116 @@
+# Alert rules for the OpenSearch chat-retrieval canary. Thresholds come from docs/RAG_OPENSEARCH_CANARY_PLAN.md
+# (recommended defaults, unmeasured). Each ratio alert also requires a minimum sample so a few requests cannot trip it.
+# Nothing here rolls anything back: the action named in each annotation is a manual step.
+groups:
+  - name: rag-opensearch-canary
+    rules:
+      - alert: RagOpenSearchCanaryErrorBurst
+        expr: |
+          (
+            sum(increase(rag_retrieval_requests_total{backend="opensearch",role="served",outcome=~"error|timeout"}[15m]))
+            / sum(increase(rag_retrieval_requests_total{backend="opensearch",role="served"}[15m]))
+          ) > 0.05
+          and sum(increase(rag_retrieval_requests_total{backend="opensearch",role="served"}[15m])) >= 20
+        labels:
+          severity: critical
+        annotations:
+          summary: "OpenSearch chat retrieval error rate above 5% over 15 minutes"
+          action: "Set OPENSEARCH_ROLLBACK=true the same working day (Qdrant is already answering failed requests)."
+
+      - alert: RagOpenSearchCanaryErrorRateHigh
+        expr: |
+          (
+            sum(increase(rag_retrieval_requests_total{backend="opensearch",role="served",outcome=~"error|timeout"}[24h]))
+            / sum(increase(rag_retrieval_requests_total{backend="opensearch",role="served"}[24h]))
+          ) > 0.01
+          and sum(increase(rag_retrieval_requests_total{backend="opensearch",role="served"}[24h])) >= 200
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OpenSearch canary error rate above the 1% stage gate (24h)"
+          action: "Do not advance the stage."
+
+      - alert: RagOpenSearchShadowErrorRateHigh
+        expr: |
+          (
+            sum(increase(rag_retrieval_requests_total{backend="opensearch",role="shadow",outcome=~"error|timeout"}[24h]))
+            / sum(increase(rag_retrieval_requests_total{backend="opensearch",role="shadow"}[24h]))
+          ) > 0.01
+          and sum(increase(rag_retrieval_requests_total{backend="opensearch",role="shadow"}[24h])) >= 200
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OpenSearch shadow error rate above 1% (24h)"
+          action: "Do not move from shadow to canary."
+
+      - alert: RagOpenSearchLatencyP95High
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(rag_retrieval_latency_seconds_bucket{backend="opensearch"}[1h]))) > 0.3
+          and sum(increase(rag_retrieval_latency_seconds_count{backend="opensearch"}[1h])) >= 20
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OpenSearch retrieval p95 above the 300 ms budget"
+
+      - alert: RagOpenSearchLatencyP99High
+        expr: |
+          histogram_quantile(0.99, sum by (le) (rate(rag_retrieval_latency_seconds_bucket{backend="opensearch"}[1h]))) > 0.8
+          and sum(increase(rag_retrieval_latency_seconds_count{backend="opensearch"}[1h])) >= 20
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OpenSearch retrieval p99 above the 800 ms budget"
+
+      - alert: RagOpenSearchLatencyVsQdrant
+        expr: |
+          (
+            histogram_quantile(0.95, sum by (le) (rate(rag_retrieval_latency_seconds_bucket{backend="opensearch"}[1h])))
+            / histogram_quantile(0.95, sum by (le) (rate(rag_retrieval_latency_seconds_bucket{backend="qdrant",role="served"}[1h])))
+          ) > 1.5
+          and sum(increase(rag_retrieval_latency_seconds_count{backend="opensearch"}[1h])) >= 20
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OpenSearch retrieval p95 above 1.5x Qdrant's"
+          action: "Baseline is all served Qdrant traffic, not only the shadowed requests."
+
+      - alert: RagOpenSearchShadowEmptyMismatch
+        expr: |
+          (
+            sum(increase(rag_shadow_empty_mismatch_total[24h]))
+            / sum(increase(rag_shadow_requests_total{result="compared"}[24h]))
+          ) > 0.02
+          and sum(increase(rag_shadow_requests_total{result="compared"}[24h])) >= 200
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OpenSearch returned nothing where Qdrant had results in more than 2% of shadowed requests"
+          action: "Do not advance; investigate before the canary stage."
+
+      - alert: RagOpenSearchShadowOverlapLow
+        expr: |
+          (
+            sum(increase(rag_shadow_overlap_ratio_sum[24h]))
+            / sum(increase(rag_shadow_overlap_ratio_count[24h]))
+          ) < 0.30
+          and sum(increase(rag_shadow_overlap_ratio_count[24h])) >= 200
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: "Mean shadow overlap below 0.30"
+          action: "Investigate only. Overlap compares two differently chunked and ranked systems and is never a rollback trigger alone."
+
+      - alert: RagOpenSearchCrossTenantResult
+        expr: increase(rag_retrieval_cross_tenant_dropped_total[5m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "OpenSearch returned a result from another tenant (it was dropped before use)"
+          action: "Zero tolerance: set OPENSEARCH_ROLLBACK=true immediately and investigate."
