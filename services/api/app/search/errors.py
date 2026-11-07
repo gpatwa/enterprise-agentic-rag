@@ -24,6 +24,23 @@ class OpenSearchError(RuntimeError):
         self.status_code = status_code
         self.cause = cause
 
+    def __reduce__(self) -> tuple[Any, ...]:
+        # Keyword-only construction breaks default exception pickling, which turned every provider failure raised
+        # inside a Ray worker into "Failed to deserialize exception". The cause is dropped: clients' exceptions
+        # are not always picklable and the code, message and status already carry the diagnosis.
+        return (
+            _rebuild_error,
+            (self.code, self.args[0] if self.args else "", self.retryable, self.operation, self.status_code),
+        )
+
+
+def _rebuild_error(
+    code: str, message: str, retryable: bool, operation: str, status_code: int | None
+) -> OpenSearchError:
+    return OpenSearchError(
+        code=code, message=message, retryable=retryable, operation=operation, status_code=status_code
+    )
+
 
 def normalize_opensearch_exception(
     error: BaseException,

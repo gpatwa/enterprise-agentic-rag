@@ -161,11 +161,20 @@ class OpenSearchProvider:
         }
 
         if not await self._index_exists(index_name):
-            await self._with_retry(
-                "create_index",
-                lambda: self._client.indices.create(index=index_name, body=definition),
-            )
-            return
+
+            async def create() -> bool:
+                try:
+                    await self._client.indices.create(index=index_name, body=definition)
+                except Exception as error:
+                    # Concurrent writers (parallel Ray write tasks, several workers) can all see "missing" and
+                    # race to create. The loser must validate the winner's mapping, not fail.
+                    if _is_already_exists(error):
+                        return False
+                    raise
+                return True
+
+            if await self._with_retry("create_index", create):
+                return
 
         existing = await self._with_retry(
             "get_mapping",
@@ -970,6 +979,13 @@ class OpenSearchProvider:
         """Close the local circuit after an operator or readiness reset."""
         self._consecutive_failures = 0
         self._circuit_open_until = None
+
+
+def _is_already_exists(error: BaseException) -> bool:
+    info = getattr(error, "info", None)
+    nested = info.get("error") if isinstance(info, dict) else None
+    error_type = nested.get("type") if isinstance(nested, dict) else None
+    return error_type == "resource_already_exists_exception" or "resource_already_exists_exception" in str(error)
 
 
 def _is_not_found(error: BaseException) -> bool:

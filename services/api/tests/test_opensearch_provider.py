@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from app.search.errors import OpenSearchError
 from app.search.opensearch import OpenSearchProvider
 
 
@@ -700,3 +701,99 @@ def test_client_options_use_api_key_header():
     )
 
     assert provider._client_options()["headers"] == {"Authorization": "ApiKey encoded-key"}
+
+
+class _RacingIndices(FakeIndices):
+    """Reports the index as missing, then loses the create race to another writer."""
+
+    def __init__(self, mapping, error):
+        super().__init__(exists=False, mapping=mapping)
+        self.create_error = error
+
+    async def create(self, *, index, body):
+        raise self.create_error
+
+
+def _race_spec():
+    from app.search.models import SearchIndexSpec
+
+    return SearchIndexSpec(
+        alias="support-search",
+        generation="support-search-v1",
+        schema_version="support-search-v1",
+        vector_dimensions=768,
+        embedding_model_version="embed-v1",
+    )
+
+
+def _race_mapping(dimensions=768):
+    from app.search.mappings import SUPPORT_SEARCH_MAPPING_VERSION, build_support_index_definition
+
+    expected = build_support_index_definition(dimensions)
+    expected["mappings"]["_meta"] = {
+        "mapping_version": SUPPORT_SEARCH_MAPPING_VERSION,
+        "schema_version": "support-search-v1",
+        "embedding_model_version": "embed-v1",
+    }
+    return expected["mappings"]
+
+
+@pytest.mark.asyncio
+async def test_ensure_index_losing_a_create_race_validates_the_winners_mapping():
+    error = StatusError(400, info={"error": {"type": "resource_already_exists_exception", "reason": "exists"}})
+    client = FakeClient()
+    client.indices = _RacingIndices(_race_mapping(), error)
+    provider = OpenSearchProvider(config=_config(), client=client)
+    await provider.connect()
+
+    await provider.ensure_index(_race_spec())
+
+    assert client.indices.get_mapping_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_ensure_index_losing_a_create_race_still_rejects_an_incompatible_winner():
+    error = StatusError(400, info={"error": {"type": "resource_already_exists_exception", "reason": "exists"}})
+    client = FakeClient()
+    client.indices = _RacingIndices(_race_mapping(1536), error)
+    provider = OpenSearchProvider(config=_config(), client=client)
+    await provider.connect()
+
+    with pytest.raises(ValueError, match="incompatible mapping"):
+        await provider.ensure_index(_race_spec())
+
+
+@pytest.mark.asyncio
+async def test_ensure_index_other_create_failures_still_raise():
+    client = FakeClient()
+    client.indices = _RacingIndices(
+        _race_mapping(), StatusError(400, info={"error": {"type": "mapper_parsing_exception"}})
+    )
+    provider = OpenSearchProvider(config=_config(), client=client)
+    await provider.connect()
+
+    with pytest.raises(OpenSearchError):
+        await provider.ensure_index(_race_spec())
+    assert client.indices.get_mapping_calls == 0
+
+
+def test_provider_errors_survive_pickling_so_ray_workers_can_report_them():
+    import pickle
+
+    original = OpenSearchError(
+        code="mapping",
+        message="OpenSearch bulk failed: mapping",
+        retryable=False,
+        operation="bulk",
+        status_code=400,
+        cause=ValueError("not picklable-safe"),
+    )
+    restored = pickle.loads(pickle.dumps(original))
+    assert isinstance(restored, OpenSearchError)
+    assert (restored.code, restored.retryable, restored.operation, restored.status_code) == (
+        "mapping",
+        False,
+        "bulk",
+        400,
+    )
+    assert str(restored) == "OpenSearch bulk failed: mapping"
