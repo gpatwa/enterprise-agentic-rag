@@ -21,6 +21,11 @@ jobs:
     env:
       API_IMAGE: ${{ secrets.DISCOVERY_ACR_LOGIN_SERVER }}/discovery-api:${{ github.sha }}
       WEB_IMAGE: ${{ secrets.DISCOVERY_ACR_LOGIN_SERVER }}/discovery-web:${{ github.sha }}
+      # Web sign-in settings come from Terraform (enable_api_auth) through repository variables set by
+      # `make discovery-repo-vars`; they are all set or all empty, never typed by hand.
+      VITE_ENTRA_CLIENT_ID: ${{ vars.DISCOVERY_ENTRA_CLIENT_ID }}
+      VITE_ENTRA_TENANT_ID: ${{ vars.DISCOVERY_ENTRA_TENANT_ID }}
+      VITE_ENTRA_API_SCOPE: ${{ vars.DISCOVERY_ENTRA_API_SCOPE }}
     steps:
       - uses: actions/checkout@v4
       - uses: azure/login@v2
@@ -28,11 +33,24 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Check the web sign-in settings are complete
+        run: |
+          set=0
+          for v in "$VITE_ENTRA_CLIENT_ID" "$VITE_ENTRA_TENANT_ID" "$VITE_ENTRA_API_SCOPE"; do [ -n "$v" ] && set=$((set + 1)); done
+          if [ "$set" -ne 0 ] && [ "$set" -ne 3 ]; then
+            echo "::error::Only $set of the 3 DISCOVERY_ENTRA_* repository variables are set; a partial web sign-in config would break the app. Run 'make discovery-repo-vars'."
+            exit 1
+          fi
+          if [ "$set" -eq 0 ]; then echo "Web sign-in settings are empty: building the web app without a token (API auth is off)."; fi
       - name: Build and push the images
         run: |
           az acr login --name "${{ secrets.DISCOVERY_ACR_LOGIN_SERVER }}"
           docker build --platform linux/amd64 -t "$API_IMAGE" -f services/discovery-api/Dockerfile .
-          docker build --platform linux/amd64 -t "$WEB_IMAGE" apps/discovery-web
+          docker build --platform linux/amd64 \
+            --build-arg VITE_ENTRA_CLIENT_ID="$VITE_ENTRA_CLIENT_ID" \
+            --build-arg VITE_ENTRA_TENANT_ID="$VITE_ENTRA_TENANT_ID" \
+            --build-arg VITE_ENTRA_API_SCOPE="$VITE_ENTRA_API_SCOPE" \
+            -t "$WEB_IMAGE" apps/discovery-web
           docker push "$API_IMAGE"
           docker push "$WEB_IMAGE"
       - name: Update the API and the web app

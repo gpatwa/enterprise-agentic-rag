@@ -51,6 +51,7 @@ class TokenVerifier:
         principal_map: Mapping[str, str] | None = None,
         jwks_url: str | None = None,
         issuer: str | None = None,
+        required_scope: str | None = None,
         leeway_seconds: int = 60,
         jwks_ttl_seconds: float = 3600.0,
         timeout: float = 5.0,
@@ -63,6 +64,7 @@ class TokenVerifier:
         self._audience = audience
         self._tenant_map = dict(tenant_map)
         self._principal_map = dict(principal_map or {})
+        self._required_scope = required_scope
         self._issuer = issuer or f"https://login.microsoftonline.com/{entra_tenant_id}/v2.0"
         self._jwks_url = jwks_url or f"https://login.microsoftonline.com/{entra_tenant_id}/discovery/v2.0/keys"
         self._leeway = leeway_seconds
@@ -125,6 +127,9 @@ class TokenVerifier:
             raise AuthError(401, f"invalid token ({type(exc).__name__})") from exc
         if claims.get("tid") != self._entra_tenant:
             raise AuthError(401, "wrong directory")
+        if self._required_scope and self._required_scope not in str(claims.get("scp", "")).split():
+            # An ID token for this same app carries the same audience; only an access token for the exposed scope passes.
+            raise AuthError(401, "token lacks the required scope")
         subject = claims.get("oid")
         if not isinstance(subject, str) or not subject:
             raise AuthError(401, "no object id")

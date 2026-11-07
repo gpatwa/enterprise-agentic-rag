@@ -1,7 +1,10 @@
 api_image_tag = "<commit-sha>"
 web_image_tag = "<commit-sha>"
-# Object IDs of the accounts allowed to sign in: az ad user show --id <email-or-upn> --query id -o tsv
-allowed_user_object_ids = ["00000000-0000-0000-0000-000000000000"]
+# Who may sign in is the committed access list (access.auto.tfvars): user principal names, no IDs needed.
+# Optional extras, by object ID: az ad user show --id <email-or-upn> --query id -o tsv
+# allowed_user_object_ids = ["00000000-0000-0000-0000-000000000000"]
 # Optional second layer (empty = sign-in only); 0.0.0.0/0 is rejected
 # allowed_cidrs = ["203.0.113.7/32"]
 budget_emails = ["owner@example.com"]
+# Make the API require Entra tokens (and the web build carry the sign-in settings). See README before turning on.
+# enable_api_auth = true

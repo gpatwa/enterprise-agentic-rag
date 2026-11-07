@@ -98,3 +98,22 @@ Local only; no Azure or other cloud resource, paid API or ESCI file was touched.
 - Web: the results list sat inside a live region that was mounted only after the first answer (so the first results and loading were not reliably announced, and every result would be re-read on each change); a slow earlier response could overwrite a newer one; paging, a locale change and Retry used whatever was typed in the box instead of the search that was sent, and Retry after a failed page 2 asked for the old page; keyboard focus was lost when the pressed pager button became disabled.
 
 **Not verified:** real ESCI files and their Parquet column types; any index above 25,000 documents; the pilot VM; real relevance; screen-reader behavior in a real browser (the web checks are jsdom attribute and focus assertions, not an assistive-technology test); the CI results of this change (see the pull request).
+
+## Update 2026-11-07: zero-manual setup, Discovery Terraform (work item A) - declared and planned, not applied
+
+Design: `docs/ZERO_MANUAL_SETUP_DESIGN.md`. **Nothing was applied, no Azure or GitHub setting was changed, and no workflow was run.** The evidence is `terraform validate` and a saved read-only `terraform plan` against the real state (12 to add, 2 to change in place, 0 to destroy), plus unit tests.
+
+**Declared in `infra/terraform/azure-discovery-pilot`**
+- Sign-in app doubles as the API: SPA redirect URI, the `access_as_user` scope with identifier URI `api://<client id>`, `requested_access_token_version = 2`, admin consent for that scope. The easy-auth callback is unchanged.
+- Access list as code (`access.auto.tfvars`, seeded with the signed-in operator only, profile `user-0001`): object IDs, app-role assignments, and the generated `DISCOVERY_ENTRA_PRINCIPAL_MAP` and `DISCOVERY_ENTRA_TENANT_MAP`.
+- API wiring behind `enable_api_auth` (default false); with it true the API gets the auth settings and the web build settings come out as repository variables.
+- VM workflow without secrets: a GitHub OIDC federated credential, a custom role limited to read/start/deallocate on the search VM, `make discovery-repo-vars` (and `-plan`) to set the repository variables, and `discovery-search-vm.yml` now reads `vars.*`.
+- A Discovery-owned Azure OpenAI account (key authentication disabled) with a small `text-embedding-3-small` deployment and `Cognitive Services OpenAI User` for the apps' identity. This is the Discovery-owned account the 2026-11-06 boundary note anticipated; the embedding deployment on the Compass account is untouched and can be retired once this one is applied.
+
+**Code**
+- The API verifier can require a scope (`DISCOVERY_ENTRA_REQUIRED_SCOPE`), so an ID token for the same app is not accepted as an API token. The default audience and issuer already match a version 2 token; checked against the real tenant's published issuer and key endpoint and with a realistic v2 claim set in tests. A version 1 token is refused (fail closed).
+- The Azure OpenAI embedder supports `DISCOVERY_AZURE_OPENAI_AUTH=key|managed_identity|az_cli` (default `key`), with a clear non-secret error when the token or the role is missing. Embedding calls remain off.
+
+**Not verified:** a token issued by Entra for the new app; MSAL sign-in against the new redirect URI (the registered URI ends in a slash and the web app must send exactly that); the admin-consent grant (rights, propagation); GitHub OIDC sign-in and that the narrow VM role is enough for `azure/login` and `az vm`; quota for the GlobalStandard embedding deployment; the managed-identity token path and 403 behaviour on a real account. Rollback per change is in the stack README.
+
+**Pending for the owner (new):** review the saved plan and apply; then `make discovery-repo-vars`; decide whether the `discovery-pilot` GitHub environment needs reviewers or a branch restriction; whether the committed access list (a tenant-qualified user principal name) is acceptable in the repository. The deploy workflow still signs in with hand-set secrets (it has no deploy identity in Terraform yet).

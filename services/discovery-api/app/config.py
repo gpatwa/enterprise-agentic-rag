@@ -66,9 +66,11 @@ class DiscoverySettings(BaseModel):
     azure_openai_deployment: str | None = Field(default=None, max_length=255)
     azure_openai_api_key: str | None = Field(default=None, max_length=512, repr=False)
     azure_openai_api_version: str = Field(default="2024-10-21", max_length=32)
+    azure_openai_auth: Literal["key", "managed_identity", "az_cli"] = "key"
     entra_tenant_id: str | None = Field(default=None, max_length=64)
     entra_audience: str | None = Field(default=None, max_length=255)
     entra_jwks_url: str | None = Field(default=None, max_length=512)
+    entra_required_scope: str | None = Field(default=None, max_length=128)
     entra_tenant_map: dict[str, str] = Field(default_factory=dict)
     entra_principal_map: dict[str, str] = Field(default_factory=dict)
     features: FeatureFlags = Field(default_factory=FeatureFlags)
@@ -96,8 +98,12 @@ class DiscoverySettings(BaseModel):
                 raise ValueError("embedding_provider=azure_openai is a model call and requires no_model=False")
             if self.search_backend != "opensearch":
                 raise ValueError("embedding_provider=azure_openai requires search_backend=opensearch")
-            if not (self.azure_openai_endpoint and self.azure_openai_deployment and self.azure_openai_api_key):
-                raise ValueError("azure_openai needs an endpoint, a deployment and an api key")
+            if not (self.azure_openai_endpoint and self.azure_openai_deployment):
+                raise ValueError("azure_openai needs an endpoint and a deployment")
+            if self.azure_openai_auth == "key" and not self.azure_openai_api_key:
+                raise ValueError("azure_openai_auth=key needs an api key (or use managed_identity or az_cli)")
+            if self.azure_openai_auth != "key" and self.azure_openai_api_key:
+                raise ValueError("an api key is set but azure_openai_auth is not key; remove the key or the mode")
             if not self.azure_openai_endpoint.startswith("https://"):
                 raise ValueError("azure_openai_endpoint must be https")
         if self.auth_enabled:
@@ -188,9 +194,11 @@ def settings_from_env(environ: Mapping[str, str] | None = None) -> DiscoverySett
         "AZURE_OPENAI_DEPLOYMENT": "azure_openai_deployment",
         "AZURE_OPENAI_API_KEY": "azure_openai_api_key",
         "AZURE_OPENAI_API_VERSION": "azure_openai_api_version",
+        "AZURE_OPENAI_AUTH": "azure_openai_auth",
         "ENTRA_TENANT_ID": "entra_tenant_id",
         "ENTRA_AUDIENCE": "entra_audience",
         "ENTRA_JWKS_URL": "entra_jwks_url",
+        "ENTRA_REQUIRED_SCOPE": "entra_required_scope",
         "ENTRA_TENANT_MAP": "entra_tenant_map",
         "ENTRA_PRINCIPAL_MAP": "entra_principal_map",
     }
@@ -218,7 +226,7 @@ def settings_from_env(environ: Mapping[str, str] | None = None) -> DiscoverySett
             values[field_name] = float(raw)
         elif field_name == "environment":
             values[field_name] = Environment(raw.strip().lower())
-        elif field_name == "search_backend":
+        elif field_name in {"search_backend", "azure_openai_auth"}:
             values[field_name] = raw.strip().lower()
         else:
             values[field_name] = raw

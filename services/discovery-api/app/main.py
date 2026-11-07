@@ -56,6 +56,7 @@ def create_app() -> FastAPI:
             tenant_map=settings.entra_tenant_map,
             principal_map=settings.entra_principal_map,
             jwks_url=settings.entra_jwks_url,
+            required_scope=settings.entra_required_scope,
         )
         if settings.auth_enabled
         else None
