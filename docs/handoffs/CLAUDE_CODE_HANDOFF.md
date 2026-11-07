@@ -15,9 +15,12 @@ state at the time of writing, not an instruction to force the tree to match it.
   pull requests; the long-lived ADS branch described in earlier versions of this
   file has been merged. Check `git status -sb`, the current branch, `git log` and
   `gh pr list` before acting; this section is a snapshot, not an instruction.
-- Snapshot at writing: `main` at `468732d` (PR #88). PR #89 (Discovery
-  product-search evaluation harness) was open. Everything below that says "merged"
-  was checked against `gh pr view`.
+- Snapshot at writing (2026-11-06): `main` at `b2bcdda` (PR #109), no open PRs.
+  Everything below that says "merged" was checked against `gh pr view`.
+- On 2026-11-06 the owner asked for the remaining work to be completed without
+  approval stops. Since then I merged my own PRs once every check was green.
+  That does not extend to human gates, secrets, Entra app registrations, repo
+  settings, or other products' resources; those stay the owner's.
 - The user merges with "merge #N" (or "merge #N when CI is green", meaning wait
   for every check). The slow Analytics job takes about 12-17 minutes. Docs-only and
   path-filtered PRs may show no checks.
@@ -56,8 +59,13 @@ only when the owner asks in the current task; plan and apply are separate steps.
   (separate resource group, registry and state key; web and API as Container Apps
   scaling to zero; Entra sign-in with assignment required; OpenSearch on an
   on-demand VM, deallocated when idle). Costs are list-price estimates only; Azure
-  Cost Management has not been read. The `discovery-search-vm.yml` start/stop
-  workflow has never run (it needs owner-set secrets).
+  Cost Management was read once (2026-11-05, 1.11 USD month to date). The
+  `discovery-search-vm.yml` start/stop workflow has never run (it needs
+  owner-set secrets). On 2026-11-06 a private Blob storage account
+  (`discoverypildatab1lyvi`, container `datasets`, Entra-only) was applied from
+  `blob.tf` and a synthetic subset push/pull verified. Model deployments
+  `gpt-6-luna` and `text-embedding-3-small` were added to `compass-pilot-openai`
+  (a Compass resource; see `docs/DISCOVERY_STATUS.md` for undo commands).
 - Resolution Intelligence (`apps/support-web`, `services/api`) is not deployed.
 
 ## Discovery State
@@ -69,13 +77,19 @@ Data Operations.
   model. `/api/discovery/v1/search`, `/home` and the interaction routes are mounted
   over the demo catalog. Production settings validation requires non-fake
   providers and auth, TLS and audit logging; the pilot runs as `staging`.
-- Phase 2a is built (OpenSearch lexical, vector, hybrid with a local hashing
-  embedder, and a fallback). The hashing embedder matches word overlap, not
-  meaning. Real data and PostgreSQL are not started.
+- Phase 2a is built (OpenSearch lexical, vector, hybrid, and a fallback). The
+  hashing embedder matches word overlap, not meaning; the Azure OpenAI embedder
+  (384 dimensions) was verified live on 43 catalog documents. Optional Entra
+  bearer-token validation (`DISCOVERY_AUTH_ENABLED`, off by default) and optional
+  MSAL sign-in in the web app are merged; the web needs SPA and API app
+  registrations (owner) before it can be turned on. The owner chose no
+  PostgreSQL; the store is files plus Azure Blob.
 - ESCI work (`docs/DISCOVERY_ESCI_SCOPE.md`, `docs/DISCOVERY_INGESTION_RUNBOOK.md`):
   the owner chose no database (load from a file) and a local benchmark first. E1
-  ingestion (`app/ingest`) is merged; E4 evaluation (`app/evaluation/product_search.py`)
-  was in PR #89. **No ESCI file has been downloaded.** ESCI's repository is
+  ingestion (`app/ingest`, with a Blob store), E3 indexing, E4 evaluation and
+  product search (`POST /api/discovery/v1/products/search` plus a web section,
+  all-words-first matching, no age or safety gate for products) are merged and
+  verified on synthetic data against a local OpenSearch. **No ESCI file has been downloaded.** ESCI's repository is
   Apache-2.0, no separate data license was found, and Amazon's own terms for the
   product text were not read. Every manifest says `license_status: unconfirmed`;
   hosting the data is the owner's decision and needs a separate cloud authorization.
@@ -420,10 +434,17 @@ words in the program manifest.
   policy are still PROPOSED), the reference corpus, the five ADS-079 sign-offs, or
   independent review, and they do not certify any semantic contract. Implemented
   packets stay `review`; M1 stays `in_progress`.
-- Discovery: ESCI data terms and hosting (E0, E7), eligibility policy for products
-  without age or safety data, embeddings model and its cost, real catalog source,
-  PostgreSQL (only when real data needs an authoritative store), and any further
-  cloud change.
+- Discovery: ESCI data terms and hosting (E0, E7), whether products keep "no age
+  or safety gate", whether embeddings stay on the Compass account, the Entra app
+  registrations for web sign-in, the five VM-workflow secrets, repo auto-merge
+  settings ("Allow auto-merge" plus a ruleset requiring "CI gate"), and any
+  further cloud change.
+- RAG pipeline to OpenSearch (`docs/RAG_PIPELINE_OPENSEARCH_INDEXER_PLAN.md`):
+  RO-1 to RO-6 are merged (Ray `write_datasink` adapter, `OpenSearchIndexer`
+  behind `INGEST_VECTOR_SINKS`, real-node test that also fixed an `ensure_index`
+  drift bug, vector-dimension finding, reader behind rollout flags, golden-corpus
+  comparison). `docs/RAG_OPENSEARCH_CANARY_PLAN.md` (RO-7) is a DRAFT awaiting the
+  owner. Nothing is deployed or enabled; Ray 2.9.x was not tested.
 - Analytics warehouses: which warehouse first, sandbox accounts and credentials for
   W8, whether to include W9.
 - Landing: the owner sets the Static Web Apps deploy secret; the leadership
