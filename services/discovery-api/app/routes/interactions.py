@@ -177,17 +177,24 @@ class LocalInteractionService:
         )
         return FeedbackResponse(receipt=result.receipts[0])
 
-    def explain(self, decision_ref: str) -> ExplanationResponse:
+    def explain(self, decision_ref: str, tenant_id: str | None = None) -> ExplanationResponse:
+        """Look up one decision. With ``tenant_id`` set, another tenant's decision is reported as unknown."""
         if not isinstance(decision_ref, str) or not decision_ref.strip():
             raise ValueError("decision_ref must be non-empty")
         record = next((item for item in self._audit.records if item.event_id == decision_ref), None)
-        if record is None:
+        if record is None or (tenant_id is not None and record.tenant_digest != _tenant_digest(tenant_id)):
             raise KeyError("unknown decision reference")
         return _explanation(record)
 
 
 def _digest(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _tenant_digest(tenant_id: str) -> str:
+    from app.audit.ranking import digest
+
+    return digest(tenant_id)
 
 
 def _explanation(record: RankingAuditRecord) -> ExplanationResponse:
@@ -222,8 +229,10 @@ def submit_feedback(
 
 @router.get("/explanations/{decision_ref}", response_model=ExplanationResponse)
 def get_explanation(decision_ref: str, identity: Identity | None = Depends(require_identity)) -> ExplanationResponse:
+    # With auth on the tenant comes from the verified token. With auth off the request carries no tenant, so
+    # there is nothing to check and any reference is visible (local development only).
     try:
-        return _service.explain(decision_ref)
+        return _service.explain(decision_ref, identity.tenant_id if identity else None)
     except (KeyError, ValueError) as exc:
         raise HTTPException(status_code=404, detail="explanation_not_found") from exc
 

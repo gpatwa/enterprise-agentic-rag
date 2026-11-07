@@ -326,3 +326,35 @@ def test_environment_variables_configure_auth_and_reject_bad_maps() -> None:
     for bad in ("not json", "[1]", json.dumps({"a": 1})):
         with pytest.raises(ValueError, match="JSON object of strings"):
             settings_from_env({**env, "DISCOVERY_ENTRA_TENANT_MAP": bad})
+
+
+def test_explanations_are_only_visible_to_the_decisions_own_tenant(secured: TestClient) -> None:
+    from datetime import datetime, timezone
+
+    from app.audit.ranking import AuditOutcome, PolicyOutcome, RankingAuditRecord, checksum, digest
+    from app.routes import interactions
+
+    def record(event_id: str, tenant: str) -> RankingAuditRecord:
+        return RankingAuditRecord(
+            event_id=event_id,
+            tenant_digest=digest(tenant),
+            request_digest=digest("r"),
+            decision_digest=digest("d"),
+            outcome=AuditOutcome.COMPLETED,
+            eligibility_outcome=PolicyOutcome.ALLOWED,
+            policy_outcome=PolicyOutcome.ALLOWED,
+            candidate_count=1,
+            eligible_count=1,
+            selected_count=1,
+            occurred_at=datetime.now(timezone.utc),
+            record_checksum=checksum({"x": event_id}),
+        )
+
+    interactions._service._audit.append(record("own-decision", "tenant-01"))
+    interactions._service._audit.append(record("other-decision", "tenant-02"))
+    headers = _bearer(_fresh())  # a tenant-01 token
+
+    assert secured.get("/api/discovery/explanations/own-decision", headers=headers).status_code == 200
+    other = secured.get("/api/discovery/explanations/other-decision", headers=headers)
+    missing = secured.get("/api/discovery/explanations/never-existed", headers=headers)
+    assert other.status_code == 404 and other.json() == missing.json()
