@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 from collections.abc import Iterable
@@ -20,11 +21,13 @@ from app.execution.gateway import (
     ExecutionLimits,
     ExecutionResult,
     ExecutionTimeout,
+    QueryRejected,
     ResultAccumulator,
 )
 from app.execution.validation import validate_read_only_sql
 
 _QUERY_CANCELED = "57014"
+_MARKER = re.compile(r"(?<![:\w]):(p\d+)\b")
 
 
 class PostgresGateway:
@@ -41,7 +44,8 @@ class PostgresGateway:
 
     def __init__(self, engine: Any, *, allowed_tables: Iterable[str]) -> None:
         self._engine = engine
-        self._allowed_tables = frozenset(name.lower() for name in allowed_tables)
+        # Exact physical names: PostgreSQL folds only unquoted identifiers, so "Orders" and orders are different tables.
+        self._allowed_tables = frozenset(allowed_tables)
         if not self._allowed_tables:
             raise ValueError("at least one allowed table is required")
 
@@ -67,6 +71,8 @@ class PostgresGateway:
         cancellation: CancellationToken | None = None,
     ) -> ExecutionResult:
         self._check(plan)
+        if cancellation and cancellation.cancelled:  # a cancel sent to an idle connection is dropped, so never start
+            raise ExecutionCancelled("query was cancelled")
         started = time.perf_counter()
         timed_out = threading.Event()
         timer: threading.Timer | None = None
@@ -80,6 +86,8 @@ class PostgresGateway:
                     cancel = _cancel_hook(connection)
                     if cancellation:
                         cancellation.bind(cancel)
+                        if cancellation.cancelled:  # cancelled between the check above and the bind
+                            raise ExecutionCancelled("query was cancelled")
                     # statement_timeout is the server-side bound; the timer covers a stalled link.
                     timer = threading.Timer(limits.timeout_seconds + 1.0, lambda: (timed_out.set(), cancel()))
                     timer.start()
@@ -109,6 +117,8 @@ class PostgresGateway:
                     raise ExecutionCancelled("query was cancelled") from exc
                 raise ExecutionTimeout("query exceeded the execution timeout") from exc
             raise ExecutionError(f"query failed: {type(exc.orig).__name__}") from exc
+        except Exception as exc:  # noqa: BLE001 - pool, bind and driver-adapter errors can carry SQL, values or hosts.
+            raise ExecutionError(f"query failed: {type(exc).__name__}") from exc
         return ExecutionResult(
             dialect=self.dialect,
             columns=columns,
@@ -123,7 +133,12 @@ class PostgresGateway:
     def _check(self, plan: Any) -> None:
         if getattr(plan, "dialect", None) != self.dialect:
             raise DialectMismatch(f"plan dialect is not {self.dialect}")
-        validate_read_only_sql(plan.sql, dialect="postgres", allowed_tables=self._allowed_tables)
+        validate_read_only_sql(
+            plan.sql, dialect="postgres", allowed_tables=self._allowed_tables, case_sensitive_quoted=True
+        )
+        # An unbound marker would make the driver raise an error that quotes the SQL; refuse it before connecting.
+        if set(_MARKER.findall(plan.sql)) - set(plan.parameters):
+            raise QueryRejected("bind parameters do not match the query")
 
     @staticmethod
     def _begin_read_only(connection: Any, *, timeout_seconds: float) -> None:

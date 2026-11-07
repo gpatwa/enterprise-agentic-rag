@@ -460,6 +460,90 @@ def test_compiled_postgres_plan_passes_gateway_validation():
     validate_read_only_sql(plan.sql, dialect="postgres", allowed_tables=["sales_orders"])
 
 
+def test_postgres_pre_cancelled_token_never_starts_the_query():
+    # A cancel sent to an idle connection is dropped by the server, so a token cancelled before the call must stop it up front.
+    engine = _FakeEngine()
+    token = CancellationToken()
+    token.cancel()
+    with pytest.raises(ExecutionCancelled):
+        PostgresGateway(engine, allowed_tables=["sales_orders"]).execute(
+            _pg_plan(), limits=ExecutionLimits(), cancellation=token
+        )
+    assert not any(connection.options for connection in engine.connections)  # the query statement was never issued
+
+
+def test_postgres_cancel_that_lands_between_check_and_bind_still_stops_the_query():
+    engine = _FakeEngine()
+    token = CancellationToken()
+    original = engine.connect
+
+    def connect():
+        connection = original()
+        real_execute = connection.execute
+
+        def execute(clause, parameters=None):
+            result = real_execute(clause, parameters)
+            if str(clause).startswith("EXPLAIN"):
+                token.cancel()  # arrives while the gateway is still preparing
+            return result
+
+        connection.execute = execute
+        return connection
+
+    engine.connect = connect
+    with pytest.raises(ExecutionCancelled):
+        PostgresGateway(engine, allowed_tables=["sales_orders"]).execute(
+            _pg_plan(), limits=ExecutionLimits(), cancellation=token
+        )
+    assert not any(connection.options for connection in engine.connections)
+
+
+def test_postgres_unbound_marker_is_refused_before_connecting_and_does_not_echo_sql():
+    engine = _FakeEngine()
+    gateway = PostgresGateway(engine, allowed_tables=["sales_orders"])
+    plan = _plan(
+        "SELECT status FROM sales_orders WHERE amount > :p0 AND region = :p1", dialect="postgres", parameters={"p0": 1}
+    )
+    for call in (lambda: gateway.execute(plan, limits=ExecutionLimits()), lambda: gateway.estimate(plan)):
+        with pytest.raises(QueryRejected) as caught:
+            call()
+        assert "sales_orders" not in str(caught.value) and "region" not in str(caught.value)
+    assert engine.connections == []
+
+
+def test_postgres_non_driver_errors_are_opaque_too():
+    class Exploding(_FakeEngine):
+        def connect(self):
+            raise RuntimeError("could not reach db.internal.example as user svc password hunter2: SELECT secret FROM x")
+
+    gateway = PostgresGateway(Exploding(), allowed_tables=["sales_orders"])
+    with pytest.raises(ExecutionError) as caught:
+        gateway.execute(_pg_plan(), limits=ExecutionLimits())
+    assert str(caught.value) == "query failed: RuntimeError"
+
+
+def test_postgres_allowlist_is_case_exact_for_quoted_names_and_folds_unquoted_ones():
+    # "Orders" and orders are different tables in PostgreSQL; the allowlist must not conflate them.
+    def check(sql, allowed):
+        return validate_read_only_sql(sql, dialect="postgres", allowed_tables=allowed, case_sensitive_quoted=True)
+
+    check('SELECT 1 FROM "sales_orders"', ["sales_orders"])
+    check("SELECT 1 FROM SALES_ORDERS", ["sales_orders"])  # unquoted folds to lower case on the server
+    check('SELECT 1 FROM "Sales_Orders"', ["Sales_Orders"])
+    with pytest.raises(QueryRejected):
+        check('SELECT 1 FROM "Sales_Orders"', ["sales_orders"])
+    with pytest.raises(QueryRejected):
+        check('SELECT 1 FROM "sales_orders"', ["Sales_Orders"])
+    check('WITH "Recent" AS (SELECT id FROM sales_orders) SELECT id FROM "Recent"', ["sales_orders"])
+    with pytest.raises(QueryRejected):
+        check('WITH recent AS (SELECT id FROM sales_orders) SELECT id FROM "Recent"', ["sales_orders"])
+    # the default stays case-insensitive for engines that fold everything (DuckDB)
+    validate_read_only_sql('SELECT 1 FROM "Sales_Orders"', dialect="postgres", allowed_tables=["sales_orders"])
+    gateway = PostgresGateway(_FakeEngine(), allowed_tables=["sales_orders"])
+    with pytest.raises(QueryRejected):
+        gateway.execute(_pg_plan('SELECT status FROM "Sales_Orders"'), limits=ExecutionLimits())
+
+
 # ---- graph bridge ----
 
 

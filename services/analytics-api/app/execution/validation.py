@@ -76,8 +76,14 @@ def validate_read_only_sql(
     dialect: str,
     allowed_tables: Iterable[str],
     allowed_functions: Iterable[str] = DEFAULT_ALLOWED_FUNCTIONS,
+    case_sensitive_quoted: bool = False,
 ) -> exp.Expression:
-    """Return the parsed tree for one read-only query or raise `QueryRejected`."""
+    """Return the parsed tree for one read-only query or raise `QueryRejected`.
+
+    By default table names compare case-insensitively (right for DuckDB). With `case_sensitive_quoted` (PostgreSQL), a quoted
+    name must equal an allowlist entry exactly, because `"Orders"` and `orders` are different tables there; unquoted names are
+    folded to lower case, as the server does, and `allowed_tables` entries are then taken as exact physical names.
+    """
     try:
         statements = sqlglot.parse(sql, read=dialect)
     except SqlglotError as exc:
@@ -98,12 +104,21 @@ def validate_read_only_sql(
         if name.lower() not in permitted_functions:
             raise QueryRejected(f"function is not allowed: {name.lower()}")
 
-    cte_names = {cte.alias_or_name.lower() for cte in tree.find_all(exp.CTE)}
-    permitted_tables = {name.lower() for name in allowed_tables}
+    def fold(identifier: exp.Expression) -> str:
+        name = identifier.name
+        return name if case_sensitive_quoted and getattr(identifier, "quoted", False) else name.lower()
+
+    cte_names = set()
+    for cte in tree.find_all(exp.CTE):
+        alias = cte.args.get("alias")
+        if alias is not None and alias.this is not None:
+            cte_names.add(fold(alias.this))
+    permitted_tables = set(allowed_tables) if case_sensitive_quoted else {name.lower() for name in allowed_tables}
     for table in tree.find_all(exp.Table):
         if isinstance(table.this, exp.Func):
             raise QueryRejected("table-valued functions are not allowed")
-        qualified = ".".join(part.lower() for part in (table.catalog, table.db, table.name) if part)
+        parts = (table.args.get("catalog"), table.args.get("db"), table.this)
+        qualified = ".".join(fold(part) for part in parts if part is not None and part.name)
         if qualified in cte_names and not table.db:
             continue
         if qualified not in permitted_tables:
