@@ -30,6 +30,9 @@ resource "azurerm_cognitive_deployment" "embedding" {
   count                = var.enable_openai ? 1 : 0
   name                 = "text-embedding-3-small"
   cognitive_account_id = azurerm_cognitive_account.openai[0].id
+  # Azure applies this content-safety policy by default. Stating it keeps `plan` clean and stops Terraform from
+  # trying to remove it (an unset value plans as null).
+  rai_policy_name = "Microsoft.DefaultV2"
 
   model {
     format  = "OpenAI"

@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { authConfigFromEnv } from './auth';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { authConfigFromEnv, redirectUriFor } from './auth';
 import { createDiscoveryClient } from './client';
 
 describe('auth config', () => {
@@ -37,5 +39,19 @@ describe('client token header', () => {
     await client.searchProducts({ query: 'a' });
     await client.searchProducts({ query: 'b' });
     expect(source).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('redirect URI contract with Terraform', () => {
+  it('sends the origin with a trailing slash', () => {
+    expect(redirectUriFor('https://web.example.test')).toBe('https://web.example.test/');
+  });
+
+  it('matches the SPA redirect registered in Terraform, which also ends in a slash', () => {
+    const terraform = readFileSync(resolve(process.cwd(), '../../infra/terraform/azure-discovery-pilot/resources.tf'), 'utf8');
+    const registered = terraform.match(/single_page_application\s*\{\s*redirect_uris\s*=\s*\["https:\/\/\$\{local\.web_fqdn\}([^"]*)"\]/);
+    expect(registered).not.toBeNull();
+    expect(registered![1]).toBe('/');
+    expect(redirectUriFor('https://x.test')).toBe(`https://x.test${registered![1]}`);
   });
 });
