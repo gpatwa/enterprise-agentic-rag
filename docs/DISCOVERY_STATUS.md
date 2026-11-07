@@ -99,9 +99,9 @@ Local only; no Azure or other cloud resource, paid API or ESCI file was touched.
 
 **Not verified:** real ESCI files and their Parquet column types; any index above 25,000 documents; the pilot VM; real relevance; screen-reader behavior in a real browser (the web checks are jsdom attribute and focus assertions, not an assistive-technology test); the CI results of this change (see the pull request).
 
-## Update 2026-11-07: zero-manual setup, Discovery Terraform (work item A) - declared and planned, not applied
+## Update 2026-11-07: zero-manual setup, Discovery Terraform (work item A) - applied (see the section below this one for the result)
 
-Design: `docs/ZERO_MANUAL_SETUP_DESIGN.md`. **Nothing was applied, no Azure or GitHub setting was changed, and no workflow was run.** The evidence is `terraform validate` and a saved read-only `terraform plan` against the real state (12 to add, 2 to change in place, 0 to destroy), plus unit tests.
+Design: `docs/ZERO_MANUAL_SETUP_DESIGN.md`. **At the time this section was written nothing had been applied; it was applied later the same day (next section).** The evidence is `terraform validate` and a saved read-only `terraform plan` against the real state (12 to add, 2 to change in place, 0 to destroy), plus unit tests.
 
 **Declared in `infra/terraform/azure-discovery-pilot`**
 - Sign-in app doubles as the API: SPA redirect URI, the `access_as_user` scope with identifier URI `api://<client id>`, `requested_access_token_version = 2`, admin consent for that scope. The easy-auth callback is unchanged.
@@ -117,3 +117,21 @@ Design: `docs/ZERO_MANUAL_SETUP_DESIGN.md`. **Nothing was applied, no Azure or G
 **Not verified:** a token issued by Entra for the new app; MSAL sign-in against the new redirect URI (the registered URI ends in a slash and the web app must send exactly that); the admin-consent grant (rights, propagation); GitHub OIDC sign-in and that the narrow VM role is enough for `azure/login` and `az vm`; quota for the GlobalStandard embedding deployment; the managed-identity token path and 403 behaviour on a real account. Rollback per change is in the stack README.
 
 **Pending for the owner (new):** review the saved plan and apply; then `make discovery-repo-vars`; decide whether the `discovery-pilot` GitHub environment needs reviewers or a branch restriction; whether the committed access list (a tenant-qualified user principal name) is acceptable in the repository. The deploy workflow still signs in with hand-set secrets (it has no deploy identity in Terraform yet).
+
+## Update 2026-11-07 (later): zero-manual setup applied and verified
+
+Applied by the coordinator after reading the plan (no secrets in it), under the owner's instruction to remove manual setup. Rollback per change is in `infra/terraform/azure-discovery-pilot/README.md` and `infra/terraform/github-repo/README.md`.
+
+| What | Result |
+|---|---|
+| Discovery stack | `12 added, 2 changed, 0 destroyed`. A follow-up plan wanted to drop Azure's default content-safety policy on the new deployment; that was pinned in config (#123) and the plan is now **"No changes"** |
+| Entra app `discovery-pilot-web` | verified in Azure: identifier URI `api://<client id>`, scope `access_as_user`, SPA redirect `https://<web fqdn>/` (trailing slash), access-token version 2, easy-auth callback unchanged |
+| Discovery-owned Azure OpenAI | account created with key auth disabled and an embedding deployment (`text-embedding-3-small`); the API's managed identity has "Cognitive Services OpenAI User". **Not exercised:** a real embedding call through managed-identity auth |
+| VM workflow identity | GitHub OIDC federated credential, a custom role limited to read, start and deallocate on the one VM. The workflow's `status` action ran green on `main` (passwordless sign-in worked; VM reported deallocated). `start` and `stop` were not run |
+| Repo variables | five `DISCOVERY_*` variables set by `make discovery-repo-vars` from Terraform outputs (identifiers and names only) |
+| GitHub repo settings (`infra/terraform/github-repo`, #122, #124) | auto-merge and delete-branch-on-merge on; ruleset requiring the "CI gate" check on `main` (admin bypass kept; deletion and force-push blocked); environment `discovery-pilot` limited to the `main` branch. Verified: PR #122 enabled auto-merge and merged itself after the gate passed |
+| Web | the SPA sends its redirect URI with the trailing slash (#123), with a test that also reads the Terraform file |
+
+**Still off:** `enable_api_auth` is false, so API authentication and web sign-in are not switched on in the pilot. Turning them on is a one-line variable change plus a deploy of the web image with the sign-in build settings, and it needs a real-tenant test of the token path (nothing has yet seen a token issued for the new app).
+
+**Left manual or not done:** the deploy workflow's own Azure sign-in still uses the repo secrets set in May (no Terraform-managed deploy identity yet); the hand-made `text-embedding-3-small` deployment on the Compass account is still there pending the Compass import PR; the access list in `access.auto.tfvars` holds only the operator.
