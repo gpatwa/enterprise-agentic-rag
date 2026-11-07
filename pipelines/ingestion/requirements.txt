@@ -12,6 +12,11 @@ beautifulsoup4==4.12.3
 qdrant-client==1.7.3
 neo4j==5.16.0
 
+# OpenSearch sink (INGEST_VECTOR_SINKS=opensearch); versions match services/api/requirements.txt.
+opensearch-py[async]>=2.4,<3.0
+pydantic==2.6.0
+pydantic-settings==2.1.0
+
 # AWS S3
 boto3==1.34.34
 

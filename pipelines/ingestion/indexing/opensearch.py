@@ -19,10 +19,14 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable
 
-from app.search.models import SearchIndexSpec
-from app.search.opensearch import OpenSearchProvider
-from app.search.schema import SUPPORT_SEARCH_SCHEMA_VERSION
-from app.search.support_mapper import map_file_chunk
+from pipelines.ingestion.indexing._api_path import ensure_api_importable
+
+ensure_api_importable()
+
+from app.search.models import SearchIndexSpec  # noqa: E402
+from app.search.opensearch import OpenSearchProvider  # noqa: E402
+from app.search.schema import SUPPORT_SEARCH_SCHEMA_VERSION  # noqa: E402
+from app.search.support_mapper import map_file_chunk  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

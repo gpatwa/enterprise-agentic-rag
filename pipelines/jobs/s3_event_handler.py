@@ -58,7 +58,17 @@ def submit_ingestion_job(bucket: str, file_key: str, tenant_id: str = DEFAULT_TE
         # Working dir contains our pipeline code
         runtime_env={
             "working_dir": "./",
-            "pip": ["boto3", "qdrant-client", "neo4j", "langchain", "unstructured"],
+            "pip": [
+                "boto3",
+                "qdrant-client",
+                "neo4j",
+                "langchain",
+                "unstructured",
+                # OpenSearch sink (INGEST_VECTOR_SINKS=opensearch); same pins as services/api/requirements.txt
+                "opensearch-py[async]>=2.4,<3.0",
+                "pydantic==2.6.0",
+                "pydantic-settings==2.1.0",
+            ],
             "env_vars": {
                 "TENANT_ID": tenant_id,
             },

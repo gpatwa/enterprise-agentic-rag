@@ -92,7 +92,7 @@ services:
     volumes:
       - .:/app
     environment:
-      - PYTHONPATH=/app
+      - PYTHONPATH=/app:/app/services/api
       - S3_ENDPOINT_URL=http://minio:9000
       - S3_ACCESS_KEY=minioadmin
       - S3_SECRET_KEY=minioadmin

@@ -17,6 +17,10 @@ services/
 !services/analytics-api/**
 !services/discovery-api/
 !services/discovery-api/**
+# The OpenSearch sink (pipelines/ingestion/indexing/opensearch.py) imports app.search.* and app.config from the
+# support API so it shares its document schema. Ship only the package, not tests, migrations or the Dockerfile.
+!services/api/app/
+!services/api/app/**
 
 # Documentation
 docs/
