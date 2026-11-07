@@ -139,3 +139,5 @@ Still not verified: vector or hybrid search over pipeline-written chunks, scale 
 **Update 2026-11-06:** on the owner's instruction ("set the canary tenant and latency budget to your recommended defaults") the canary tenant is `default` (named cohorts via `OPENSEARCH_CANARY_TENANTS` / `OPENSEARCH_SHADOW_TENANTS`) and the latency budget is p95 300 ms / p99 800 ms / 1.5 s timeout; see the canary plan. Unmeasured defaults.
 
 **Update 2026-11-06 (later):** the remaining error thresholds were set to recommended defaults on the owner's instruction (empty-result rate, recall@10, a 15-minute burst rule, overlap alarm, minimum sample size); see the canary plan. Nothing in the canary plan is now undecided. They cannot be checked until request logs are aggregated, which is a Stage 1 precondition.
+
+**Update 2026-11-06 (observability):** Prometheus metrics, alert rules (promtool-tested) and a Grafana dashboard for the canary thresholds were built and checked against a real Prometheus fed by the real retrieval code; see the canary plan. Not deployed, Grafana rendering unseen, no alert receiver configured.
