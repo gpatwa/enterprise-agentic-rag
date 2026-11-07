@@ -186,6 +186,21 @@ def test_the_indexer_pickles_for_ray_workers() -> None:
     assert clone.index == "i" and clone.dimensions == DIM
 
 
+def test_dimensions_come_from_the_argument_then_the_environment_then_the_api_setting(monkeypatch) -> None:
+    from app.config import settings
+
+    monkeypatch.delenv("INGEST_VECTOR_DIMENSIONS", raising=False)
+    assert OpenSearchIndexer(index="i").dimensions == settings.OPENSEARCH_VECTOR_DIMENSIONS
+    monkeypatch.setenv("INGEST_VECTOR_DIMENSIONS", "1024")
+    assert OpenSearchIndexer(index="i").dimensions == 1024
+    assert OpenSearchIndexer(index="i", dimensions=8).dimensions == 8
+
+
+def test_a_dimension_error_names_the_setting_to_change() -> None:
+    with pytest.raises(IndexerError, match="INGEST_VECTOR_DIMENSIONS.*1024"):
+        _indexer().write([_row(vector=[1.0] * 1024)])
+
+
 def test_an_index_name_is_required(monkeypatch) -> None:
     monkeypatch.delenv("INGEST_OPENSEARCH_INDEX", raising=False)
     with pytest.raises(IndexerError, match="INGEST_OPENSEARCH_INDEX"):
