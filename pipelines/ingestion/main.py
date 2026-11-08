@@ -8,6 +8,7 @@ import ray
 from pipelines.ingestion.chunking.splitter import split_multimodal, split_text
 from pipelines.ingestion.embedding.compute import BatchEmbedder, MultimodalBatchEmbedder
 from pipelines.ingestion.graph.extractor import GraphExtractor
+from pipelines.ingestion.identity import file_identity
 from pipelines.ingestion.indexing.neo4j import Neo4jIndexer
 from pipelines.ingestion.indexing.ray_sink import write_rows
 from pipelines.ingestion.indexing.sinks import build_vector_sinks, finalize_sinks
@@ -36,7 +37,9 @@ def process_batch(batch: Dict[str, Any]) -> Dict[str, Any]:
     results = []
 
     for i, content in enumerate(batch["bytes"]):
-        filename = batch["filename"][i]
+        # Ray supplies the full path (read_binary_files(include_paths=True)), not a file name. The path is the
+        # file's identity for the sinks; the base name is what a reader sees and what the parsers key on.
+        source_path, filename = file_identity(batch["path"][i])
 
         if MULTIMODAL_ENABLED and _is_image_file(filename):
             from pipelines.ingestion.loaders.image import parse_image_bytes
@@ -46,6 +49,7 @@ def process_batch(batch: Dict[str, Any]) -> Dict[str, Any]:
             raw_text, metadata, images = parse_pdf_bytes(
                 content, filename, extract_images=MULTIMODAL_ENABLED
             )
+        metadata["source_path"] = source_path
 
         # Chunking — multimodal-aware when images are present
         if MULTIMODAL_ENABLED and images:

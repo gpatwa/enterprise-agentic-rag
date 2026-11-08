@@ -88,9 +88,9 @@ class QdrantIndexer:
     def _point_id(self, row: Dict[str, Any], payload: Dict[str, Any]) -> str:
         image = row.get("image_bytes") if payload["content_type"] == "image" else None
         digest = hashlib.sha256(image or str(payload["text"]).encode("utf-8")).hexdigest()
-        key = "|".join(
-            [self.tenant_id, str(payload["filename"]), str(payload["page"]), payload["content_type"], digest]
-        )
+        # The file's full path identifies it; two files in different folders may share a base name.
+        identity = payload.get("source_path") or payload["filename"]
+        key = "|".join([self.tenant_id, str(identity), str(payload["page"]), payload["content_type"], digest])
         return str(uuid.uuid5(_POINT_NAMESPACE, key))
 
     def write(self, batch: List[Dict[str, Any]]):
@@ -114,6 +114,7 @@ class QdrantIndexer:
                 "text": row["text"],
                 "content_type": content_type,
                 "filename": row["metadata"]["filename"],
+                "source_path": row["metadata"].get("source_path"),
                 "page": row["metadata"].get("page_number", 0),
                 "tenant_id": self.tenant_id,
             }

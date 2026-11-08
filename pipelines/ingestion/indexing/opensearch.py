@@ -139,12 +139,15 @@ class OpenSearchIndexer:
             document = map_file_chunk(
                 tenant_id=self.tenant_id,
                 provider=PROVIDER_NAME,
-                file_id=filename,
+                # The full path identifies the file (chunk IDs and the sweep group by it); the base name is for display.
+                file_id=str(meta.get("source_path") or "").strip() or filename,
                 chunk_key=chunk_key,
                 title=filename,
                 text=text,
                 metadata={
-                    k: v for k, v in meta.items() if k in {"filename", "page_number", "chunk_index", "chunk_hash"}
+                    k: v
+                    for k, v in meta.items()
+                    if k in {"filename", "source_path", "page_number", "chunk_index", "chunk_hash"}
                 },
                 embedding_model_version=self.embedding_model_version,
                 tags=(ingest_run_tag(self.run_id),) if self.sweep else (),
