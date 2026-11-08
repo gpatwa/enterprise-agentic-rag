@@ -92,6 +92,18 @@ def test_rows_become_valid_tenant_scoped_documents_with_vectors() -> None:
     assert doc.source_id.startswith("guide.pdf:chunk:p1:")
 
 
+def test_the_full_path_identifies_a_file_and_the_base_name_is_its_title() -> None:
+    eu = _row(filename="guide.pdf")
+    eu["metadata"]["source_path"] = "bucket/eu/guide.pdf"
+    us = _row(filename="guide.pdf")
+    us["metadata"]["source_path"] = "bucket/us/guide.pdf"
+    (a,), (b,) = (_indexer().build_documents([row])[0] for row in (eu, us))
+    assert a.source_id.startswith("bucket/eu/guide.pdf:chunk:") and b.source_id.startswith("bucket/us/guide.pdf:chunk:")
+    assert a.document_id != b.document_id  # same name and text, different folders: neither overwrites the other
+    assert a.title == b.title == "guide.pdf"
+    assert a.metadata["source_path"] == "bucket/eu/guide.pdf" and a.metadata["filename"] == "guide.pdf"
+
+
 def test_ids_are_stable_across_runs_and_change_with_content() -> None:
     a = _indexer().build_documents([_row()])[0][0]
     b = _indexer().build_documents([_row()])[0][0]
