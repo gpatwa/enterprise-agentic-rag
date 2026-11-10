@@ -282,6 +282,13 @@ def test_a_forged_signature_or_an_unknown_key_is_refused_and_a_rotated_key_is_re
 PG = os.environ.get("ANALYTICS_TEST_POSTGRES_URL")
 
 
+class _RequestOnlyIntentClient(ScriptedIntentClient):
+    """The pilot prompt appends the certified vocabulary after the request; the scripted model must not read it as the question."""
+
+    def complete_json(self, *, prompt: str, schema: dict, max_tokens: int):
+        return super().complete_json(prompt=prompt.split("\nSet query_id to", 1)[0], schema=schema, max_tokens=max_tokens)
+
+
 @pytest.mark.skipif(not PG, reason="needs ANALYTICS_TEST_POSTGRES_URL (a disposable PostgreSQL server)")
 def test_build_pilot_runtime_migrates_and_answers_against_postgresql(tmp_path):
     from sqlalchemy import create_engine, text
@@ -316,7 +323,7 @@ def test_build_pilot_runtime_migrates_and_answers_against_postgresql(tmp_path):
             ANALYTICS_RUN_ID_KEY="k" * 32,
         )
         runtime = build_pilot_runtime(
-            settings, model_factory=lambda request_id: ScriptedIntentClient(request_id), verifier=stack.verifier()
+            settings, model_factory=lambda request_id: _RequestOnlyIntentClient(request_id), verifier=stack.verifier()
         )
         app = FastAPI()
         app.include_router(build_v2_router(runtime, _no_key))
