@@ -1,11 +1,11 @@
 # Claude Code Handoff
 
-Updated: 2026-11-04
+Updated: 2026-11-10
 
 This is the durable project handoff between Claude Code sessions (originally
 written by the Codex task; the Agentic Data Stack detail below is history through
 ADS-079 and M7, and the repository, deployment and Discovery sections were
-refreshed on 2026-11-04). Re-check
+refreshed on 2026-11-04 and again on 2026-11-10). Re-check
 repository state before acting; the information below records the verified
 state at the time of writing, not an instruction to force the tree to match it.
 
@@ -15,14 +15,17 @@ state at the time of writing, not an instruction to force the tree to match it.
   pull requests; the long-lived ADS branch described in earlier versions of this
   file has been merged. Check `git status -sb`, the current branch, `git log` and
   `gh pr list` before acting; this section is a snapshot, not an instruction.
-- Snapshot at writing (2026-11-06): `main` at `b2bcdda` (PR #109), no open PRs.
+- Snapshot at writing (2026-11-10): `main` at `b977eb1` (PR #128), no open PRs.
   Everything below that says "merged" was checked against `gh pr view`.
 - On 2026-11-06 the owner asked for the remaining work to be completed without
   approval stops. Since then I merged my own PRs once every check was green.
   That does not extend to human gates, secrets, Entra app registrations, repo
   settings, or other products' resources; those stay the owner's.
-- The user merges with "merge #N" (or "merge #N when CI is green", meaning wait
-  for every check). The slow Analytics job takes about 12-17 minutes. Docs-only and
+- Merge flow: open the PR, wait for every check ("CI gate" is a required check), then
+  `gh pr merge <n> --auto --merge`. On 2026-11-10 the owner asked why they were still
+  being asked to approve; the answer was to stop asking for merges of green PRs and for
+  local work, and to keep asking only for human gates, cloud changes, secrets and
+  identity. The owner may still say "merge #N" (or "merge #N when CI is green"). The slow Analytics job takes about 12-17 minutes. Docs-only and
   path-filtered PRs may show no checks.
 - Commits end with `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` and PR
   bodies end with the Claude Code attribution line. Stage files by name; never
@@ -115,6 +118,17 @@ Databricks dialects, compiler adapters, a warehouse gateway policy layer and
 Nothing selects them at runtime and no driver session exists. Live sandbox
 validation (W8) and a draft-contract generator (W9) are **not authorized**.
 
+Compiler follow-ups merged 2026-11-10: #127 (the PostgreSQL pilot-wiring test failed
+because the pilot prompt appends the certified vocabulary after the `Request:` line and
+the scripted model read it as the question; the test now uses its own client subclass,
+and the shared `ScriptedIntentClient` is deliberately unchanged because the evaluation
+suites rely on text after the request) and #128 (`NULLS LAST` in every `ORDER BY`, all
+dialects, so NULL placement no longer depends on the engine default).
+
+Still open in Analytics: `test_connection_failures_do_not_leak_credentials_or_hosts`
+fails against a live PostgreSQL 18 even on unmodified `main` (not investigated); the
+retry wrappers and circuit breaker (M7-H5) are not wired into the served app.
+
 ## Product and Strategy Context
 
 Compass is a monorepo containing independently deployable products with shared
@@ -161,8 +175,10 @@ Canonical task status is in
   manifest status `review`. **Nobody has independently reviewed them; do not mark
   them `complete` without the user's/reviewer's approval.**
   - **ADS-040** read-only DuckDB/PostgreSQL gateways (`app/execution/`).
-    DuckDB is real and embedded; **PostgreSQL has only been tested against a
-    recording fake engine, never a server**.
+    DuckDB is real and embedded. PostgreSQL was first tested only against a recording
+    fake; since #115 `tests/test_ads040_postgres_integration.py` runs against a real server
+    (set `ANALYTICS_TEST_POSTGRES_URL=postgresql://<superuser>@<host>/postgres`; skipped
+    otherwise) and four defects were fixed.
   - **ADS-044** `ContextRefreshWorker` (`app/context/refresh.py`): incremental
     refresh, tombstones, failure/last-good, staleness, ontology source,
     `SnapshotOntologyProvider`, snapshot selection/pinning at run start
@@ -352,7 +368,7 @@ Canonical task status is in
   - **ADS-078** onboarding drill (`reference_stack/onboarding_eval.py`, `m7/onboarding-thresholds.proposed.json`, `make analytics-m7-onboarding`): a second tenant from an Ossie model - draft is inert, sandbox-only "certification" (NOT a certification; repository registry untouched), compile+run equals oracle, two-way contract isolation, hostile expressions dropped, source/schema digests unchanged. **Gap:** Ossie export drops metrics and time-dimension flags (documented subset). Natural-language onboarding of tenant B not shown (scripted model). Packet: `ADS-078-onboarding-drill.md`.
   - **ADS-079** final evidence manifest (`reference_stack/release_manifest.py`, `make analytics-m7-manifest`): links code/contracts/prompts/policies/corpora/reports/runbooks/Dockerfiles by digest; computed blockers; `decision` always `pending_human_review`, five signature slots empty and verifiable only as a named person's statement over the digest. **All M7 packets are now implemented and in `review`; the release candidate does NOT meet the exit gate** (see the manifest's blockers). Packet: `ADS-079-evidence-manifest.md`.
   - **M7 hardening (2026-10-13, after the user's "I approved M0/M1/M5/M6/M7 gates" and "Build all of them")** - see `docs/execution/enterprise-analytics/M7-hardening.md`: durable plans/policy values (migration 0012; all process-crash points now recover; paused reviews survive restore), deterministic intent-echo check (near-miss questions refused; security corpus now 31 cases), retry guidance, and a cost-calibration mechanism (no real calibration). The five milestone gates are recorded as approved in the manifest in the user's words; this approves no thresholds, corpus, sign-offs, or reviews.
-  - **Next (2026-10-13):** every packet through ADS-079 is implemented and in `review`; branches `claude/ads-061-*` ... `claude/ads-079-evidence-manifest` are stacked and pushed, PRs #30-#32 (ADS-060/062/063) are open and unmerged, and no PR exists for ADS-061..079.
+  - **Next (2026-10-13; PR status updated 2026-11-10):** every packet through ADS-079 is implemented and in `review`; the stacked PRs (#15-#52) are all merged to `main`.
     The release candidate does **not** meet the exit gate: see `reports/ADS-079-evidence-manifest.md`. Decisions only the user can make: approve/amend the 20 proposed threshold/policy files and the reference corpus (two owners); the five ADS-079 sign-offs;
     independent review of ADS-040+; `answers_per_tenant_day` (needs real warehouse samples to calibrate cost units, or a higher proposed daily budget); F-02/F-03/F-05; a retention rule for durable plans/policy values;
     live IdP/PostgreSQL/OpenSearch validation (explicit request needed); merges (stacked PRs need retarget-to-main plus close/reopen for CI).
@@ -404,7 +420,7 @@ Canonical task status is in
 
 ## Last Verification Evidence
 
-_Historical: the counts below are from the ADS-040 to ADS-049 period. Recent runs: the full Analytics suite passed locally (1133 passed, 4 skipped) at PR #86, and the Discovery suite passed locally (376 passed, 5 skipped) with PR #89's changes. Re-run before relying on either._
+_Historical: the counts below are from the ADS-040 to ADS-049 period. Recent runs: the full Analytics suite passed locally (1133 passed, 4 skipped) at PR #86; with a throwaway local PostgreSQL 18 it gave 1198 passed, 1 skipped, 1 failed (the unrelated connection-failure test above) at #127; CI was green on #127 and #128 (2026-11-10). The Discovery suite passed locally (376 passed, 5 skipped) with PR #89's changes. Re-run before relying on any of these._
 
 At commit `d97c428`, run from `services/analytics-api`:
 
@@ -458,6 +474,7 @@ words in the program manifest.
   the same way. Prometheus metrics, promtool-tested alert rules and a Grafana
   dashboard for them are built (`infra/observability/`, not deployed; no alert
   receiver; Grafana rendering unseen), and every deployed change needs its own request. Nothing is deployed or enabled; Ray 2.9.x was not tested.
+- Compass pilot: the `gpt-6-luna` Terraform import is half-done (code in #120; the plan and import have not run, and the ignored tfvars live in `.claude/worktrees/azure-deploy`); `terraform apply` and removing the hand-made `text-embedding-3-small` deployment need the owner's go-ahead.
 - Analytics warehouses: which warehouse first, sandbox accounts and credentials for
   W8, whether to include W9.
 - Landing: the owner sets the Static Web Apps deploy secret; the leadership
@@ -490,8 +507,9 @@ words in the program manifest.
 > file as a snapshot and the repository as the source of truth. Report in a few
 > lines what you found and what you would do next, and wait for my go-ahead.
 >
-> Rules: merge, deploy, `terraform plan`/`apply` and any Azure change only when I ask
-> in this session. Human gates and approvals are mine, in my own words; never infer
+> Rules: deploy, `terraform plan`/`apply` and any Azure change only when I ask in this
+> session; merge your own PRs once every check is green (`gh pr merge <n> --auto --merge`)
+> without asking. Human gates and approvals are mine, in my own words; never infer
 > them. Never set GitHub secrets or print credentials. Keep validation local with
 > fake providers unless I authorize live integrations. Stage files by name, run
 > `ruff` on changed files only, and do not claim a test or evaluation passed unless
