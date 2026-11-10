@@ -81,7 +81,6 @@ htmlcov/
 data/olist/*.csv
 
 # Discovery: local datasets and built subsets are never committed
-services/discovery-api/data/
 
 # Terraform backend settings and plans are local to each operator
 infra/terraform/*/backend.hcl

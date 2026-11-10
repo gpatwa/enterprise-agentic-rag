@@ -22,7 +22,7 @@ sed "s|^key .*|key                  = \"$state_key\"|" "$source_backend" > "$sta
 
 export GITHUB_TOKEN="$(gh auth token)"
 cd "$stack"
-terraform init -input=false -backend-config=backend.hcl >/dev/null
+terraform init -input=false -reconfigure -backend-config=backend.hcl >/dev/null
 
 in_state() { terraform state list 2>/dev/null | grep -qx "$1"; }
 

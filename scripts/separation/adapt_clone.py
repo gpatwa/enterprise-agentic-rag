@@ -253,6 +253,150 @@ def prune_makefile(clone: Path) -> tuple[int, int]:
     return len(re.findall(r"^[A-Za-z0-9_.-]+:(?!=)", text, re.M)), dropped
 
 
+PRODUCT_SERVICES = {
+    "analytics": ("analytics-api", "analytics-web"),
+    "discovery": ("discovery-api", "discovery-web"),
+}
+OTHER_PRODUCT_SERVICES = {
+    "analytics": ("discovery-api", "discovery-web", "support-api", "support-web"),
+    "discovery": ("analytics-api", "analytics-web", "support-api", "support-web"),
+    "support": ("analytics-api", "analytics-web", "discovery-api", "discovery-web"),
+}
+TEST_DIRS = {
+    "analytics": "services/analytics-api/tests",
+    "discovery": "services/discovery-api/tests",
+    "support": "services/api/tests",
+}
+
+
+def _service_blocks(text: str) -> tuple[str, dict[str, str], str]:
+    """Split docker-compose.yml into (preamble, {service: block}, rest) using the 2-space service keys."""
+    lines = text.split("\n")
+    start = next(i for i, line in enumerate(lines) if line == "services:") + 1
+    end = next((i for i in range(start, len(lines)) if lines[i] and not lines[i].startswith((" ", "#"))), len(lines))
+    blocks: dict[str, list[str]] = {}
+    order: list[str] = []
+    current: list[str] | None = None
+    carry: list[str] = []
+    for line in lines[start:end]:
+        match = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)
+        if match:
+            order.append(match.group(1))
+            current = blocks.setdefault(match.group(1), [])
+            current.extend(carry)
+            carry = []
+        if current is not None:
+            current.append(line)
+        else:
+            carry.append(line)
+    return "\n".join(lines[:start]), {k: "\n".join(v) for k, v in blocks.items()}, "\n".join(lines[end:])
+
+
+def prune_compose(clone: Path, product: str) -> str:
+    import yaml
+
+    path = clone / "docker-compose.yml"
+    if not path.exists():
+        return "no compose file"
+    text = path.read_text()
+    head, blocks, rest = _service_blocks(text)
+    parsed = yaml.safe_load(text)["services"]
+    if product == "support":
+        keep = {name for name in blocks if name not in OTHER_PRODUCT_SERVICES["support"]}
+    else:
+        keep = set(PRODUCT_SERVICES[product])
+        todo = list(keep)
+        while todo:
+            deps = parsed[todo.pop()].get("depends_on") or {}
+            for dep in deps if isinstance(deps, list) else deps.keys():
+                if dep not in keep:
+                    keep.add(dep)
+                    todo.append(dep)
+    out = head + "\n" + "\n".join(blocks[name] for name in blocks if name in keep) + "\n" + rest
+    result = yaml.safe_load(out)["services"]
+    for name, spec in result.items():
+        deps = spec.get("depends_on") or {}
+        for dep in deps if isinstance(deps, list) else deps.keys():
+            assert dep in result, f"{name} depends on removed service {dep}"
+        build = spec.get("build")
+        if isinstance(build, dict):
+            context = build.get("context", ".")
+            assert (clone / context).exists(), f"{name}: build context {context} missing"
+            dockerfile = build.get("dockerfile")
+            if dockerfile:
+                assert (clone / context / dockerfile).exists(), f"{name}: {context}/{dockerfile} missing"
+    path.write_text(out)
+    return f"compose services kept={len(result)}"
+
+
+def prune_ignores(clone: Path) -> int:
+    """Drop .gitignore/.dockerignore lines that name product directories this clone does not have."""
+    removed = 0
+    ref = re.compile(r"(?<![\w.])((?:services|apps|infra|packages|pipelines)/[\w./-]+)")
+    for name in (".gitignore", ".dockerignore"):
+        path = clone / name
+        if not path.exists():
+            continue
+        out = []
+        for line in path.read_text().split("\n"):
+            match = ref.search(line)
+            if match and not line.lstrip().startswith("#") and "*" not in match.group(1):
+                top = "/".join(match.group(1).split("/")[:2])
+                if top.startswith(("services/", "apps/")) and not (clone / top).exists():
+                    removed += 1
+                    continue
+            out.append(line)
+        path.write_text("\n".join(out))
+    return removed
+
+
+def prune_pyproject(clone: Path, product: str) -> None:
+    path = clone / "pyproject.toml"
+    text = path.read_text()
+
+    def keep_existing(match: re.Match[str]) -> str:
+        items = re.findall(r'"([^"]+)"', match.group(2))
+        kept = [i for i in items if "/" not in i or (clone / i).exists()]
+        return match.group(1) + "[" + ", ".join(f'"{i}"' for i in kept) + "]"
+
+    text = re.sub(r"^(src = )\[([^\]]*)\]", keep_existing, text, flags=re.M)
+    text = re.sub(
+        r"^(known-first-party = )\[([^\]]*)\]",
+        lambda m: (
+            m.group(1)
+            + "["
+            + ", ".join(f'"{i}"' for i in re.findall(r'"([^"]+)"', m.group(2)) if i == "app" or (clone / i).exists())
+            + "]"
+        ),
+        text,
+        flags=re.M,
+    )
+    text = re.sub(r"^(testpaths = )\[[^\]]*\]", lambda m: m.group(1) + f'["{TEST_DIRS[product]}"]', text, flags=re.M)
+    path.write_text(text)
+
+
+def retarget_repo_settings(clone: Path, product: str) -> None:
+    """Point the repo-settings tooling (copied into every repository) at this repository, not the monorepo."""
+    name = NAMES[product]
+    script = clone / "scripts/bootstrap_github_repo.sh"
+    if script.exists():
+        text = script.read_text()
+        text = text.replace("${REPO:-gpatwa/enterprise-agentic-rag}", "${REPO:-gpatwa/" + name + "}")
+        text = text.replace(
+            "${STATE_KEY:-github-repo/terraform.tfstate}", "${STATE_KEY:-github-repo/" + name + ".tfstate}"
+        )
+        if product != "discovery":
+            text = text.replace('${PROTECTED_ENVS:-[\\"discovery-pilot\\"]}', "${PROTECTED_ENVS:-[]}")
+        script.write_text(text)
+    stack = clone / "infra/terraform/github-repo/main.tf"
+    if stack.exists():
+        text = stack.read_text()
+        text = text.replace('default = "enterprise-agentic-rag"', f'default = "{name}"')
+        if product != "discovery":
+            text = text.replace('default = ["discovery-pilot"]', "default = []")
+        stack.write_text(text)
+
+
 def write_docs(clone: Path, product: str) -> None:
     name = NAMES[product]
     others = "\n".join(f"- `{n}`" for k, n in NAMES.items() if k != product)
@@ -353,6 +497,10 @@ def main() -> int:
     rewrite_gate_tests(clone, product)
     kept, dropped = prune_makefile(clone)
     removed = prune_workflow_paths(clone)
+    compose = prune_compose(clone, product)
+    ignores = prune_ignores(clone)
+    prune_pyproject(clone, product)
+    retarget_repo_settings(clone, product)
     write_docs(clone, product)
     run("git", "add", "-A", cwd=clone)
     run(
@@ -363,7 +511,9 @@ def main() -> int:
         f"Standalone repository: {NAMES[product]} (CI gate tests, Makefile, README, CLAUDE.md, handoff)\n\nCo-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>",
         cwd=clone,
     )
-    print(f"{product}: Makefile targets kept={kept} dropped={dropped}; workflow path filters removed={removed}")
+    print(
+        f"{product}: Makefile targets kept={kept} dropped={dropped}; workflow path filters removed={removed}; {compose}; ignore lines removed={ignores}"
+    )
     return 0
 
 

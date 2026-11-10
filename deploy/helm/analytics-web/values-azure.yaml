@@ -1,6 +1,0 @@
-image:
-  pullPolicy: IfNotPresent
-
-ingress:
-  enabled: false
-  className: nginx
