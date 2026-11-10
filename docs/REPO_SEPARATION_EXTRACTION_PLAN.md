@@ -1,6 +1,45 @@
 # Repository separation: extraction plan (three repositories)
 
-Status: **Proposal. Nothing here is approved and nothing has been executed.** Written 2026-11-10 from `main` at `31c8ef4`. It supersedes the "one repository" outcome of `docs/PRODUCT_SEPARATION_PROPOSAL.md` only if the owner approves it. No repository is created, no history is rewritten and no Azure or GitHub setting changes until the owner says so for that step.
+Status: **Approved for execution by the owner on 2026-11-10 (section 0).** Written 2026-11-10 from `main` at `31c8ef4`. The approval covers the packets and limits in section 0 and nothing else: it is not approval of any Analytics human gate, threshold, sign-off, licence choice or secret.
+
+## 0. Final goals and approval record (2026-11-10)
+
+### Final goals
+
+1. **Three independently ownable repositories**, each buildable, testable and deployable on its own, so one product can be handed over or sold without the others: `agentic-resolution-intelligence`, `agentic-data-analytics`, `agentic-search-discovery`.
+2. **No product behaviour change.** The deployed pilots keep running, Azure resources do not move, and `terraform plan` for both pilot stacks shows no changes from the new repositories.
+3. **Analytics digests unchanged.** The Analytics layout is preserved, and `make analytics-m7-manifest` gives the same digests before and after.
+4. **Boundaries enforced by CI**: no product imports another, and no shared library remains (`discovery.py` lives in the Discovery service).
+5. **Honest claims.** Each repository's README says what the code does (section 3.2). "Agentic" in `agentic-search-discovery` is stated as roadmap.
+6. **Everything that is the owner's alone stays theirs** (list below), and is handed over as a checklist, not asked about.
+
+### Owner's words, recorded verbatim
+
+- "all of them are open source" (all three products)
+- "I could not sell all code in same repo"
+- "no history scan required"
+- "name the repo based on product name", "add agentic prefix to all, later we will add those capability", and the final names: "agentic-resolution-intelligence", "agentic-data-analytics", "agentic-search-discovery"
+- "I want to finalize all plan and approval, defined final goals first then finish it without asking me question"
+- Earlier standing instruction (2026-11-06): "I want to complete all task, not sure we keep asking for approval."
+
+### Decisions taken on the owner's behalf under that instruction (changeable at any time)
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Landing site | goes with `agentic-data-analytics` | About 17 of its 21 product mentions are Analytics |
+| Where the repositories live | the owner's account, `gpatwa` | No organisation exists; transfer to an organisation later is possible (OIDC subjects and secrets must then be redone) |
+| The current repository | becomes `agentic-resolution-intelligence`, renamed last | Keeps URLs, stars and PR history |
+| Licence | unchanged: each new repository carries the existing MIT `LICENSE` | Status quo, not a new licensing decision; the owner may change it per product |
+| History | extracted with `git filter-repo`, no scan (the owner's instruction) | Preserves authorship and paths |
+| Discovery "agentic" capability | a later packet, after the split | Avoids churn during extraction |
+
+### What this approval authorises
+
+Packets X1 to X6 as written in section 6: moving `discovery.py`, adding the independence CI check, local rehearsal, per-repository docs, creating the two new repositories under `gpatwa` and pushing the extracted history, applying the repository-settings Terraform for them, removing the moved products from this repository, and renaming it last.
+
+### What it does not cover (the owner's, listed as a checklist at the end)
+
+GitHub secrets and the Static Web Apps deploy token; the Entra federated credential for the new Discovery repository (a repository-bound identity: it is prepared as code, not applied without the owner's own run); every Analytics human gate (thresholds, reference corpus, the five ADS-079 sign-offs, independent reviews); a licence other than MIT; the ESCI data terms; the Snowflake and Databricks live validation (W8) and draft-contract generator (W9); the Luna price; the leadership messaging review.
 
 ## 1. Why this is back on the table
 
