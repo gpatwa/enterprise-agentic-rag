@@ -85,7 +85,7 @@ def test_compiler_produces_deterministic_parameterized_postgres_sql(compiler_con
             "FROM \"sales_orders\" AS d0",
             "WHERE d0.\"status\" = :p0 AND d0.\"created_at\" >= :p1 AND d0.\"created_at\" <= :p2",
             "GROUP BY 1",
-            "ORDER BY metric_0 DESC",
+            "ORDER BY metric_0 DESC NULLS LAST",
             "LIMIT 25",
         ]
     )
