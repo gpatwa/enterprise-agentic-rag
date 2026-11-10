@@ -12,6 +12,12 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.candidates.contracts import CandidateSourceResult
 from app.config import FeatureFlags
+from app.contracts.discovery import (
+    DecisionTrace,
+    DiscoveryComponentVersion,
+    DiscoveryRequestContext,
+    ImpressionToken,
+)
 from app.domain.models import ImmersiveDiscoveryContext, UserProfile
 from app.embedding import HashingEmbedder
 from app.policy.eligibility import compile_eligibility
@@ -30,12 +36,6 @@ from app.search.lexical import LexicalRetriever
 from app.search.mapper import CatalogSearchDocument
 from app.search.vector import VectorDocument, VectorQuery, VectorRetriever
 from app.security import Identity, bind_identity, require_identity
-from packages.platform_contracts.discovery import (
-    DecisionTrace,
-    DiscoveryComponentVersion,
-    DiscoveryRequestContext,
-    ImpressionToken,
-)
 
 _MAX_RESULTS = 50
 _VECTOR_K = 20

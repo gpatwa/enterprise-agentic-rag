@@ -29,6 +29,8 @@ jobs:
       - run: pip install pyyaml==6.0.3 pytest==8.3.4
       - name: Test the gate logic
         run: python -m pytest .github/scripts -q
+      - name: Check that no product depends on another
+        run: python .github/scripts/check_product_boundaries.py
       - name: Wait for the workflows that apply to this pull request
         run: python .github/scripts/ci_gate.py
         env:

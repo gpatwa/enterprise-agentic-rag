@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from app.contracts.discovery import DiscoveryRequestContext
 from app.domain.models import ConsentState
 from app.features.hydration import (
     FeatureHydrationRequest,
@@ -9,7 +10,6 @@ from app.features.hydration import (
     HydrationStatus,
 )
 from app.features.materialization import FeatureKind, FeatureRecord
-from packages.platform_contracts.discovery import DiscoveryRequestContext
 
 AS_OF = datetime(2026, 1, 1, tzinfo=timezone.utc)
 

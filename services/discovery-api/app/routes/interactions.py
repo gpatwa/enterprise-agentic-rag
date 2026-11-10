@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.audit.ranking import RankingAuditRecord, RankingAuditWriter
+from app.contracts.discovery import ImpressionToken
 from app.domain.models import ConsentState
 from app.events.ingestion import EventReceipt, InteractionIngestion
 from app.events.models import (
@@ -19,7 +20,6 @@ from app.events.models import (
     ReportPayload,
 )
 from app.security import Identity, bind_identity, require_identity
-from packages.platform_contracts.discovery import ImpressionToken
 
 _ID = r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,254}$"
 _CODE = r"^[a-z0-9][a-z0-9._:-]{0,63}$"

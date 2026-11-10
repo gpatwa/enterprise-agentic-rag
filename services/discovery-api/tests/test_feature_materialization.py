@@ -2,11 +2,11 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from app.contracts.discovery import DiscoveryRequestContext
 from app.domain.models import ConsentState, ImmersiveDiscoveryContext
 from app.features.materialization import FeatureKind, FeatureMaterializer, FeatureTombstone
 from app.generation.catalog import generate_catalog
 from app.simulation.behavior import BehaviorSimulator
-from packages.platform_contracts.discovery import DiscoveryRequestContext
 
 AS_OF = datetime(2026, 1, 1, 0, 1, tzinfo=timezone.utc)
 

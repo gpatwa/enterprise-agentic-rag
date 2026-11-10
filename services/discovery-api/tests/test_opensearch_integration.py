@@ -10,6 +10,7 @@ import uuid
 import pytest
 
 from app.config import FeatureFlags
+from app.contracts.discovery import DiscoveryRequestContext
 from app.demo_data import load_demo_catalog
 from app.embedding import HASH_EMBEDDING_VERSION, HashingEmbedder
 from app.opensearch.client import OpenSearchClient
@@ -18,7 +19,6 @@ from app.opensearch.retriever import OpenSearchRetriever
 from app.opensearch.service import OpenSearchSearchService
 from app.routes.search import LocalSearchService, SearchRequest
 from app.search.mapping import CatalogMappingVersions
-from packages.platform_contracts.discovery import DiscoveryRequestContext
 
 URL = os.environ.get("DISCOVERY_TEST_OPENSEARCH_URL")
 pytestmark = pytest.mark.skipif(not URL, reason="DISCOVERY_TEST_OPENSEARCH_URL is not set")

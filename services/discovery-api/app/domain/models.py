@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from packages.platform_contracts.discovery import DiscoveryRequestContext
+from app.contracts.discovery import DiscoveryRequestContext
 
 
 class _DomainModel(BaseModel):

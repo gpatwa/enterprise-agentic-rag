@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from app.candidates.social_graph import CoPlayGraphCandidateSource, CoPlayGraphConfig
+from app.contracts.discovery import DiscoveryComponentVersion, DiscoveryRequestContext, ImpressionToken
 from app.domain.models import (
     AgeRating,
     Availability,
@@ -22,7 +23,6 @@ from app.domain.models import (
     UserProfile,
 )
 from app.events.models import CoPlayPayload, EventType, InteractionEvent, QualifiedPlayPayload
-from packages.platform_contracts.discovery import DiscoveryComponentVersion, DiscoveryRequestContext, ImpressionToken
 
 UTC = timezone.utc
 AS_OF = datetime(2026, 8, 24, 12, 0, tzinfo=UTC)
