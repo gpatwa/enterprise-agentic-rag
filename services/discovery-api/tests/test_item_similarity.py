@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 
 from app.candidates.similar import ItemSimilarityCandidateSource, SimilarityVector
+from app.contracts.discovery import DiscoveryRequestContext
 from app.domain.models import ExperienceRecord, ImmersiveDiscoveryContext, UserProfile
-from packages.platform_contracts.discovery import DiscoveryRequestContext
 
 FIXTURE = Path(__file__).parent / "fixtures" / "golden" / "experiences.json"
 

@@ -2,14 +2,14 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app.domain.models import ConsentState
-from app.event_lake.writer import EventLakeWriter
-from app.events.models import EventType, ImpressionPayload, InteractionEvent
-from packages.platform_contracts.discovery import (
+from app.contracts.discovery import (
     DiscoveryComponentVersion,
     DiscoveryRequestContext,
     ImpressionToken,
 )
+from app.domain.models import ConsentState
+from app.event_lake.writer import EventLakeWriter
+from app.events.models import EventType, ImpressionPayload, InteractionEvent
 
 
 def _event(event_id: str, *, tenant_id: str = "tenant-a", synthetic: bool = True) -> InteractionEvent:

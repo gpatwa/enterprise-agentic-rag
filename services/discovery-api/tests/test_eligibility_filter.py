@@ -1,3 +1,4 @@
+from app.contracts.discovery import DiscoveryRequestContext
 from app.domain.models import (
     AgeRating,
     ConsentState,
@@ -8,7 +9,6 @@ from app.domain.models import (
     UserProfile,
 )
 from app.policy.eligibility import EligibilityReason, compile_eligibility
-from packages.platform_contracts.discovery import DiscoveryRequestContext
 
 
 def _context(**overrides):

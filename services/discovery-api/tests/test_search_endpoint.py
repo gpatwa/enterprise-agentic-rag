@@ -3,10 +3,10 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from app.contracts.discovery import DiscoveryRequestContext
 from app.domain.models import ExperienceRecord, UserProfile
 from app.routes.search import LocalSearchService, SearchRequest, search
 from app.search.mapper import CatalogDocumentInput, map_catalog_document
-from packages.platform_contracts.discovery import DiscoveryRequestContext
 
 FIXTURE = Path(__file__).parent / "fixtures" / "golden"
 

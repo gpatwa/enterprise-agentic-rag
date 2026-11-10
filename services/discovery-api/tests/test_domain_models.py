@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from app.contracts.discovery import DiscoveryRequestContext
 from app.domain.models import (
     AgeRating,
     CatalogDevice,
@@ -16,7 +17,6 @@ from app.domain.models import (
     UserProfile,
     evaluate_eligibility,
 )
-from packages.platform_contracts.discovery import DiscoveryRequestContext
 
 FIXTURES = Path(__file__).parent / "fixtures" / "golden"
 

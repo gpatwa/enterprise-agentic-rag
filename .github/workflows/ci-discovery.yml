@@ -8,7 +8,6 @@ on:
     paths:
       - "services/discovery-api/**"
       - "apps/discovery-web/**"
-      - "packages/platform_contracts/**"
       - "infra/terraform/azure-discovery-pilot/**"
       - ".github/workflows/ci-discovery.yml"
   pull_request:
@@ -16,7 +15,6 @@ on:
     paths:
       - "services/discovery-api/**"
       - "apps/discovery-web/**"
-      - "packages/platform_contracts/**"
       - "infra/terraform/azure-discovery-pilot/**"
       - ".github/workflows/ci-discovery.yml"
 
@@ -53,11 +51,11 @@ jobs:
           pip install -r requirements.txt -r requirements-test.txt ruff
 
       - name: Lint
-        run: ruff check . ../../packages --output-format=github
+        run: ruff check . --output-format=github
 
       - name: Run tests
         env:
-          PYTHONPATH: ${{ github.workspace }}/services/discovery-api:${{ github.workspace }}
+          PYTHONPATH: ${{ github.workspace }}/services/discovery-api
         run: pytest tests/ -v --tb=short
 
   web:

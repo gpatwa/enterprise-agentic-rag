@@ -18,6 +18,7 @@ from tests.fakes.discovery import (
     FakeTimeoutError,
 )
 
+from app.contracts.discovery import DiscoveryRequestContext
 from app.domain.models import (
     AgeRating,
     CatalogDevice,
@@ -26,7 +27,6 @@ from app.domain.models import (
     ImmersiveDiscoveryContext,
     UserProfile,
 )
-from packages.platform_contracts.discovery import DiscoveryRequestContext
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "golden"
 

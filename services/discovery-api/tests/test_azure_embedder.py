@@ -238,9 +238,9 @@ def test_remote_query_vector_degrades_instead_of_raising() -> None:
 
 def test_fallback_when_the_cluster_is_down_is_lexical_only_and_never_calls_the_embedder() -> None:
     from app.config import FeatureFlags
+    from app.contracts.discovery import DiscoveryRequestContext
     from app.demo_data import load_demo_catalog
     from app.routes.search import SearchRequest
-    from packages.platform_contracts.discovery import DiscoveryRequestContext
 
     _, documents, users = load_demo_catalog()
     calls: list[str] = []

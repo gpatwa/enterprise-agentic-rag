@@ -2,10 +2,10 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from app.contracts.discovery import DiscoveryComponentVersion, DiscoveryRequestContext, ImpressionToken
 from app.domain.models import ConsentState, ExplicitPreferences, Genre, Theme
 from app.events.models import ClickPayload, DismissPayload, EventType, InteractionEvent
 from app.profiles.builder import ProfileBuilder, ProfileKind
-from packages.platform_contracts.discovery import DiscoveryComponentVersion, DiscoveryRequestContext, ImpressionToken
 
 UTC = timezone.utc
 AS_OF = datetime(2026, 8, 24, 12, 0, tzinfo=UTC)

@@ -10,7 +10,7 @@ from typing import Iterable
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from packages.platform_contracts.discovery import DiscoveryComponentVersion
+from app.contracts.discovery import DiscoveryComponentVersion
 
 _DIGEST = r"^[0-9a-f]{64}$"
 _VERSION = r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"

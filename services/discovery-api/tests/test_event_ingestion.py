@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from app.contracts.discovery import DiscoveryComponentVersion, DiscoveryRequestContext, ImpressionToken
 from app.domain.models import ConsentState
 from app.events.ingestion import InteractionIngestion, ReceiptStatus, RejectionReason
 from app.events.models import (
@@ -12,7 +13,6 @@ from app.events.models import (
     NavigationPath,
     OrganicNavigationPayload,
 )
-from packages.platform_contracts.discovery import DiscoveryComponentVersion, DiscoveryRequestContext, ImpressionToken
 
 UTC = timezone.utc
 RECEIVED = datetime(2026, 8, 24, 12, 0, tzinfo=UTC)

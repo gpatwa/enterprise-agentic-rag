@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 
 from app.candidates.cold_start import ColdStartCandidateSource, ColdStartConfig
+from app.contracts.discovery import DiscoveryRequestContext
 from app.domain.models import ExperienceRecord, HistoryLength, ImmersiveDiscoveryContext, UserProfile
-from packages.platform_contracts.discovery import DiscoveryRequestContext
 
 FIXTURE = Path(__file__).parent / "fixtures" / "golden" / "experiences.json"
 

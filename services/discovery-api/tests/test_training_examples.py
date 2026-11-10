@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from app.contracts.discovery import DiscoveryComponentVersion, DiscoveryRequestContext, ImpressionToken
 from app.domain.models import ConsentState
 from app.events.models import ClickPayload, EventType, ImpressionPayload, InteractionEvent
 from app.features.materialization import FeatureKind, FeatureRecord
@@ -13,7 +14,6 @@ from app.training.examples import (
     TimeSplitBoundaries,
     TrainingExampleBuilder,
 )
-from packages.platform_contracts.discovery import DiscoveryComponentVersion, DiscoveryRequestContext, ImpressionToken
 
 UTC = timezone.utc
 BASE = datetime(2026, 1, 1, tzinfo=UTC)

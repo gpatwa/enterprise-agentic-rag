@@ -9,6 +9,12 @@ from typing import Iterable, Protocol
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.contracts.discovery import (
+    DecisionTrace,
+    DiscoveryComponentVersion,
+    DiscoveryRequestContext,
+    ImpressionToken,
+)
 from app.domain.models import (
     ExperienceRecord,
     HistoryLength,
@@ -18,12 +24,6 @@ from app.domain.models import (
     evaluate_eligibility,
 )
 from app.security import Identity, bind_identity, require_identity
-from packages.platform_contracts.discovery import (
-    DecisionTrace,
-    DiscoveryComponentVersion,
-    DiscoveryRequestContext,
-    ImpressionToken,
-)
 
 _MAX_RESULTS = 50
 _MAX_BLOCKED = 1_000

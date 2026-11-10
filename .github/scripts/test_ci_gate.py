@@ -57,9 +57,11 @@ def test_discovery_change_expects_only_discovery() -> None:
     assert _files([], "main", ["services/discovery-api/app/x.py"]) == {"ci-discovery.yml"}
 
 
-def test_shared_contracts_run_every_backend_that_uses_them() -> None:
+def test_contract_changes_run_the_backends_that_use_them() -> None:
     got = _files([], "main", ["packages/platform_contracts/evidence.py"])
-    assert {"ci-analytics.yml", "ci-support.yml", "ci-discovery.yml", "ci-agentic-eval.yml"} <= got
+    assert {"ci-analytics.yml", "ci-support.yml", "ci-agentic-eval.yml"} <= got
+    # Discovery owns its contracts (services/discovery-api/app/contracts) and no longer reads packages/.
+    assert "ci-discovery.yml" not in got
     assert "ci-landing.yml" not in got
 
 

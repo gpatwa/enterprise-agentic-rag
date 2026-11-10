@@ -2,9 +2,9 @@
 import json
 from pathlib import Path
 
+from app.contracts.discovery import DiscoveryRequestContext
 from app.domain.models import ExperienceRecord, UserProfile
 from app.routes.home import HomeRequest, LocalHomeService, home
-from packages.platform_contracts.discovery import DiscoveryRequestContext
 
 FIXTURE = Path(__file__).parent / "fixtures" / "golden"
 

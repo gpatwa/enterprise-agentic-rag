@@ -14,7 +14,6 @@ RUN apt-get update \
 COPY services/discovery-api/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-COPY packages /workspace/packages
 COPY services/discovery-api /workspace/services/discovery-api
 
 RUN groupadd -r appuser && useradd -r -g appuser -u 1000 appuser \

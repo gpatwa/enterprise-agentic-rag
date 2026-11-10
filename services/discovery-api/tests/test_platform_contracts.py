@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from pydantic import ValidationError
 
-from packages.platform_contracts import (
+from app.contracts.discovery import (
     DecisionTrace,
     DiscoveryComponentVersion,
     DiscoveryRequestContext,

@@ -60,7 +60,7 @@ Open placement questions for the owner: the landing site; `DESIGN.md`, `design-e
 
 ## 4. Constraints that must not be broken
 
-1. **Analytics layout and digests.** The Analytics release manifest and corpus digests are computed from file paths relative to the repository root (`reference_stack/release_manifest.py` uses `SERVICE_ROOT.parent.parent` and `docs/execution/enterprise-analytics`). Recorded approvals refer to those digests. The Analytics repository must keep the identical relative layout (`services/analytics-api`, `docs/execution/enterprise-analytics`, `packages/platform_contracts`). `git filter-repo --path` keeps paths unchanged. Acceptance: `make analytics-m7-manifest` produces the same digests before and after, and the Analytics suite results are unchanged.
+1. **Analytics layout and digests.** The Analytics release manifest and corpus digests are computed from file paths relative to the repository root (`reference_stack/release_manifest.py` uses `SERVICE_ROOT.parent.parent` and `docs/execution/enterprise-analytics`). Recorded approvals refer to those digests. The Analytics repository must keep the identical relative layout (`services/analytics-api`, `docs/execution/enterprise-analytics`, `packages/platform_contracts`). `git filter-repo --path` keeps paths unchanged. Acceptance: `make analytics-m7-manifest` produces the same digests on the extracted repository as on `main` immediately before the extraction (X1 intentionally changed the digest of `packages/platform_contracts` by moving `discovery.py` out; the five ADS-079 sign-off slots were empty, so no recorded signature refers to the older value), and the Analytics suite results are unchanged.
 2. **Human gates stay with the user.** The recorded gates (M0, M1, M5, M6, M7) and the unapproved thresholds, corpus, sign-offs and reviews move with the Analytics manifest unchanged. Moving code is not approval and must not be described as one.
 3. **Terraform state keys do not move.** State stays in `ragterraformstategp` under `discovery-pilot/terraform.tfstate`, `analytics-pilot/terraform.tfstate` and `github-repo/terraform.tfstate`. Each new repository gets its own `backend.hcl` pointing at the same keys. Acceptance: `terraform plan` shows **No changes** for both pilot stacks from the new repositories.
 4. **Repository-bound identity.** The Discovery GitHub OIDC credential's subject is `repo:<owner/repo>:environment:<name>` (`github-oidc.tf`, variable `github_repository`). A new Discovery repository needs a new federated credential, and the old one is removed after the cutover. The Analytics deploy workflow uses repository secrets that the owner sets; they must be set again in the new repository by the owner.
@@ -105,3 +105,11 @@ Nothing in X0 to X6 changes the products' behaviour, the deployed pilots or the 
 ## 8. Recommended order
 
 X1 and X2 first (local, reversible, useful regardless), then X0 (owner decisions), then X3 (rehearsal), then X4, and only then X5 with the owner present for the publishing and identity steps.
+
+## 9. Progress (updated as packets land)
+
+| Packet | State | Evidence |
+|---|---|---|
+| X1 | **Done** (2026-11-10) | `discovery.py` now lives at `services/discovery-api/app/contracts/discovery.py`; 36 imports rewritten; the Discovery Dockerfile and CI no longer touch `packages/`. Discovery suite 511 passed, 9 skipped; the app imports from a copy that has no `packages` folder at all; Analytics plus `packages` tests 1189 passed, 62 skipped (the skips need PostgreSQL) |
+| X2 | **Done** (2026-11-10) | `.github/scripts/check_product_boundaries.py` runs in the CI gate on every pull request; 7 tests prove it fails on a cross-product import, a Dockerfile copy of another product and a web-app cross-import, and ignores prose and look-alike names. The gate's own test now says a contract change no longer runs Discovery CI |
+| X3 to X6 | Not started | |

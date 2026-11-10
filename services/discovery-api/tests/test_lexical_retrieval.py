@@ -2,10 +2,10 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from app.contracts.discovery import DiscoveryRequestContext
 from app.domain.models import ImmersiveDiscoveryContext, UserProfile
 from app.search.lexical import LexicalRetriever
 from app.search.mapper import CatalogDocumentInput, map_catalog_document
-from packages.platform_contracts.discovery import DiscoveryRequestContext
 
 FIXTURE = Path(__file__).parent / "fixtures" / "golden"
 

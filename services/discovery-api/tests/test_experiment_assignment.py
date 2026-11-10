@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+from app.contracts.discovery import DiscoveryComponentVersion
 from app.domain.models import ConsentState
 from app.experiments.assignment import (
     AssignmentRejection,
@@ -9,7 +10,6 @@ from app.experiments.assignment import (
     ExperimentConfig,
     ExperimentVariant,
 )
-from packages.platform_contracts.discovery import DiscoveryComponentVersion
 
 UTC = timezone.utc
 EXPOSED_AT = datetime(2026, 8, 24, 12, 0, tzinfo=UTC)

@@ -5,10 +5,10 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from app.contracts.discovery import DiscoveryRequestContext
 from app.domain.models import ImmersiveDiscoveryContext, UserProfile
 from app.search.mapper import CatalogDocumentInput, map_catalog_document
 from app.search.vector import VectorDocument, VectorQuery, VectorRetriever
-from packages.platform_contracts.discovery import DiscoveryRequestContext
 
 FIXTURE = Path(__file__).parent / "fixtures" / "golden"
 MODEL_VERSION = "imd-text-embedding-v1"

@@ -14,6 +14,10 @@ from typing import Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.contracts.discovery import (
+    DiscoveryComponentVersion,
+    ImpressionToken,
+)
 from app.domain.models import (
     ExperienceRecord,
     ImmersiveDiscoveryContext,
@@ -34,10 +38,6 @@ from app.events.models import (
     QualifiedPlayPayload,
     RetentionPayload,
     ReturnPayload,
-)
-from packages.platform_contracts.discovery import (
-    DiscoveryComponentVersion,
-    ImpressionToken,
 )
 
 

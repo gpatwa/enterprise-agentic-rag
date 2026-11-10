@@ -2,10 +2,10 @@ from datetime import datetime, timezone
 
 import pytest
 
+from app.contracts.discovery import DiscoveryRequestContext
 from app.domain.models import ImmersiveDiscoveryContext
 from app.generation.catalog import generate_catalog
 from app.simulation.behavior import BehaviorSimulator, SimulationProfile, simulate_behavior
-from packages.platform_contracts.discovery import DiscoveryRequestContext
 
 
 def _run(seed: int = 7):

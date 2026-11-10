@@ -41,12 +41,6 @@ from packages.platform_contracts.determinism import (
     DeterministicRandom,
     TokenCostController,
 )
-from packages.platform_contracts.discovery import (
-    DecisionTrace,
-    DiscoveryComponentVersion,
-    DiscoveryRequestContext,
-    ImpressionToken,
-)
 from packages.platform_contracts.evaluation import EvaluationCase, EvaluationResult, EvaluationSuite, ReleaseGateReport
 from packages.platform_contracts.harness import ExpectedTrace, ExpectedTraceStep, HarnessReport, HarnessScenario
 from packages.platform_contracts.metadata import (
@@ -112,10 +106,6 @@ __all__ = [
     "DrillResult",
     "RetentionPolicy",
     "SLOTarget",
-    "DiscoveryRequestContext",
-    "DiscoveryComponentVersion",
-    "ImpressionToken",
-    "DecisionTrace",
     "DeterministicBudgetExceeded",
     "DeterministicClock",
     "DeterministicControls",

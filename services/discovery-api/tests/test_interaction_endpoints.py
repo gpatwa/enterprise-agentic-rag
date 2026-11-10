@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.audit.ranking import AuditOutcome, PolicyOutcome, RankingAuditRecord, RankingAuditWriter, checksum, digest
+from app.contracts.discovery import DiscoveryComponentVersion, ImpressionToken
 from app.domain.models import ConsentState
 from app.events.models import ClickPayload, EventType, InteractionEvent
 from app.routes.interactions import (
@@ -13,7 +14,6 @@ from app.routes.interactions import (
     InteractionSubmission,
     LocalInteractionService,
 )
-from packages.platform_contracts.discovery import DiscoveryComponentVersion, ImpressionToken
 
 NOW = datetime.now(timezone.utc).replace(microsecond=0)
 

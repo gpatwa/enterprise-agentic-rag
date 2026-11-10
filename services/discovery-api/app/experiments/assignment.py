@@ -9,8 +9,8 @@ from threading import Lock
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.contracts.discovery import DiscoveryComponentVersion
 from app.domain.models import ConsentState
-from packages.platform_contracts.discovery import DiscoveryComponentVersion
 
 _ID = r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,254}$"
 _VERSION = r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"

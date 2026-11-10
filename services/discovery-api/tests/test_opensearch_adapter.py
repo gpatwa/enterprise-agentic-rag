@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 from app.config import FeatureFlags
+from app.contracts.discovery import DiscoveryRequestContext
 from app.demo_data import load_demo_catalog
 from app.embedding import HASH_EMBEDDING_VERSION, HashingEmbedder
 from app.opensearch.client import OpenSearchClient, OpenSearchError, OpenSearchUnavailable
@@ -21,7 +22,6 @@ from app.opensearch.retriever import OpenSearchRetriever
 from app.opensearch.service import OpenSearchSearchService
 from app.routes.search import LocalSearchService, SearchRequest
 from app.search.mapping import CatalogMappingVersions
-from packages.platform_contracts.discovery import DiscoveryRequestContext
 
 EXPERIENCES, DOCUMENTS, USERS = load_demo_catalog()
 VERSIONS = CatalogMappingVersions(embedding_model_version=HASH_EMBEDDING_VERSION)

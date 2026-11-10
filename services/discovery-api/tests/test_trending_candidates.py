@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 
 from app.candidates.trending import TrendingCandidateSource, TrendingConfig
+from app.contracts.discovery import DiscoveryRequestContext
 from app.domain.models import ConsentState, ExperienceRecord, ImmersiveDiscoveryContext, UserProfile
 from app.features.materialization import FeatureKind, FeatureRecord
-from packages.platform_contracts.discovery import DiscoveryRequestContext
 
 AS_OF = datetime(2026, 1, 10, tzinfo=timezone.utc)
 FIXTURE = Path(__file__).parent / "fixtures" / "golden"

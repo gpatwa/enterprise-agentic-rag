@@ -12,6 +12,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.contracts.discovery import DiscoveryRequestContext
 from app.domain.models import (
     AgeRating,
     CatalogDevice,
@@ -19,7 +20,6 @@ from app.domain.models import (
     Locale,
     UserProfile,
 )
-from packages.platform_contracts.discovery import DiscoveryRequestContext
 
 POLICY_VERSION = "imd-eligibility-v1"
 _IDENTIFIER = r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,254}$"
