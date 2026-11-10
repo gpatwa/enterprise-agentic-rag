@@ -125,9 +125,10 @@ and the shared `ScriptedIntentClient` is deliberately unchanged because the eval
 suites rely on text after the request) and #128 (`NULLS LAST` in every `ORDER BY`, all
 dialects, so NULL placement no longer depends on the engine default).
 
-Still open in Analytics: `test_connection_failures_do_not_leak_credentials_or_hosts`
-fails against a live PostgreSQL 18 even on unmodified `main` (not investigated); the
-retry wrappers and circuit breaker (M7-H5) are not wired into the served app.
+Still open in Analytics: the retry wrappers and circuit breaker (M7-H5) are not wired into
+the served app. `test_connection_failures_do_not_leak_credentials_or_hosts` is not a product
+defect: it failed only on a `trust`-authentication test server (any password is accepted);
+it passes against `scram-sha-256`, and #131 makes it skip with a clear reason on `trust`.
 
 ## Product and Strategy Context
 
@@ -420,7 +421,7 @@ Canonical task status is in
 
 ## Last Verification Evidence
 
-_Historical: the counts below are from the ADS-040 to ADS-049 period. Recent runs: the full Analytics suite passed locally (1133 passed, 4 skipped) at PR #86; with a throwaway local PostgreSQL 18 it gave 1198 passed, 1 skipped, 1 failed (the unrelated connection-failure test above) at #127; CI was green on #127 and #128 (2026-11-10). The Discovery suite passed locally (376 passed, 5 skipped) with PR #89's changes. Re-run before relying on any of these._
+_Historical: the counts below are from the ADS-040 to ADS-049 period. Recent runs: the full Analytics suite passed locally (1133 passed, 4 skipped) at PR #86; with a throwaway local PostgreSQL 18 it gave 1198 passed, 1 skipped, 1 failed (the connection-failure test, which failed only because that server used `trust` authentication) at #127; CI was green on #127 and #128 (2026-11-10). The Discovery suite passed locally (376 passed, 5 skipped) with PR #89's changes. Re-run before relying on any of these._
 
 At commit `d97c428`, run from `services/analytics-api`:
 
