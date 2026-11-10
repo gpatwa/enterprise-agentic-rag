@@ -72,13 +72,13 @@ GOLDEN_SQL = {
         'SELECT DATE_TRUNC(\'month\', d0."created_at") AS dimension_0, SUM(d0."amount") AS metric_0\n'
         'FROM "sales_orders" AS d0\n'
         'WHERE d0."status" = :p0 AND d0."created_at" >= :p1 AND d0."created_at" <= :p2\n'
-        "GROUP BY 1\nORDER BY metric_0 DESC\nLIMIT 25"
+        "GROUP BY 1\nORDER BY metric_0 DESC NULLS LAST\nLIMIT 25"
     ),
     "databricks": (
         "SELECT DATE_TRUNC('month', d0.`created_at`) AS dimension_0, SUM(d0.`amount`) AS metric_0\n"
         "FROM `sales_orders` AS d0\n"
         "WHERE d0.`status` = :p0 AND d0.`created_at` >= :p1 AND d0.`created_at` <= :p2\n"
-        "GROUP BY 1\nORDER BY metric_0 DESC\nLIMIT 25"
+        "GROUP BY 1\nORDER BY metric_0 DESC NULLS LAST\nLIMIT 25"
     ),
 }
 GOLDEN_SQL["duckdb"] = GOLDEN_SQL["snowflake"] = GOLDEN_SQL["postgres"]

@@ -407,8 +407,8 @@ def test_min_cohort_having_clause_hides_small_groups(gateway, contract):
     assert dict(result.rows) == {key: size for key, size in sizes.items() if size >= threshold}
 
 
-def test_sort_places_null_groups_where_postgres_puts_them(gateway, contract):
-    """Characterisation, not endorsement: PostgreSQL sorts NULLs first for DESC and last for ASC, and the compiler does not say."""
+def test_sort_places_null_groups_last_in_both_directions(gateway, contract):
+    """The compiler states NULLS LAST, so the order no longer depends on each engine's default (PostgreSQL: first for DESC)."""
     base = {"metrics": [{"metric_id": "order_count"}], "group_by": [{"dimension_id": "status"}]}
     ascending = _run(
         gateway,
@@ -421,13 +421,13 @@ def test_sort_places_null_groups_where_postgres_puts_them(gateway, contract):
         _intent(sort=[{"target_kind": "dimension", "target_id": "status", "direction": "desc"}], **base),
     )[1]
     assert ascending.rows[-1][0] is None
-    assert descending.rows[0][0] is None
+    assert descending.rows[-1][0] is None
 
 
 def test_names_that_need_quoting_execute(gateway):
     plan = _plan(
         'SELECT d0."Ship ""Mode""" AS dimension_0, SUM(d0."Line Total") AS metric_0 FROM "Order Items" AS d0'
-        ' WHERE d0."select" = :p0 AND d0."Ordered At" >= :p1 GROUP BY 1 ORDER BY metric_0 DESC LIMIT 10',
+        ' WHERE d0."select" = :p0 AND d0."Ordered At" >= :p1 GROUP BY 1 ORDER BY metric_0 DESC NULLS LAST LIMIT 10',
         p0="a",
         p1=datetime(2024, 3, 1),
     )

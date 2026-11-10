@@ -118,7 +118,7 @@ class PostgreSQLCompiler:
             sql_parts.append(f"HAVING COUNT(*) >= {int(self.min_cohort)}")
         if intent.sort:
             order_parts = [
-                f"{sort.target_kind}_{_sort_index(sort, intent)} {sort.direction.upper()}"
+                f"{sort.target_kind}_{_sort_index(sort, intent)} {sort.direction.upper()} NULLS LAST"
                 for sort in intent.sort
             ]
             sql_parts.append(f"ORDER BY {', '.join(order_parts)}")
