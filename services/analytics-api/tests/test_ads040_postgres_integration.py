@@ -3,6 +3,8 @@
 Skipped unless ANALYTICS_TEST_POSTGRES_URL points at a disposable PostgreSQL server (a superuser URL; the module creates
 its own database and a read-only login role, and drops both at the end), so unit CI never needs a server. All data is
 synthetic and generated here; expected values are computed in Python, not by the server under test.
+
+The server must enforce password authentication (not `trust`): the wrong-password test needs a real rejection.
 """
 
 from __future__ import annotations
@@ -787,6 +789,13 @@ def test_an_unbound_marker_is_refused_without_a_connection_or_the_sql_in_the_mes
 def test_connection_failures_do_not_leak_credentials_or_hosts(server):
     gateway_args = {"allowed_tables": ["sales_orders"]}
     wrong_password = create_engine(server["ro_url"].set(password="not-the-password"))
+    try:
+        wrong_password.connect().close()
+    except Exception:
+        pass
+    else:
+        wrong_password.dispose()
+        pytest.skip("the server accepted a wrong password (trust authentication); start it with scram-sha-256 or md5")
     unreachable = create_engine(
         URL.create(
             "postgresql+psycopg2",
