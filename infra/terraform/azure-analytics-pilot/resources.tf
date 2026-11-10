@@ -371,6 +371,11 @@ resource "azurerm_container_app" "api" {
   }
 
   depends_on = [azurerm_role_assignment.api_acr_pull, azurerm_role_assignment.api_kv_read]
+
+  # Azure fills this in on a consumption-only environment; unset, the provider plans a diff every run.
+  lifecycle {
+    ignore_changes = [workload_profile_name]
+  }
 }
 
 # Hourly retention purge (policy values when runs end; plans and links after 30 days). Billed per execution second.
@@ -420,6 +425,11 @@ resource "azurerm_container_app_job" "purge" {
   }
 
   depends_on = [azurerm_role_assignment.api_acr_pull, azurerm_role_assignment.api_kv_read]
+
+  # Azure fills this in on a consumption-only environment; unset, the provider plans a diff every run.
+  lifecycle {
+    ignore_changes = [workload_profile_name]
+  }
 }
 
 # ---- a budget so the pilot cannot surprise anyone ----
