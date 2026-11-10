@@ -8,7 +8,7 @@ stack="$root/infra/terraform/github-repo"
 source_backend="$root/infra/terraform/azure-discovery-pilot/backend.hcl"
 # Defaults are this repository; override to adopt a new one (see docs/REPO_SEPARATION_EXTRACTION_PLAN.md, X5):
 #   REPO=gpatwa/agentic-data-analytics STATE_KEY=github-repo/agentic-data-analytics.tfstate PROTECTED_ENVS='[]' ...
-repo="${REPO:-gpatwa/enterprise-agentic-rag}"
+repo="${REPO:-gpatwa/agentic-resolution-intelligence}"
 state_key="${STATE_KEY:-github-repo/terraform.tfstate}"
 protected_envs="${PROTECTED_ENVS:-[\"discovery-pilot\"]}"
 
@@ -24,7 +24,8 @@ export GITHUB_TOKEN="$(gh auth token)"
 cd "$stack"
 terraform init -input=false -reconfigure -backend-config=backend.hcl >/dev/null
 
-in_state() { terraform state list 2>/dev/null | grep -qx "$1"; }
+# Capture first: `grep -q` exiting early would otherwise SIGPIPE terraform and fail the pipeline under pipefail.
+in_state() { local listed; listed="$(terraform state list 2>/dev/null || true)"; grep -qx "$1" <<<"$listed"; }
 
 if ! in_state github_repository.this; then
   echo "importing the existing repository into state (no change to GitHub)"
