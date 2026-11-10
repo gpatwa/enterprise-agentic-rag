@@ -22,12 +22,19 @@ Sizes (tracked files): `services/api` 323, `services/analytics-api` 383, `servic
 
 ## 3. Target and ownership map
 
-| New repository (names are the owner's to choose) | Owns |
+| New repository | Owns |
 |---|---|
-| **Resolution Intelligence** (recommended: keep the current repository, `gpatwa/enterprise-agentic-rag`, and remove the other two from it, so existing URLs, stars and PR history stay) | `services/api`, `apps/support-web`, `pipelines/`, `Dockerfile.ingestion`, `requirements-ingestion.txt`, `libs/`, `models/`, `eval/`, `deploy/` (helm, karpenter, ray), the platform services (`control-plane`, `data-plane`, `gateway`, `sandbox`; Option A in the product-separation doc), the AWS Terraform at `infra/terraform/*.tf`, `infra/terraform/azure`, `infra/terraform/azure-dev`, `infra/terraform/opensearch`, `infra/observability`, `docker-compose.yml`, the support Makefile targets and the RAG docs |
-| **Analytics** | `services/analytics-api`, `apps/analytics-web`, `packages/platform_contracts` minus `discovery.py`, `infra/terraform/azure-analytics-pilot`, `scripts/analytics`, the Analytics Makefile targets (25), `docs/execution/enterprise-analytics`, the Analytics docs, `ci-analytics*.yml`, `deploy-analytics*.yml` |
-| **Discovery** | `services/discovery-api`, `apps/discovery-web`, `packages/platform_contracts/discovery.py` (moved to the service, for example `services/discovery-api/contracts/`), `infra/terraform/azure-discovery-pilot`, the Discovery docs, `ci-discovery.yml`, `deploy-discovery-pilot-azure.yml`, `discovery-search-vm.yml` |
+| **`compass-resolution-intelligence`** (recommended: keep the current repository, `gpatwa/enterprise-agentic-rag`, and remove the other two from it, so existing URLs, stars and PR history stay; rename it at the end, see 3.1) | `services/api`, `apps/support-web`, `pipelines/`, `Dockerfile.ingestion`, `requirements-ingestion.txt`, `libs/`, `models/`, `eval/`, `deploy/` (helm, karpenter, ray), the platform services (`control-plane`, `data-plane`, `gateway`, `sandbox`; Option A in the product-separation doc), the AWS Terraform at `infra/terraform/*.tf`, `infra/terraform/azure`, `infra/terraform/azure-dev`, `infra/terraform/opensearch`, `infra/observability`, `docker-compose.yml`, the support Makefile targets and the RAG docs |
+| **`compass-analytics`** | `services/analytics-api`, `apps/analytics-web`, `packages/platform_contracts` minus `discovery.py`, `infra/terraform/azure-analytics-pilot`, `scripts/analytics`, the Analytics Makefile targets (25), `docs/execution/enterprise-analytics`, the Analytics docs, `ci-analytics*.yml`, `deploy-analytics*.yml` |
+| **`compass-discovery`** | `services/discovery-api`, `apps/discovery-web`, `packages/platform_contracts/discovery.py` (moved to the service, for example `services/discovery-api/contracts/`), `infra/terraform/azure-discovery-pilot`, the Discovery docs, `ci-discovery.yml`, `deploy-discovery-pilot-azure.yml`, `discovery-search-vm.yml` |
 | **Landing (decision needed)** | `apps/landing`, `ci-landing.yml`, `deploy-landing-azure.yml`. Recommended: with Analytics, since the copy is mostly about Analytics. It could instead be its own repository or live with whichever product is sold last |
+
+### 3.1 Naming
+
+On 2026-11-10 the owner said to name each repository after its product and left the exact names to this plan. Names follow what the repository already uses: "Compass" is the brand on every web app (`compass-analytics-web`, `compass-discovery-web`, `compass-support-web`, `compass-landing`), and Resolution Intelligence and Immersive Discovery are the product names. All three names were free under `gpatwa` on 2026-11-10 (checked with `gh repo list`).
+
+- **Renaming the current repository is the last step.** GitHub redirects the old URL, but the Discovery GitHub OIDC subject (`repo:gpatwa/enterprise-agentic-rag:...`) and the `github-repo` Terraform stack are bound to the current name, so rename only after those are updated (X5/X6).
+- **Brand caveat, for the owner:** the shared "Compass" prefix is not a product name of its own, and a buyer of one product normally takes the name with it. If any product will be sold, a prefix-free name (`resolution-intelligence`, `analytics`, `immersive-discovery`) is easier to hand over. "Compass" is also a common name, and no trademark search has been done. Changing the names later costs a rename and a redirect, not a rebuild.
 
 Open placement questions for the owner: the landing site; `DESIGN.md`, `design-explorations/`, `CONTRIBUTING.md` and `LICENSE` (each new repository needs its own copies); and who keeps `docs/architecture.md` and the roadmap (recommended: a short pointer in each repository, with the full text where it belongs).
 
@@ -49,7 +56,7 @@ Use `git filter-repo` on fresh clones, one per product, keeping only the owned p
 
 | Packet | Work | Evidence required | Gate |
 |---|---|---|---|
-| X0 | Owner decisions: the three repository names and the owner or organisation, the landing placement, the monorepo's fate (recommended: it becomes Resolution Intelligence), and a go-ahead to create repositories | The owner's words recorded here | **Owner** |
+| X0 | Owner decisions: the owner or organisation (names proposed in 3.1), the landing placement, the monorepo's fate (recommended: it becomes Resolution Intelligence), and a go-ahead to create repositories | The owner's words recorded here | **Owner** |
 | X1 | Move `platform_contracts/discovery.py` into the Discovery service in this repository: update the 36 imports and `__init__.py`, keep tests. Remove the cross-reference so the package has no Discovery code | Discovery suite unchanged (376 passed, 5 skipped at PR #89's changes; re-run to get the current number); Analytics suite unchanged; `ci-discovery` and `ci-analytics` green | None (local, reversible) |
 | X2 | Add a CI check that the three products import nothing from each other, and that `services/api` imports nothing from `packages/` | The check fails when a cross-import is added (tested) | None |
 | X3 | Rehearse the extraction locally with `filter-repo` into three scratch clones. For each, list what is missing at build time and fix the layout (Dockerfile contexts, `pyproject.toml`, root `.dockerignore`, Makefile targets, workflow path filters, `CLAUDE.md`, the handoff, `.gitignore`) | Per clone: unit tests pass; Analytics `make analytics-m7-manifest` digests identical to `main`; Docker images build; `terraform validate` and `terraform plan` clean for the pilot stacks (read-only) | None (scratch only, nothing pushed) |
