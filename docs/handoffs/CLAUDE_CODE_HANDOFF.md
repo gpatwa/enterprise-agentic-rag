@@ -475,7 +475,7 @@ words in the program manifest.
   the same way. Prometheus metrics, promtool-tested alert rules and a Grafana
   dashboard for them are built (`infra/observability/`, not deployed; no alert
   receiver; Grafana rendering unseen), and every deployed change needs its own request. Nothing is deployed or enabled; Ray 2.9.x was not tested.
-- Compass pilot: the `gpt-6-luna` Terraform import is half-done (code in #120; the plan and import have not run, and the ignored tfvars live in `.claude/worktrees/azure-deploy`); `terraform apply` and removing the hand-made `text-embedding-3-small` deployment need the owner's go-ahead.
+- Compass pilot: the `gpt-6-luna` import is done (2026-11-10; the Analytics plan shows no changes after #130, nothing was applied). The hand-made `text-embedding-3-small` deployment on `compass-pilot-openai` was removed on 2026-11-10 after a managed-identity embedding call succeeded on the Discovery-owned account. The ignored Compass tfvars live in `.claude/worktrees/azure-deploy`; do not delete that worktree.
 - Analytics warehouses: which warehouse first, sandbox accounts and credentials for
   W8, whether to include W9.
 - Landing: the owner sets the Static Web Apps deploy secret; the leadership

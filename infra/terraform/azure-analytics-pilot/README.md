@@ -72,7 +72,7 @@ With `create_openai = true` the account `<prefix>-<env>-openai` (`compass-pilot-
 |---|---|---|
 | `gpt-5.6-luna` | `azurerm_cognitive_deployment.intent` | The intent model the API uses (`AZURE_OPENAI_DEPLOYMENT`). |
 | `gpt-6-luna` (model version `2026-09-22`, GlobalStandard, capacity 10) | `azurerm_cognitive_deployment.intent_gpt6` | Created by hand with the Azure CLI, then declared here. The API does not use it yet; switching `azure_openai_deployment` is a separate, deliberate change. Variables: `azure_openai_gpt6_deployment`, `azure_openai_gpt6_model`, `azure_openai_gpt6_model_version`; capacity shares `openai_capacity`. |
-| `text-embedding-3-small` | **No, temporary** | Created by hand for the Discovery product. Deliberately not in Terraform; see below. |
+| ~~`text-embedding-3-small`~~ | n/a | Hand-made for Discovery; **removed 2026-11-10** after Discovery's own account was verified (see below). |
 
 ### Importing the hand-made `gpt-6-luna` deployment
 
@@ -96,7 +96,9 @@ terraform import 'azurerm_cognitive_deployment.intent_gpt6[0]' \
 Do not `terraform apply` before the import: Azure would reject creating a deployment that already exists. `rai_policy_name` is set to
 `Microsoft.DefaultV2`, the value the CLI assigned, so the plan after the import has no diff on that attribute.
 
-### Removing the temporary `text-embedding-3-small` deployment
+### Removing the temporary `text-embedding-3-small` deployment (done 2026-11-10)
+
+Done: the Discovery API's managed identity embedded a test string (384 dimensions) on the Discovery-owned account, nothing referenced the Compass copy, and it was deleted with the command below; only `gpt-5.6-luna` and `gpt-6-luna` remain. Kept for the record and for a rebuild.
 
 `text-embedding-3-small` on this account was created by hand so Discovery could embed before it had its own account. It is not
 declared in this stack, so removing it causes no Terraform drift. Run this **only after all of these are true**: the Discovery stack
