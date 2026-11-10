@@ -53,7 +53,7 @@ class ScriptedIntentClient:
         self.request_id, self.tenant_id, self.ambiguous = request_id, tenant_id, ambiguous
 
     def complete_json(self, *, prompt: str, schema: dict, max_tokens: int) -> dict[str, Any]:
-        question = " ".join(re.sub(r"[^a-z ]", " ", prompt.rsplit("Request:", 1)[-1].split("\n", 1)[0].lower()).split())
+        question = " ".join(re.sub(r"[^a-z ]", " ", prompt.rsplit("Request:", 1)[-1].lower()).split())
         base = {
             "query_id": self.request_id,
             "tenant_id": self.tenant_id,
