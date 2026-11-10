@@ -6,7 +6,11 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 stack="$root/infra/terraform/github-repo"
 source_backend="$root/infra/terraform/azure-discovery-pilot/backend.hcl"
-repo="gpatwa/enterprise-agentic-rag"
+# Defaults are this repository; override to adopt a new one (see docs/REPO_SEPARATION_EXTRACTION_PLAN.md, X5):
+#   REPO=gpatwa/agentic-data-analytics STATE_KEY=github-repo/agentic-data-analytics.tfstate PROTECTED_ENVS='[]' ...
+repo="${REPO:-gpatwa/enterprise-agentic-rag}"
+state_key="${STATE_KEY:-github-repo/terraform.tfstate}"
+protected_envs="${PROTECTED_ENVS:-[\"discovery-pilot\"]}"
 
 command -v terraform >/dev/null || { echo "terraform is required" >&2; exit 1; }
 gh auth status >/dev/null 2>&1 || { echo "run: gh auth login" >&2; exit 1; }
@@ -14,7 +18,7 @@ az account show >/dev/null 2>&1 || { echo "run: az login" >&2; exit 1; }
 [ -f "$source_backend" ] || { echo "missing $source_backend (the state storage settings live there)" >&2; exit 1; }
 
 # Same state storage as the other stacks, its own state key.
-sed 's|^key .*|key                  = "github-repo/terraform.tfstate"|' "$source_backend" > "$stack/backend.hcl"
+sed "s|^key .*|key                  = \"$state_key\"|" "$source_backend" > "$stack/backend.hcl"
 
 export GITHUB_TOKEN="$(gh auth token)"
 cd "$stack"
@@ -34,7 +38,7 @@ if ! in_state github_repository_ruleset.default_branch; then
   fi
 fi
 
-terraform plan -input=false -out=tfplan -no-color | sed -n '/Terraform will perform/,$p'
+terraform plan -input=false -out=tfplan -no-color -var "repository=${repo#*/}" -var "owner=${repo%%/*}" -var "protected_environments=$protected_envs" | sed -n '/Terraform will perform/,$p'
 if [ "${APPLY:-0}" = "1" ]; then
   terraform apply -input=false tfplan
   echo "applied. Verify with a throwaway PR (see README)."
