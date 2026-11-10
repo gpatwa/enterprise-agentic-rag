@@ -7,14 +7,12 @@ on:
     branches: [main]
     paths:
       - "services/api/**"
-      - "packages/**"
       - "pyproject.toml"
       - ".github/workflows/ci-support.yml"
   pull_request:
     branches: [main]
     paths:
       - "services/api/**"
-      - "packages/**"
       - "pyproject.toml"
       - ".github/workflows/ci-support.yml"
 

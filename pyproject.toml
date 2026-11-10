@@ -7,14 +7,14 @@ description = "Enterprise-grade RAG pipeline with multi-cloud support (AWS + Azu
 [tool.ruff]
 target-version = "py310"
 line-length = 120
-src = ["services/api/app", "services/analytics-api/app", "services/control-plane/app", "services/data-plane/app", "packages", "pipelines"]
+src = ["services/api/app", "services/control-plane/app", "services/data-plane/app", "packages", "pipelines"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
 ignore = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["app", "packages", "pipelines"]
+known-first-party = ["app", "pipelines"]
 
 [tool.pytest.ini_options]
 # Default testpaths for monolith. Control-plane and data-plane tests are run

@@ -27,7 +27,7 @@ variable "owner" {
 
 variable "repository" {
   type    = string
-  default = "enterprise-agentic-rag"
+  default = "agentic-resolution-intelligence"
 }
 
 variable "required_check" {
@@ -93,7 +93,7 @@ resource "github_repository_ruleset" "default_branch" {
 # branches may deploy to the environment is what stops an arbitrary branch's workflow from using that identity.
 variable "protected_environments" {
   type    = set(string)
-  default = ["discovery-pilot"]
+  default = []
 }
 
 resource "github_repository_environment" "protected" {

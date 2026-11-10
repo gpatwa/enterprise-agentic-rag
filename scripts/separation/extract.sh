@@ -13,11 +13,16 @@ src="${3:-$(git rev-parse --show-toplevel)}"
 
 # Files every repository starts with (each gets its own README, CLAUDE.md and handoff afterwards).
 common=(LICENSE .gitignore .dockerignore .pre-commit-config.yaml pyproject.toml Makefile README.md CLAUDE.md CONTRIBUTING.md
+  docker-compose.yml
+  scripts/bootstrap_github_repo.sh infra/terraform/github-repo
   .github/scripts .github/workflows/ci-gate.yml)
 
 # Owned by Analytics (the landing site goes with it).
 analytics_paths=(
   services/analytics-api apps/analytics-web apps/landing packages
+  scripts/run_agentic_eval.py scripts/seed_dataset.py scripts/seed_olist.py
+  scripts/architecture
+  deploy/helm/analytics-api deploy/helm/analytics-web deploy/secrets/analytics-external-secret-azure.yaml
   infra/terraform/azure-analytics-pilot scripts/analytics scripts/deploy_azure_analytics.sh scripts/deploy_azure_landing.sh
   docs/execution/enterprise-analytics docs/diagrams docs/compliance docs/operations docs/reviews docs/security
   docs/runbooks/analytics-operations.md
@@ -34,7 +39,7 @@ analytics_paths=(
 # Owned by Discovery.
 discovery_paths=(
   services/discovery-api apps/discovery-web infra/terraform/azure-discovery-pilot
-  scripts/discovery_repo_vars.sh scripts/bootstrap_github_repo.sh infra/terraform/github-repo
+  scripts/discovery_repo_vars.sh
   docs/execution/immersive-discovery docs/adr/ADR-IMD-001-immersive-discovery.md
   docs/adr/ADR-IMD-020-immersive-catalog-search.md docs/adr/ADR-IMD-042-cpu-ranker.md
   docs/adr/ADR-IMD-076-llm-context-engineering.md docs/IMMERSIVE_DISCOVERY_EXECUTION_PLAN.md
@@ -54,7 +59,7 @@ support) mode=drop; paths=("${analytics_paths[@]}" "${discovery_paths[@]}") ;;
 esac
 
 rm -rf "$dest"
-git clone --no-local --quiet "$src" "$dest"
+git clone --no-local --quiet --branch "${SRC_BRANCH:-main}" "$src" "$dest"
 cd "$dest"
 args=()
 for p in "${paths[@]}"; do args+=(--path "$p"); done
