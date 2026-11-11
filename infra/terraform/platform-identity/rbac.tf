@@ -85,3 +85,33 @@ resource "azurerm_role_assignment" "apply_kv" {
   role_definition_name = "Key Vault Secrets Officer"
   principal_id         = azuread_service_principal.apply[each.key].object_id
 }
+
+# The azurerm provider reads secret-bearing properties while refreshing (Cognitive Services keys, Container App and Static Web
+# App secrets, registry credentials), which `Reader` does not allow. This custom role adds exactly those read actions for the
+# plan identity, on its own resource group only. Plan jobs run on pull requests from this repository (forks get no OIDC token),
+# so this is the owner's own code reading the owner's own pilot secrets; the Terraform logs never print them.
+resource "azurerm_role_definition" "plan_refresh" {
+  name        = "terraform-plan-refresh"
+  scope       = data.azurerm_subscription.current.id
+  description = "Read the secret-bearing properties the azurerm provider needs to refresh state. Read only."
+
+  permissions {
+    actions = [
+      "Microsoft.CognitiveServices/accounts/listKeys/action",
+      "Microsoft.App/containerApps/listSecrets/action",
+      "Microsoft.App/jobs/listSecrets/action",
+      "Microsoft.ContainerRegistry/registries/listCredentials/action",
+      "Microsoft.Web/staticSites/listSecrets/action",
+    ]
+    not_actions = []
+  }
+
+  assignable_scopes = [for rg in data.azurerm_resource_group.target : rg.id]
+}
+
+resource "azurerm_role_assignment" "plan_refresh" {
+  for_each           = local.targets
+  scope              = data.azurerm_resource_group.target[each.key].id
+  role_definition_id = azurerm_role_definition.plan_refresh.role_definition_resource_id
+  principal_id       = azuread_service_principal.plan[each.key].object_id
+}
