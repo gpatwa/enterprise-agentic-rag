@@ -13,7 +13,7 @@ WORKDIR /build
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Force-install packages with tricky dependency resolution first
-RUN pip install --no-cache-dir "packaging>=24.2" "langsmith>=0.1.0" "ray==2.54.0"
+RUN pip install --no-cache-dir "packaging>=24.2" "langsmith>=0.1.0" "ray==2.60.0"
 
 # Install remaining ingestion dependencies
 COPY requirements-ingestion.txt .

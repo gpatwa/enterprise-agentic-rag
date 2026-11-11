@@ -12,7 +12,7 @@ without that:
   OpenSearch lines are removed, so it can tell the difference;
 * the Dockerfile, compose file and ``.dockerignore`` agree with the above.
 
-Not covered: that pip can resolve the whole file together (ray 2.54, unstructured 0.12, pydantic 2.6), that the
+Not covered: that pip can resolve the whole file together (ray 2.60, unstructured 0.12, pydantic 2.6), that the
 image builds, and anything about packages that are declared but not installed in the environment running this test.
 """
 
