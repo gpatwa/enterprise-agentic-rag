@@ -10,7 +10,7 @@ source_backend="$root/infra/terraform/azure-discovery-pilot/backend.hcl"
 #   REPO=gpatwa/agentic-data-analytics STATE_KEY=github-repo/agentic-data-analytics.tfstate PROTECTED_ENVS='[]' ...
 repo="${REPO:-gpatwa/agentic-resolution-intelligence}"
 state_key="${STATE_KEY:-github-repo/terraform.tfstate}"
-protected_envs="${PROTECTED_ENVS:-[\"discovery-pilot\"]}"
+protected_envs="${PROTECTED_ENVS:-[]}"
 
 command -v terraform >/dev/null || { echo "terraform is required" >&2; exit 1; }
 gh auth status >/dev/null 2>&1 || { echo "run: gh auth login" >&2; exit 1; }

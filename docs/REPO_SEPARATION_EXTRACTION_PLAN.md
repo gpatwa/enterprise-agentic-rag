@@ -158,15 +158,19 @@ X1 and X2 first (local, reversible, useful regardless), then X0 (owner decisions
 | X5 finding | Audits | The rehearsal tested code, not workflows, and missed four things that real CI then showed: an Analytics script (`run_agentic_eval.py`), the diagram tooling (`scripts/architecture`), the Analytics Helm and secrets assets under `deploy/`, and the repo-settings tooling that every repository needs. `scripts/separation/extract.sh` now carries them, and the audit that found them (every path and every `make` target a workflow references must exist in that repository) is part of the checklist for any future extraction |
 | X6 | **In this pull request** | Removes the moved products from this repository (1035 files) and applies the Resolution Intelligence README, `CLAUDE.md`, handoff, Makefile, compose file and CI-gate tests. Tests as before the split (91 passed, 17 skipped). Rename to `agentic-resolution-intelligence` follows the merge |
 
-## 10. Owner checklist (not done, and not asked about)
+## 10. Owner checklist
 
-These are yours; nothing above depends on answering them now.
+Updated 2026-11-10 after the autonomous-infrastructure work (`docs/INFRA_AUTOMATION.md`). Most of the original list is now done by code.
 
-1. **GitHub secrets** in each new repository where a deploy or VM workflow is used: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `DISCOVERY_RESOURCE_GROUP`, `DISCOVERY_SEARCH_VM_NAME` (Discovery); the Analytics deploy secrets and `AZURE_STATIC_WEB_APPS_API_TOKEN` (Analytics). I never set secrets.
-2. **Entra federated credential for the new Discovery repository.** The VM workflow's identity trusts `repo:gpatwa/enterprise-agentic-rag:environment:discovery-pilot` (`infra/terraform/azure-discovery-pilot/github-oidc.tf`, variable `github_repository`). Change that variable to `gpatwa/agentic-search-discovery` and run `terraform plan`, then `apply`, in that stack from the Discovery repository. It is an identity change, so it is yours to run. Until then the workflow in the new repository cannot sign in to Azure.
-3. **Recreate the ignored Terraform files** in the new repositories (`backend.hcl`, `terraform.tfvars`, `secrets.auto.tfvars`): Discovery's are in this working tree under `infra/terraform/azure-discovery-pilot`, Analytics's are in this working tree under `infra/terraform/azure-analytics-pilot` and in `.claude/worktrees/azure-deploy`. They were never copied (they hold secrets).
-4. **Analytics human gates** are unchanged and still yours: thresholds, reference corpus, the five ADS-079 sign-offs, independent reviews. Sign off on the final repository's manifest (its `manifest_digest` includes the git commit).
-5. **Licence** is MIT in all three (unchanged). Change it per product if you want a different one.
-6. **Descriptions, topics and README wording** on the new repositories are drafts.
-7. **Obsolete GitHub environment.** `discovery-pilot` still exists in `agentic-resolution-intelligence` (it was left in place so its variables can be copied first). Run `make discovery-repo-vars` in `agentic-search-discovery`, then in this repository run `PROTECTED_ENVS='[]' APPLY=1 scripts/bootstrap_github_repo.sh` to remove it.
-8. **Archive nothing yet.** Old links to this repository's moved paths redirect to nothing; update any external references.
+**Done by code, no longer manual**
+- The Entra federated credential for the new Discovery repository: changed by the Discovery infra workflow's first automatic apply. The VM workflow's `status` action was then run from the new repository and signed in.
+- GitHub Actions variables for both repositories: written by `infra/terraform/platform-identity` (identity IDs, state settings, resource groups, and the Discovery workflow variables from the stack's own output).
+- Ignored Terraform files: replaced by committed non-secret config (`state.hcl`, `pilot.auto.tfvars`), private storage for personal inputs, live values read at run time, and Entra auth for state (no `ARM_ACCESS_KEY`).
+- The obsolete `discovery-pilot` environment in this repository: removed.
+
+**Still yours**
+1. **Analytics human gates**: thresholds, reference corpus, the five ADS-079 sign-offs, independent reviews. Sign off on the final repository's manifest (its `manifest_digest` includes the git commit).
+2. **Approving a destructive infrastructure plan**, when one comes: one click on the `infra-apply-destructive` environment.
+3. **Licence** (MIT in all three), README wording and descriptions: drafts.
+4. **Deploy workflows** still read stored `secrets.*` and need a dedicated deploy identity (see `docs/INFRA_AUTOMATION.md`, "Not yet converted").
+5. **State isolation** between repositories (per-repository blob conditions) before any product changes hands.
