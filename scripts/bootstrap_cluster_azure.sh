@@ -122,7 +122,7 @@ echo "Step 3: Installing KubeRay Operator..."
 helm repo add kuberay https://ray-project.github.io/kuberay-helm/ 2>/dev/null || true
 helm repo update
 helm upgrade --install kuberay-operator kuberay/kuberay-operator \
-    --version 1.0.0 \
+    --version 1.7.2 \
     --wait
 
 # -----------------------------------------------------------
