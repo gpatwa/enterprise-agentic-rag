@@ -102,6 +102,7 @@ resource "azurerm_role_definition" "plan_refresh" {
       "Microsoft.App/jobs/listSecrets/action",
       "Microsoft.ContainerRegistry/registries/listCredentials/action",
       "Microsoft.Web/staticSites/listSecrets/action",
+      "Microsoft.Web/staticSites/listAppSettings/action",
     ]
     not_actions = []
   }
