@@ -33,19 +33,30 @@ resource "azuread_service_principal" "apply" {
 }
 
 # The subjects are exact (repository plus pull request, branch or environment): a workflow in any other repository, or in
-# this one outside these contexts, cannot obtain a token for these identities.
+# this one outside these contexts, cannot obtain a token for these identities. GitHub issues the IMMUTABLE form for these
+# repositories (owner and repository IDs in the subject, `repo:owner@ownerId/name@repoId:...`, as reported by
+# `gh api repos/OWNER/NAME/actions/oidc/customization/sub`), so a renamed or recreated repository cannot inherit the trust.
+data "github_repository" "target" {
+  for_each = local.targets
+  name     = each.value.repository
+}
+
 locals {
+  subject_prefix = {
+    for k, t in local.targets : k => "repo:${var.github_owner}@${data.github_user.owner.id}/${t.repository}@${data.github_repository.target[k].repo_id}"
+  }
+
   plan_subjects = merge([
     for k, t in local.targets : {
-      "${k}-pr"   = { target = k, subject = "repo:${var.github_owner}/${t.repository}:pull_request" }
-      "${k}-main" = { target = k, subject = "repo:${var.github_owner}/${t.repository}:ref:refs/heads/main" }
+      "${k}-pr"   = { target = k, subject = "${local.subject_prefix[k]}:pull_request" }
+      "${k}-main" = { target = k, subject = "${local.subject_prefix[k]}:ref:refs/heads/main" }
     }
   ]...)
   apply_subjects = merge([
     for k, t in local.targets : {
       for name, env in local.environments : "${k}-${name}" => {
         target  = k
-        subject = "repo:${var.github_owner}/${t.repository}:environment:${env}"
+        subject = "${local.subject_prefix[k]}:environment:${env}"
       }
     }
   ]...)
