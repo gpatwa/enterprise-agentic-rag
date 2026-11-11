@@ -1,5 +1,5 @@
 # Orchestration
-ray==2.54.0
+ray==2.60.0
 langchain-text-splitters  # Used by chunking/splitter.py
 
 # Database & Storage
@@ -28,7 +28,7 @@ pillow
 # NOTE: langchain, langchain-community removed — only langchain-text-splitters is used.
 
 # Core Alignment
-pyarrow>=14.0.0
+pyarrow>=14.0.0,<23  # 26.x needs NumPy 2 but numpy<2.0.0 is pinned below; 22.0.0 verified with Ray 2.60.0
 numpy<2.0.0
 protobuf<5.0.0
 packaging>=24.2

@@ -7,7 +7,7 @@ metadata:
   namespace: default
 spec:
   # Ray Version: Must match your Python SDK version
-  rayVersion: '2.54.0'
+  rayVersion: '2.60.0'
 
   ###################################
   # HEAD NODE (The Manager)
@@ -26,7 +26,7 @@ spec:
           kubernetes.io/arch: amd64
         containers:
         - name: ray-head
-          image: rayproject/ray:2.54.0-py310
+          image: rayproject/ray:2.60.0-py310
           resources:
             # Dev: 1 CPU / 4Gi (prod: 2 CPU / 8Gi)
             limits:
@@ -55,7 +55,7 @@ spec:
       spec:
         containers:
         - name: ray-worker
-          image: rayproject/ray:2.54.0-py310 # CPU Image
+          image: rayproject/ray:2.60.0-py310 # CPU Image
           resources:
             # Dev: 2 CPU / 8Gi (prod: 8 CPU / 32Gi on c6i instances)
             limits:
@@ -79,7 +79,7 @@ spec:
       spec:
         containers:
         - name: ray-worker
-          image: rayproject/ray:2.54.0-py310-gpu
+          image: rayproject/ray:2.60.0-py310-gpu
           resources:
             # Dev: sized for g5.xlarge (4 vCPU, 16GB RAM, 1x A10G)
             # Prod: increase to 4 CPU / 32Gi for g5.4xlarge with 70B model
