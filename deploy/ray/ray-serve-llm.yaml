@@ -9,7 +9,7 @@ spec:
 
   # 1. THE EMBEDDED CLUSTER CONFIG (Copied from ray-cluster.yaml)
   rayClusterConfig:
-    rayVersion: '2.9.0'
+    rayVersion: '2.54.0'
     headGroupSpec:
       serviceType: ClusterIP
       rayStartParams:
@@ -22,7 +22,7 @@ spec:
             kubernetes.io/arch: amd64
           containers:
           - name: ray-head
-            image: rayproject/ray:2.9.0-py310
+            image: rayproject/ray:2.54.0-py310
             resources:
               limits:
                 cpu: "2"
@@ -43,7 +43,7 @@ spec:
         spec:
           containers:
           - name: ray-worker
-            image: rayproject/ray:2.9.0-py310-gpu
+            image: rayproject/ray:2.54.0-py310-gpu
             resources:
               # Dev: sized for g5.xlarge (4 vCPU, 16GB RAM, 1x A10G 24GB VRAM)
               limits:

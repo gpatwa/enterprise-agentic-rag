@@ -1,7 +1,7 @@
 # pipelines/ingestion/requirements.txt
 
 # Ray (Distributed Processing)
-ray[data]==2.9.3
+ray[data]==2.54.0
 
 # Document Parsing
 unstructured[pdf]==0.12.0
