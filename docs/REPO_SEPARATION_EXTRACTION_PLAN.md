@@ -163,6 +163,7 @@ X1 and X2 first (local, reversible, useful regardless), then X0 (owner decisions
 Updated 2026-11-10 after the autonomous-infrastructure work (`docs/INFRA_AUTOMATION.md`). Most of the original list is now done by code.
 
 **Done by code, no longer manual**
+- Deploy workflows: no stored secrets; the API key and Static Web App tokens are read at run time.
 - The Entra federated credential for the new Discovery repository: changed by the Discovery infra workflow's first automatic apply. The VM workflow's `status` action was then run from the new repository and signed in.
 - GitHub Actions variables for both repositories: written by `infra/terraform/platform-identity` (identity IDs, state settings, resource groups, and the Discovery workflow variables from the stack's own output).
 - Ignored Terraform files: replaced by committed non-secret config (`state.hcl`, `pilot.auto.tfvars`), private storage for personal inputs, live values read at run time, and Entra auth for state (no `ARM_ACCESS_KEY`).
@@ -172,5 +173,5 @@ Updated 2026-11-10 after the autonomous-infrastructure work (`docs/INFRA_AUTOMAT
 1. **Analytics human gates**: thresholds, reference corpus, the five ADS-079 sign-offs, independent reviews. Sign off on the final repository's manifest (its `manifest_digest` includes the git commit).
 2. **Approving a destructive infrastructure plan**, when one comes: one click on the `infra-apply-destructive` environment.
 3. **Licence** (MIT in all three), README wording and descriptions: drafts.
-4. **Deploy workflows** still read stored `secrets.*` and need a dedicated deploy identity (see `docs/INFRA_AUTOMATION.md`, "Not yet converted").
+4. ~~Deploy workflows still read stored secrets~~ **Done**: converted to OIDC with a narrow deploy identity and verified (see `docs/INFRA_AUTOMATION.md`). Only the legacy AWS/AKS workflows still use stored secrets.
 5. **State isolation** between repositories (per-repository blob conditions) before any product changes hands.
