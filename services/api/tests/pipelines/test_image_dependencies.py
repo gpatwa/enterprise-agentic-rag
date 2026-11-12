@@ -247,3 +247,16 @@ def test_matplotlib_is_declared_because_the_pdf_stack_imports_it_at_load() -> No
     declared = {_normalize(re.split(r"[<>=!~\[;# ]", line.strip(), maxsplit=1)[0]) for line in
                 IMAGE_REQUIREMENTS.read_text().splitlines() if line.strip() and not line.lstrip().startswith("#")}
     assert "matplotlib" in declared
+
+
+def test_ray_job_configs_install_the_text_splitter_package_the_chunker_imports() -> None:
+    # chunking/splitter.py imports langchain_text_splitters. The old `langchain==0.1.0` pin predates that package, so
+    # the job could not import its chunker, and it also pinned packaging below what Ray 2.60 requires (>=24.2).
+    splitter = (REPO / "pipelines" / "ingestion" / "chunking" / "splitter.py").read_text()
+    assert "from langchain_text_splitters import" in splitter
+    for path in (RAY_JOB, JOB_HANDLER):
+        text = path.read_text()
+        assert re.search(r"[\"'\s-]langchain-text-splitters", text), f"{path.name} does not install langchain-text-splitters"
+        assert not re.search(r"[\"'\s-]langchain(==|\"|'|\s*$)", text, re.MULTILINE), (
+            f"{path.name} still installs the full langchain package"
+        )

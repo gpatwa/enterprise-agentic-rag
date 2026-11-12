@@ -62,7 +62,7 @@ def submit_ingestion_job(bucket: str, file_key: str, tenant_id: str = DEFAULT_TE
                 "boto3",
                 "qdrant-client",
                 "neo4j",
-                "langchain",
+                "langchain-text-splitters>=0.3,<1",
                 "unstructured",
                 # OpenSearch sink (INGEST_VECTOR_SINKS=opensearch); same pins as services/api/requirements.txt
                 "opensearch-py[async]>=2.4,<3.0",
