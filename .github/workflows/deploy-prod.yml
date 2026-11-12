@@ -26,7 +26,7 @@ jobs:
   # ──────────────────────────────────────────────────
   deploy-aws:
     name: AWS Production
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: inputs.cloud == 'aws'
     environment: production  # Requires approval via GitHub Environment protection rules
     permissions:
@@ -82,7 +82,7 @@ jobs:
   # ──────────────────────────────────────────────────
   deploy-azure:
     name: Azure Production
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: inputs.cloud == 'azure'
     environment: production  # Requires approval via GitHub Environment protection rules
     permissions:
