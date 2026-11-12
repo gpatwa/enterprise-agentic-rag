@@ -31,7 +31,7 @@ concurrency:
 jobs:
   test:
     name: Lint & Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: services/api
@@ -83,7 +83,7 @@ jobs:
 
   docker-build:
     name: Docker Build (support-api)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [test]
     steps:
       - uses: actions/checkout@v4
