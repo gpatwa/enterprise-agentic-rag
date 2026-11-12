@@ -114,6 +114,17 @@ kubectl create secret generic app-env-secret \
 
 echo "  Secret app-env-secret created/updated"
 
+# Dedicated secret for the Ray ingestion workers: only the Gemini key, never the app-wide secret. The value goes in on
+# stdin so it never appears on a command line.
+if [ -n "$GOOGLE_API_KEY" ]; then
+    printf %s "$GOOGLE_API_KEY" | \
+        kubectl create secret generic ray-gemini-api-key --from-file=GOOGLE_API_KEY=/dev/stdin \
+        --dry-run=client -o yaml | kubectl apply -f -
+    echo "  Secret ray-gemini-api-key created/updated"
+else
+    echo "  GOOGLE_API_KEY not set: ray-gemini-api-key not created (Gemini ingestion will stop with a clear error)"
+fi
+
 # -----------------------------------------------------------
 # 3. Install KubeRay Operator
 # -----------------------------------------------------------
