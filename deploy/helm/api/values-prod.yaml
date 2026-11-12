@@ -11,6 +11,12 @@ env:
   ENV: "prod"
   LOG_LEVEL: "WARNING"
   SUPPORT_JOB_WORKER_ENABLED: "false"
+  # Qdrant and Neo4j are the Helm releases the bootstrap scripts install; their Services are named after the release
+  # (`qdrant` on 6333, `neo4j` on bolt 7687), not the config defaults qdrant-service / neo4j-cluster. QDRANT_PORT is set
+  # explicitly because Kubernetes injects QDRANT_PORT=tcp://<ip>:6333 for a Service named qdrant, which is not an integer.
+  QDRANT_HOST: "qdrant"
+  QDRANT_PORT: "6333"
+  NEO4J_URI: "bolt://neo4j:7687"
   # Embedding — Gemini at 768 dims, matching the 768-dim OpenSearch index (BGE-M3 is 1024, text-embedding-3-small 1536).
   # GOOGLE_API_KEY comes from app-env-secret.
   EMBED_PROVIDER: "gemini"
