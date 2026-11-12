@@ -20,7 +20,7 @@ jobs:
   # ──────────────────────────────────────────────────
   test:
     name: Pre-deploy Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: services/api
@@ -54,7 +54,7 @@ jobs:
   # ──────────────────────────────────────────────────
   deploy-aws:
     name: AWS Staging
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: test
     if: vars.CLOUD_PROVIDER == 'aws'
     environment: staging
@@ -109,7 +109,7 @@ jobs:
   # ──────────────────────────────────────────────────
   deploy-azure:
     name: Azure Staging
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: test
     if: vars.CLOUD_PROVIDER == 'azure'
     environment: staging
