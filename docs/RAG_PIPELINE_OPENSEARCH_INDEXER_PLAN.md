@@ -217,6 +217,19 @@ Read from code only; nothing was run or changed. The API's support search (`Supp
 
 So the answer is: not "BGE-M3 against 768" by default, but every deployed values file in the repository that sets an embedder produces a vector that does not match the 768 default, and with enterprise search enabled that makes support search fail rather than degrade. Two more observations: (1) `RayEmbedClient` sends `{"model", "prompt"}` and reads `"embedding"` (Ollama's shape), while the repository's own Ray Serve BGE-M3 deployment (`app/models/embedding_engine.py`) takes `{"text"}` and returns `{"embeddings"}`; the two do not speak to each other as written, and which endpoint a deployment really uses is not in the repository. (2) Nothing in the API populates `SupportSearchDocument.vector` for tickets, comments or articles (the mapper, outbox worker, backfill and reindex never embed), so support documents are indexed without embeddings and the vector half of a hybrid query finds only file chunks written by this pipeline. Three numbers must agree before enabling vectors anywhere: the index mapping dimension, `OPENSEARCH_VECTOR_DIMENSIONS` in the API, and the length of the query embedder's output; `INGEST_VECTOR_DIMENSIONS` only sets the first for the pipeline. **Not verified:** the deployed endpoint, the actual output length of any embedder, and behaviour at runtime.
 
+### 10.4a Decision and change: 768 everywhere (2026-11-12)
+
+**Owner decision (in chat):** keep the 768-dim index and use a 768-dim embedder in every values file, including Azure; BGE-M3 (1024) is dropped from the plan (this amends D3).
+
+**Changed:**
+- `values-azure.yaml` and `values-prod.yaml` set `EMBED_PROVIDER=gemini` and `GEMINI_EMBED_DIMENSIONS=768` (the OpenAI 1536 and BGE-M3 1024 settings are gone). `helm template` renders both.
+- Ingestion: `GeminiBatchEmbedder` (`pipelines/ingestion/embedding/compute.py`) is the text counterpart of the API's `GeminiEmbedClient`: same model, same Matryoshka size, batches of at most 100, and it raises on any error or wrong-sized vector so Ray retries instead of writing a bad vector. `INGEST_EMBED_PROVIDER` (`ray`, the unchanged default, or `gemini`) picks the embedder in `main.py`; `ray_job.yaml` and `s3_event_handler.py` set `gemini` and 768 and install `google-genai`, as do `requirements-ingestion.txt` and the pipeline requirements.
+- `tests/pipelines/test_embedding_dimensions.py` (12 tests, fake Gemini client, no network) pins the values files, job specs, pip lists, the batch split at 100, the wrong-size failure and the selector.
+
+**Not done, owner's call:** the Ray pods get no secrets today (`deploy/ray/ray-cluster.yaml` has no `env` or `envFrom`), so `GOOGLE_API_KEY` does not reach the ingestion workers and the Gemini embedder would stop with "GOOGLE_API_KEY required". Wiring `app-env-secret` into the Ray pods would also expose the database URL and JWT secret to them, so a narrower secret is the safer route; that is a security decision and was not made here. The same gap already applies to the Qdrant, Neo4j and OpenSearch settings the sinks read.
+
+**Not verified:** any call to the real Gemini API (no key was used; the tests fake the client), that `gemini-embedding-2-preview` honours 768 at scale, retrieval quality at 768 against BGE-M3, and the API pod starting with `EMBED_PROVIDER=gemini` against a live cluster. The API client raises at startup without `GOOGLE_API_KEY`, so `app-env-secret` must carry it (the Azure bootstrap script reads it from Key Vault `gemini-api-key` when present).
+
 ### 10.5 Not verified in this follow-up
 
 Ray 2.9.x; the real Neo4j driver; a Ray cluster (only local Ray); pip resolution and a real image build; Qdrant or OpenSearch beyond the single local nodes; scale beyond a few dozen documents; concurrent sweeps; vector or hybrid search over swept data.

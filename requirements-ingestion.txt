@@ -1,6 +1,7 @@
 # Orchestration
 ray==2.60.0
 langchain-text-splitters  # Used by chunking/splitter.py
+google-genai>=0.5.0  # Gemini embedder (INGEST_EMBED_PROVIDER=gemini and the multimodal path)
 
 # Database & Storage
 qdrant-client==1.7.3

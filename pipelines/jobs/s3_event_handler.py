@@ -68,9 +68,13 @@ def submit_ingestion_job(bucket: str, file_key: str, tenant_id: str = DEFAULT_TE
                 "opensearch-py[async]>=2.4,<3.0",
                 "pydantic==2.6.0",
                 "pydantic-settings==2.1.0",
+                "google-genai>=0.5.0",
             ],
             "env_vars": {
                 "TENANT_ID": tenant_id,
+                # 768 dims everywhere (see ray_job.yaml); GOOGLE_API_KEY is a secret and is not set here.
+                "INGEST_EMBED_PROVIDER": "gemini",
+                "GEMINI_EMBED_DIMENSIONS": "768",
             },
         }
     )

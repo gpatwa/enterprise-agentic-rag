@@ -63,6 +63,9 @@ env:
   VECTORDB_PROVIDER: "qdrant"
   GRAPHDB_PROVIDER: "neo4j"
   LLM_PROVIDER: "openai"
-  EMBED_PROVIDER: "openai"
+  # Gemini at 768 dims: matches the 768-dim OpenSearch index (OpenAI text-embedding-3-small is 1536).
+  # GOOGLE_API_KEY comes from app-env-secret; the bootstrap script reads it from Key Vault (gemini-api-key).
+  EMBED_PROVIDER: "gemini"
+  GEMINI_EMBED_DIMENSIONS: "768"
   SECRETS_PROVIDER: "azure_kv"
   # AZURE_KEY_VAULT_URL deliberately omitted — comes from app-env-secret.
