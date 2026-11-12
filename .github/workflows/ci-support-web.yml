@@ -30,7 +30,7 @@ jobs:
   # ──────────────────────────────────────────────────
   unit:
     name: Type-check & Vitest
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -64,7 +64,7 @@ jobs:
   # ──────────────────────────────────────────────────
   build:
     name: Production build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -111,7 +111,7 @@ jobs:
   # ──────────────────────────────────────────────────
   e2e:
     name: Playwright E2E
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -147,7 +147,7 @@ jobs:
 
   product-image:
     name: Web Docker Build (support-web)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [unit]
     steps:
       - uses: actions/checkout@v4
