@@ -32,7 +32,7 @@ class QdrantIndexer:
     Supports multimodal content: text chunks and image references.
     """
     def __init__(self, tenant_id: str = DEFAULT_TENANT_ID):
-        host = os.getenv("QDRANT_HOST", "qdrant-service")
+        host = os.getenv("QDRANT_HOST", "qdrant")
         port = int(os.getenv("QDRANT_PORT", 6333))
         self.collection_name = os.getenv("QDRANT_COLLECTION", "rag_collection")
         self.tenant_id = tenant_id

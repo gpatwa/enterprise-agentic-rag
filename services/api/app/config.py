@@ -71,7 +71,7 @@ class Settings(BaseSettings):
     # Vector DB — Provider Selection
     # -----------------------------------------------------------------
     VECTORDB_PROVIDER: str = "qdrant"  # "qdrant" | "azure_ai_search" | "pinecone"
-    QDRANT_HOST: str = "qdrant-service"
+    QDRANT_HOST: str = "qdrant"
     QDRANT_PORT: int = 6333
     QDRANT_COLLECTION: str = "rag_collection"
 
@@ -122,7 +122,7 @@ class Settings(BaseSettings):
     # Graph DB — Provider Selection
     # -----------------------------------------------------------------
     GRAPHDB_PROVIDER: str = "neo4j"  # "neo4j" | "cosmosdb" | "none"
-    NEO4J_URI: str = "bolt://neo4j-cluster:7687"
+    NEO4J_URI: str = "bolt://neo4j:7687"
     NEO4J_USER: str = "neo4j"
     NEO4J_PASSWORD: Optional[str] = None  # Fetched from Key Vault at runtime
 
