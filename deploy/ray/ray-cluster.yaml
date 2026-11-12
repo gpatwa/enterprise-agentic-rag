@@ -27,6 +27,55 @@ spec:
         containers:
         - name: ray-head
           image: rayproject/ray:2.60.0-py310
+          env:
+          # Sink settings (Qdrant, Neo4j, OpenSearch). The driver (this pod, on the head) and the workers both read them.
+          # Qdrant and Neo4j are the Helm releases the bootstrap scripts install; their Services are named after the release.
+          - name: QDRANT_HOST
+            value: "qdrant"
+          - name: QDRANT_PORT
+            value: "6333"
+          - name: NEO4J_URI
+            value: "bolt://neo4j:7687"
+          - name: NEO4J_USER
+            value: "neo4j"
+          # OpenSearch is external, so its endpoint comes from the optional ConfigMap ray-sink-config.
+          - name: OPENSEARCH_URL
+            valueFrom:
+              configMapKeyRef:
+                name: ray-sink-config
+                key: OPENSEARCH_URL
+                optional: true
+          - name: OPENSEARCH_AUTH_MODE
+            valueFrom:
+              configMapKeyRef:
+                name: ray-sink-config
+                key: OPENSEARCH_AUTH_MODE
+                optional: true
+          # Credentials: one key each from the dedicated secret ray-sink-credentials (never app-env-secret); pods start without it.
+          - name: NEO4J_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: NEO4J_PASSWORD
+                optional: true
+          - name: OPENSEARCH_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: OPENSEARCH_USERNAME
+                optional: true
+          - name: OPENSEARCH_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: OPENSEARCH_PASSWORD
+                optional: true
+          - name: OPENSEARCH_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: OPENSEARCH_API_KEY
+                optional: true
           resources:
             # Dev: 1 CPU / 4Gi (prod: 2 CPU / 8Gi)
             limits:
@@ -65,6 +114,54 @@ spec:
                 name: ray-gemini-api-key
                 key: GOOGLE_API_KEY
                 optional: true
+          # Sink settings (Qdrant, Neo4j, OpenSearch). The driver (this pod, on the head) and the workers both read them.
+          # Qdrant and Neo4j are the Helm releases the bootstrap scripts install; their Services are named after the release.
+          - name: QDRANT_HOST
+            value: "qdrant"
+          - name: QDRANT_PORT
+            value: "6333"
+          - name: NEO4J_URI
+            value: "bolt://neo4j:7687"
+          - name: NEO4J_USER
+            value: "neo4j"
+          # OpenSearch is external, so its endpoint comes from the optional ConfigMap ray-sink-config.
+          - name: OPENSEARCH_URL
+            valueFrom:
+              configMapKeyRef:
+                name: ray-sink-config
+                key: OPENSEARCH_URL
+                optional: true
+          - name: OPENSEARCH_AUTH_MODE
+            valueFrom:
+              configMapKeyRef:
+                name: ray-sink-config
+                key: OPENSEARCH_AUTH_MODE
+                optional: true
+          # Credentials: one key each from the dedicated secret ray-sink-credentials (never app-env-secret); pods start without it.
+          - name: NEO4J_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: NEO4J_PASSWORD
+                optional: true
+          - name: OPENSEARCH_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: OPENSEARCH_USERNAME
+                optional: true
+          - name: OPENSEARCH_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: OPENSEARCH_PASSWORD
+                optional: true
+          - name: OPENSEARCH_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: OPENSEARCH_API_KEY
+                optional: true
           resources:
             # Dev: 2 CPU / 8Gi (prod: 8 CPU / 32Gi on c6i instances)
             limits:
@@ -97,6 +194,54 @@ spec:
               secretKeyRef:
                 name: ray-gemini-api-key
                 key: GOOGLE_API_KEY
+                optional: true
+          # Sink settings (Qdrant, Neo4j, OpenSearch). The driver (this pod, on the head) and the workers both read them.
+          # Qdrant and Neo4j are the Helm releases the bootstrap scripts install; their Services are named after the release.
+          - name: QDRANT_HOST
+            value: "qdrant"
+          - name: QDRANT_PORT
+            value: "6333"
+          - name: NEO4J_URI
+            value: "bolt://neo4j:7687"
+          - name: NEO4J_USER
+            value: "neo4j"
+          # OpenSearch is external, so its endpoint comes from the optional ConfigMap ray-sink-config.
+          - name: OPENSEARCH_URL
+            valueFrom:
+              configMapKeyRef:
+                name: ray-sink-config
+                key: OPENSEARCH_URL
+                optional: true
+          - name: OPENSEARCH_AUTH_MODE
+            valueFrom:
+              configMapKeyRef:
+                name: ray-sink-config
+                key: OPENSEARCH_AUTH_MODE
+                optional: true
+          # Credentials: one key each from the dedicated secret ray-sink-credentials (never app-env-secret); pods start without it.
+          - name: NEO4J_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: NEO4J_PASSWORD
+                optional: true
+          - name: OPENSEARCH_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: OPENSEARCH_USERNAME
+                optional: true
+          - name: OPENSEARCH_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: OPENSEARCH_PASSWORD
+                optional: true
+          - name: OPENSEARCH_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: OPENSEARCH_API_KEY
                 optional: true
           resources:
             # Dev: sized for g5.xlarge (4 vCPU, 16GB RAM, 1x A10G)

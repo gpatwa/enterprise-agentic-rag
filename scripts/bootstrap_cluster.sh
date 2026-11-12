@@ -141,6 +141,33 @@ else
     echo "  GOOGLE_API_KEY not set: ray-gemini-api-key not created (Gemini ingestion will stop with a clear error)"
 fi
 
+# Settings for the Ray ingestion sinks (Qdrant, Neo4j, OpenSearch). The OpenSearch endpoint is not secret and goes in a
+# ConfigMap; credentials go in one dedicated secret, never app-env-secret. The credentials are written to an env file
+# piped on stdin, so no value appears on a command line. Only the settings that are set are written.
+NEO4J_PASSWORD="${NEO4J_PASSWORD:-$(kubectl get secret app-env-secret -o jsonpath='{.data.NEO4J_PASSWORD}' 2>/dev/null | base64 -d 2>/dev/null || true)}"
+config_args=()
+for key in OPENSEARCH_URL OPENSEARCH_AUTH_MODE; do
+    [ -n "${!key:-}" ] && config_args+=(--from-literal="${key}=${!key}")
+done
+if [ ${#config_args[@]} -gt 0 ]; then
+    kubectl create configmap ray-sink-config "${config_args[@]}" --dry-run=client -o yaml | kubectl apply -f -
+    echo "  ConfigMap ray-sink-config created/updated"
+else
+    echo "  OPENSEARCH_URL not set: ray-sink-config not created (the OpenSearch sink stays unconfigured)"
+fi
+sink_env=""
+for key in NEO4J_PASSWORD OPENSEARCH_USERNAME OPENSEARCH_PASSWORD OPENSEARCH_API_KEY; do
+    [ -n "${!key:-}" ] && sink_env+="${key}=${!key}"$'\n'
+done
+if [ -n "$sink_env" ]; then
+    printf %s "$sink_env" | \
+        kubectl create secret generic ray-sink-credentials --from-env-file=/dev/stdin \
+        --dry-run=client -o yaml | kubectl apply -f -
+    echo "  Secret ray-sink-credentials created/updated"
+else
+    echo "  No sink credentials set: ray-sink-credentials not created"
+fi
+
 # -----------------------------------------------------------
 # 8. Deploy Ray Cluster (non-fatal — GPU nodes spin up on demand)
 # -----------------------------------------------------------
