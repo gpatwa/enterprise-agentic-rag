@@ -24,7 +24,7 @@ unstructured[pdf]==0.12.0
 pdfminer.six==20221105
 onnxruntime
 pillow
-# NOTE: matplotlib removed — never imported in ingestion pipeline.
+matplotlib>=3.7  # unstructured_inference.visualize imports it at load, so the PDF loader cannot import without it
 # NOTE: langchain, langchain-community removed — only langchain-text-splitters is used.
 
 # Core Alignment

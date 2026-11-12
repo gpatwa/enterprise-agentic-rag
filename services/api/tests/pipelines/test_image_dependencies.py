@@ -231,3 +231,19 @@ def test_the_sink_finds_services_api_on_its_own_when_pythonpath_lacks_it() -> No
     """A Ray job shipping the repository with ``working_dir`` has the repo root on the path and nothing more."""
     result = _run_import_check(_requirement_lines(IMAGE_REQUIREMENTS), api_on_path=False)
     assert result.returncode == 0, result.stderr[-2000:]
+
+
+def test_the_image_base_is_pinned_to_a_glibc_that_loads_onnxruntime_1_15() -> None:
+    """Found by building the image: unstructured-inference needs onnxruntime<1.16, whose library has an executable
+    stack, and the glibc in Debian 13 (the current ``python:3.11-slim``) refuses to load it, so the PDF loader could
+    not import. Debian 12 (bookworm) loads it."""
+    froms = re.findall(r"^FROM\s+(\S+)", (REPO / "Dockerfile.ingestion").read_text(), flags=re.MULTILINE)
+    assert froms and all(base == "python:3.11-slim-bookworm" for base in froms), froms
+
+
+def test_matplotlib_is_declared_because_the_pdf_stack_imports_it_at_load() -> None:
+    """``unstructured_inference.visualize`` does ``import matplotlib.pyplot`` at module load; an earlier size trim
+    removed it, so ``pipelines.ingestion.loaders.pdf`` failed to import in the built image."""
+    declared = {_normalize(re.split(r"[<>=!~\[;# ]", line.strip(), maxsplit=1)[0]) for line in
+                IMAGE_REQUIREMENTS.read_text().splitlines() if line.strip() and not line.lstrip().startswith("#")}
+    assert "matplotlib" in declared

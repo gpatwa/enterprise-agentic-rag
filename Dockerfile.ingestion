@@ -1,8 +1,11 @@
 # Dockerfile.ingestion
 # Multi-stage build for the document ingestion pipeline.
 
+# Base is pinned to Debian 12 (bookworm): the onnxruntime that unstructured-inference requires (<1.16) has an
+# executable-stack flag, which Debian 13's glibc 2.41 (the current python:3.11-slim) refuses to load.
+
 # --- Stage 1: Build dependencies (compilers needed here only) ---
-FROM python:3.11-slim AS builder
+FROM python:3.11-slim-bookworm AS builder
 
 # Build tools required to compile native extensions (pyarrow, onnxruntime, etc.)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -20,7 +23,7 @@ COPY requirements-ingestion.txt .
 RUN pip install --no-cache-dir -r requirements-ingestion.txt
 
 # --- Stage 2: Runtime image (no compilers, smaller) ---
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
 # Runtime-only system libraries (libmagic for file-type detection,
 # poppler/tesseract for PDF OCR, GL/glib for image processing)
