@@ -62,6 +62,12 @@ env:
   STORAGE_PROVIDER: "azure_blob"
   VECTORDB_PROVIDER: "qdrant"
   GRAPHDB_PROVIDER: "neo4j"
+  # Qdrant and Neo4j are the Helm releases the bootstrap scripts install; their Services are named after the release
+  # (`qdrant` on 6333, `neo4j` on bolt 7687), not the config defaults qdrant-service / neo4j-cluster. QDRANT_PORT is set
+  # explicitly because Kubernetes injects QDRANT_PORT=tcp://<ip>:6333 for a Service named qdrant, which is not an integer.
+  QDRANT_HOST: "qdrant"
+  QDRANT_PORT: "6333"
+  NEO4J_URI: "bolt://neo4j:7687"
   LLM_PROVIDER: "openai"
   # Gemini at 768 dims: matches the 768-dim OpenSearch index (OpenAI text-embedding-3-small is 1536).
   # GOOGLE_API_KEY comes from app-env-secret; the bootstrap script reads it from Key Vault (gemini-api-key).
