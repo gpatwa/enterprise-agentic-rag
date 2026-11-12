@@ -260,3 +260,43 @@ def test_ray_job_configs_install_the_text_splitter_package_the_chunker_imports()
         assert not re.search(r"[\"'\s-]langchain(==|\"|'|\s*$)", text, re.MULTILINE), (
             f"{path.name} still installs the full langchain package"
         )
+
+
+# ----- the Ray jobs' own pip lists ---------------------------------------------------------------------------------
+
+
+def _job_pip_lists() -> dict[str, list[str]]:
+    import ast
+
+    import yaml
+
+    handler = re.search(r'"pip":\s*(\[.*?\n\s*\])', JOB_HANDLER.read_text(), re.DOTALL)
+    assert handler, "could not find the pip list in s3_event_handler.py"
+    return {
+        "ray_job.yaml": yaml.safe_load(RAY_JOB.read_text())["runtime_env"]["pip"],
+        "s3_event_handler.py": ast.literal_eval(handler.group(1)),
+    }
+
+
+@needs_sink_packages
+@pytest.mark.parametrize("name", ["ray_job.yaml", "s3_event_handler.py"])
+def test_sink_modules_import_with_only_the_pip_list_a_ray_job_installs(name: str) -> None:
+    """A job ships the repository as ``working_dir`` and installs its own pip list; ``services/api`` is not on the path.
+
+    Verified once for real on rayproject/ray:2.60.0-py310 (a task with this runtime_env imported the sink, built a document
+    and read OPENSEARCH_URL from the environment). This keeps it true: dropping a package the ``app.*`` modules need from
+    either list fails here before it fails on a cluster.
+    """
+    result = _run_import_check(_job_pip_lists()[name], api_on_path=False)
+    assert result.returncode == 0, result.stderr[-2000:]
+
+
+@needs_sink_packages
+@pytest.mark.parametrize("name", ["ray_job.yaml", "s3_event_handler.py"])
+def test_the_job_check_fails_without_the_sink_packages_so_it_can_tell(name: str) -> None:
+    # The module imports pydantic and pydantic-settings at load; opensearchpy itself is imported lazily (the async-extra
+    # test and the textual check above cover that one), so the check is made to fail by removing all three.
+    lines = [line for line in _job_pip_lists()[name] if _spec_key(line) not in SINK_PACKAGES]
+    result = _run_import_check(lines, api_on_path=False)
+    assert result.returncode != 0
+    assert "is not provided by the declared requirements" in result.stderr
