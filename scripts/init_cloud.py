@@ -9,7 +9,7 @@ against the cloud endpoints.
 Usage:
   # If running outside the VPC, port-forward first:
   kubectl port-forward svc/qdrant 6333:6333 &
-  kubectl port-forward svc/neo4j-cluster 7687:7687 &
+  kubectl port-forward svc/neo4j 7687:7687 &
   kubectl port-forward svc/<aurora-proxy> 5432:5432 &
 
   # Then run (auto-detects embedding dimensions from embed endpoint):
@@ -198,7 +198,7 @@ def main():
         init_neo4j(args.neo4j_uri, args.neo4j_user, args.neo4j_password)
     except Exception as e:
         print(f"  Neo4j ERROR: {e}")
-        print("  Hint: kubectl port-forward svc/neo4j-cluster 7687:7687 &")
+        print("  Hint: kubectl port-forward svc/neo4j 7687:7687 &")
 
     # Postgres (only if URL provided)
     if args.db_url:
