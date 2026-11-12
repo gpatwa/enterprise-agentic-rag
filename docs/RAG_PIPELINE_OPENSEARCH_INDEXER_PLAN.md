@@ -75,6 +75,16 @@ RO-1 is worth doing even without OpenSearch, since it decides whether the curren
 7. **D7:** may I install Ray locally for RO-1 (a download; I will state package, version and size first)?
 8. Authorization for RO-1 to RO-6 (local code and verification only), with RO-7 and any deployed change as separate approvals.
 
+### Owner sign-off: Ray 2.60 alignment (2026-11-12)
+
+The owner (Gopal Patwa) reviewed PRs #150 to #157 in chat on 2026-11-12 and approved three decisions:
+
+1. **Serve autoscaling targets.** `target_ongoing_requests: 50` (embed) and `20` (LLM) are approved as the values in `deploy/ray/ray-serve-embed.yaml` and `ray-serve-llm.yaml`. They are the values the manifests always stated; they took effect for the first time in #153 and have not been load-tested.
+2. **KubeRay operator 1.7.2.** The upgrade from 1.0.0 is approved for the existing clusters; it applies the next time `scripts/bootstrap_cluster.sh` or `scripts/bootstrap_cluster_azure.sh` runs against them (#151).
+3. **Merge on green.** The standing instruction to merge own pull requests once every check is green covers #155 (`ray_job.yaml` and `s3_event_handler.py` pip lists, plus the first CI runner pin) and #156 (deploy workflows pinned to `ubuntu-24.04`).
+
+What this sign-off does not cover: it does not authorize running the bootstrap scripts, deploying, or changing any cloud resource; those still need an explicit request in the task at hand. It does not make any of the items in "Still not verified" (section 6) verified.
+
 ## 8. Not verified
 
 - Whether Ray accepts the current indexer classes in `write_datasource` (RO-1).
