@@ -128,6 +128,20 @@ helm upgrade --install neo4j neo4j/neo4j \
     --wait --timeout 180s
 
 # -----------------------------------------------------------
+# 7b. Dedicated Gemini key secret for the Ray ingestion workers
+# -----------------------------------------------------------
+# Only the key, never app-env-secret. Set GOOGLE_API_KEY in the environment before running; the value goes in on stdin
+# so it never appears on a command line.
+if [ -n "${GOOGLE_API_KEY:-}" ]; then
+    printf %s "$GOOGLE_API_KEY" | \
+        kubectl create secret generic ray-gemini-api-key --from-file=GOOGLE_API_KEY=/dev/stdin \
+        --dry-run=client -o yaml | kubectl apply -f -
+    echo "  Secret ray-gemini-api-key created/updated"
+else
+    echo "  GOOGLE_API_KEY not set: ray-gemini-api-key not created (Gemini ingestion will stop with a clear error)"
+fi
+
+# -----------------------------------------------------------
 # 8. Deploy Ray Cluster (non-fatal — GPU nodes spin up on demand)
 # -----------------------------------------------------------
 echo ""

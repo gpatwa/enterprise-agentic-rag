@@ -56,6 +56,15 @@ spec:
         containers:
         - name: ray-worker
           image: rayproject/ray:2.60.0-py310 # CPU Image
+          # Gemini key for the ingestion embedder (INGEST_EMBED_PROVIDER=gemini). A dedicated single-key secret, not
+          # app-env-secret: Ray must not see the database URL or JWT secret. optional: pods still start without it.
+          env:
+          - name: GOOGLE_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: ray-gemini-api-key
+                key: GOOGLE_API_KEY
+                optional: true
           resources:
             # Dev: 2 CPU / 8Gi (prod: 8 CPU / 32Gi on c6i instances)
             limits:
@@ -80,6 +89,15 @@ spec:
         containers:
         - name: ray-worker
           image: rayproject/ray:2.60.0-py310-gpu
+          # Gemini key for the ingestion embedder (INGEST_EMBED_PROVIDER=gemini). A dedicated single-key secret, not
+          # app-env-secret: Ray must not see the database URL or JWT secret. optional: pods still start without it.
+          env:
+          - name: GOOGLE_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: ray-gemini-api-key
+                key: GOOGLE_API_KEY
+                optional: true
           resources:
             # Dev: sized for g5.xlarge (4 vCPU, 16GB RAM, 1x A10G)
             # Prod: increase to 4 CPU / 32Gi for g5.4xlarge with 70B model
