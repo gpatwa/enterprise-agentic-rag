@@ -221,7 +221,7 @@ values.yaml              (base defaults)
 | `STORAGE_PROVIDER` | `azure_blob` | Document storage |
 | `SECRETS_PROVIDER` | `azure_kv` | Key Vault integration |
 | `LLM_PROVIDER` | `openai` or `ray` | LLM backend |
-| `EMBED_PROVIDER` | `openai` or `ray` | Embedding backend |
+| `EMBED_PROVIDER` | `gemini` (768 dims, the Azure default), `openai` or `ray` | Embedding backend; must match the 768-dim OpenSearch index |
 | `AZURE_KEY_VAULT_URL` | `https://...vault.azure.net` | Vault endpoint |
 
 ---

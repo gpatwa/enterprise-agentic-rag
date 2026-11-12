@@ -18,10 +18,16 @@ runtime_env:
     - opensearch-py[async]>=2.4,<3.0
     - pydantic==2.6.0
     - pydantic-settings==2.1.0
+    # Gemini embedder (INGEST_EMBED_PROVIDER=gemini): 768-dim vectors that fit the OpenSearch index
+    - google-genai>=0.5.0
     
   env_vars:
     # Environment variables injected into workers
     LOG_LEVEL: "INFO"
+    # 768 dims everywhere: the OpenSearch index is 768 and the API embeds queries with the same Gemini model.
+    INGEST_EMBED_PROVIDER: "gemini"
+    GEMINI_EMBED_DIMENSIONS: "768"
+    # GOOGLE_API_KEY must reach the workers as a secret; it is deliberately not written here.
     # Secrets are injected via K8s Secrets, not here for security
     
 # Resource Request for the Driver (The orchestrator script)

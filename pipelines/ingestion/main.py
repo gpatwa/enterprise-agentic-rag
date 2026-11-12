@@ -6,7 +6,7 @@ from typing import Any, Dict
 import ray
 
 from pipelines.ingestion.chunking.splitter import split_multimodal, split_text
-from pipelines.ingestion.embedding.compute import BatchEmbedder, MultimodalBatchEmbedder
+from pipelines.ingestion.embedding.compute import MultimodalBatchEmbedder, select_text_embedder
 from pipelines.ingestion.graph.extractor import GraphExtractor
 from pipelines.ingestion.identity import file_identity
 from pipelines.ingestion.indexing.neo4j import Neo4jIndexer
@@ -97,7 +97,8 @@ def main(bucket_name: str, prefix: str):
 
     # 3. FORK: Branch A - Vector Embeddings
     # Use MultimodalBatchEmbedder when multimodal is enabled (Gemini unified space)
-    embedder_cls = MultimodalBatchEmbedder if MULTIMODAL_ENABLED else BatchEmbedder
+    # Text embedder is chosen by INGEST_EMBED_PROVIDER: ray (BGE-M3, 1024 dims) or gemini (768, matches the index).
+    embedder_cls = MultimodalBatchEmbedder if MULTIMODAL_ENABLED else select_text_embedder(os.environ)
     vector_ds = chunked_ds.map_batches(
         embedder_cls,
         concurrency=5,
