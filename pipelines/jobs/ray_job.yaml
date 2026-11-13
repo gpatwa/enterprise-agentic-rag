@@ -21,7 +21,7 @@ runtime_env:
     # Gemini embedder (INGEST_EMBED_PROVIDER=gemini): 768-dim vectors that fit the OpenSearch index
     - google-genai>=0.5.0
     # Azure OpenAI embedder (INGEST_EMBED_PROVIDER=azure_openai): keyless, Entra ID tokens from the worker's identity
-    - openai>=1.30
+    - openai>=1.54,<2
     - azure-identity>=1.15.0
     
   env_vars:
