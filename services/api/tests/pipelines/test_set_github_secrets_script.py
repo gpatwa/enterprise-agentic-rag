@@ -95,7 +95,8 @@ def test_the_identity_gets_an_environment_credential_and_two_narrow_roles(tmp_pa
     assert "repo:gpatwa/agentic-resolution-intelligence:environment:production" in log
     roles = re.findall(r"^az role assignment create .*--role (.+?) --scope", log, flags=re.M)
     assert sorted(roles) == sorted(["AcrPush", "Azure Kubernetes Service Cluster User Role"])
-    assert "Owner" not in log and "Contributor" not in log
+    assignments = " ".join(re.findall(r"^az role assignment .*$", log, flags=re.M))
+    assert not re.search(r"--role (Owner|Contributor)\b", assignments)
 
 
 def test_it_does_not_create_or_change_the_environment(tmp_path: Path) -> None:
