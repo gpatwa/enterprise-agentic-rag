@@ -50,6 +50,10 @@ class GeminiEmbedClient:
         """Clean up resources."""
         self.client = None
 
+    async def refresh_credentials(self) -> None:
+        """Rebuild the SDK client around the current ``settings.GOOGLE_API_KEY`` (key rotation, no restart)."""
+        await self.start()
+
     def _ensure_client(self):
         if not self.client:
             raise RuntimeError("Client not initialized. Call start() first.")

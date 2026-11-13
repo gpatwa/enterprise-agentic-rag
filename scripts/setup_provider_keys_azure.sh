@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # scripts/setup_provider_keys_azure.sh
-# Onboarding for the two provider keys the platform cannot generate for itself: the Gemini key (embeddings, ingestion
-# workers) and the OpenAI key (the LLM). One run collects them, proves they work, stores them in Key Vault, then applies
+# OPTIONAL. The default providers (LLM_PROVIDER / EMBED_PROVIDER = azure_openai) are keyless and need none of this: the
+# pods authenticate to Azure OpenAI with their workload identity. Use this script only if you switch to a key-based
+# provider (openai, gemini). It onboards the two keys the platform cannot generate for itself: the Gemini key
+# (embeddings, ingestion workers) and the OpenAI key (the LLM). Once stored, the API re-reads them from Key Vault on an
+# interval (SECRET_REFRESH_SECONDS), so rotating a key later is just running this script again with the new one. One run collects them, proves they work, stores them in Key Vault, then applies
 # them to the cluster. No file is edited and no value is written to disk or put on a command line.
 #
 # For each key, in order: the environment (GOOGLE_API_KEY / OPENAI_API_KEY), the copy already in Key Vault, then a hidden

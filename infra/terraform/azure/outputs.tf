@@ -115,3 +115,16 @@ output "servicebus_namespace" {
   description = "Name of the Service Bus namespace (if enabled)."
   value       = var.servicebus_enabled ? azurerm_servicebus_namespace.main[0].name : "disabled"
 }
+
+output "azure_openai_endpoint" {
+  description = "Azure OpenAI endpoint the API and Ray workers call with workload identity (no key)"
+  value       = azurerm_cognitive_account.openai.endpoint
+}
+
+output "azure_openai_llm_deployment" {
+  value = azurerm_cognitive_deployment.llm.name
+}
+
+output "azure_openai_embed_deployment" {
+  value = azurerm_cognitive_deployment.embed.name
+}

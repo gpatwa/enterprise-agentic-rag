@@ -150,8 +150,8 @@ class Settings(BaseSettings):
     # -----------------------------------------------------------------
     # LLM / Embeddings — Provider Selection
     # -----------------------------------------------------------------
-    LLM_PROVIDER: str = "ray"       # "ray" (self-hosted vLLM) | "openai" (API)
-    EMBED_PROVIDER: str = "ray"     # "ray" (self-hosted BGE)  | "openai" (API)
+    LLM_PROVIDER: str = "ray"       # "ray" (self-hosted vLLM) | "openai" (API) | "azure_openai" (keyless)
+    EMBED_PROVIDER: str = "ray"     # "ray" (self-hosted BGE)  | "openai" (API) | "gemini" | "azure_openai" (keyless)
 
     # Ray/vLLM endpoints (used when provider = "ray")
     RAY_LLM_ENDPOINT: str = "http://llm-service:8000/llm"
@@ -164,6 +164,18 @@ class Settings(BaseSettings):
     OPENAI_BASE_URL: Optional[str] = None       # Set for Azure or compatible APIs
     OPENAI_MODEL: str = "gpt-4o-mini"           # Cheap default for dev
     OPENAI_EMBED_MODEL: str = "text-embedding-3-small"  # 1536 dims
+
+    # Azure OpenAI (LLM_PROVIDER / EMBED_PROVIDER = "azure_openai"). Keyless: authenticates with Entra tokens from
+    # DefaultAzureCredential (workload identity in AKS, `az login` on a laptop), so there is no API key to store or rotate.
+    AZURE_OPENAI_ENDPOINT: Optional[str] = None  # https://<account>.openai.azure.com/
+    AZURE_OPENAI_API_VERSION: str = "2024-10-21"
+    AZURE_OPENAI_LLM_DEPLOYMENT: str = "gpt-4o-mini"
+    AZURE_OPENAI_EMBED_DEPLOYMENT: str = "text-embedding-3-small"
+    AZURE_OPENAI_EMBED_DIMENSIONS: int = 768  # text-embedding-3-small is Matryoshka: 768 fits the 768-dim indexes
+
+    # How often (seconds) provider API keys held in the secrets vault are re-read, so a rotated key takes effect without
+    # a restart. 0 disables. Keys supplied as environment variables are explicit and never re-read.
+    SECRET_REFRESH_SECONDS: int = 300
 
     # Gemini (used when EMBED_PROVIDER = "gemini")
     GOOGLE_API_KEY: Optional[str] = None

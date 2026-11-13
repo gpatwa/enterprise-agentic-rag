@@ -26,8 +26,8 @@ def _env(path: str) -> dict:
 @pytest.mark.parametrize("values_file", ["deploy/helm/api/values-azure.yaml", "deploy/helm/api/values-prod.yaml"])
 def test_deployed_values_files_embed_with_the_768_provider(values_file: str) -> None:
     env = _env(values_file)
-    assert env["EMBED_PROVIDER"] == "gemini", f"{values_file} embeds with {env.get('EMBED_PROVIDER')!r}, not 768-dim Gemini"
-    assert int(env["GEMINI_EMBED_DIMENSIONS"]) == INDEX_DIMENSIONS
+    assert env["EMBED_PROVIDER"] == "azure_openai", f"{values_file} embeds with {env.get('EMBED_PROVIDER')!r}"
+    assert int(env["AZURE_OPENAI_EMBED_DIMENSIONS"]) == INDEX_DIMENSIONS
     assert "bge-m3" not in str(env.get("EMBED_MODEL", "")).lower(), "BGE-M3 is 1024-dim; the index is 768"
 
 
@@ -37,10 +37,10 @@ def test_the_index_dimension_the_chart_passes_is_768() -> None:
 
 
 @pytest.mark.parametrize("path", ["pipelines/jobs/ray_job.yaml"])
-def test_the_ray_job_ingests_with_gemini_at_768(path: str) -> None:
+def test_the_ray_job_ingests_with_azure_openai_at_768(path: str) -> None:
     env = yaml.safe_load((REPO / path).read_text())["runtime_env"]["env_vars"]
-    assert env["INGEST_EMBED_PROVIDER"] == "gemini"
-    assert int(env["GEMINI_EMBED_DIMENSIONS"]) == INDEX_DIMENSIONS
+    assert env["INGEST_EMBED_PROVIDER"] == "azure_openai"
+    assert int(env["AZURE_OPENAI_EMBED_DIMENSIONS"]) == INDEX_DIMENSIONS
 
 
 def test_the_job_handler_ingests_with_gemini_at_768() -> None:

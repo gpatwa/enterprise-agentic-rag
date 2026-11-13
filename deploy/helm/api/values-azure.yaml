@@ -72,10 +72,14 @@ env:
   # API's own origin (api.<dns_zone_name>), so no other site's browser code can call it. Add a web app's origin here, as
   # a comma-separated list, when it has a domain.
   CORS_ORIGINS: "https://api.patwa-rag-platform.com"
-  LLM_PROVIDER: "openai"
-  # Gemini at 768 dims: matches the 768-dim OpenSearch index (OpenAI text-embedding-3-small is 1536).
-  # GOOGLE_API_KEY comes from app-env-secret; the bootstrap script reads it from Key Vault (gemini-api-key).
-  EMBED_PROVIDER: "gemini"
-  GEMINI_EMBED_DIMENSIONS: "768"
+  # Keyless Azure OpenAI (Entra ID tokens from the pod's workload identity): no provider API key to store or rotate.
+  # The endpoint is deterministic (infra/terraform/azure/openai.tf: https://<cluster_name>-openai.openai.azure.com/).
+  # Embeddings use text-embedding-3-small at 768 dims, matching the 768-dim indexes (default 1536 is not requested).
+  LLM_PROVIDER: "azure_openai"
+  EMBED_PROVIDER: "azure_openai"
+  AZURE_OPENAI_ENDPOINT: "https://rag-platform-aks-openai.openai.azure.com/"
+  AZURE_OPENAI_LLM_DEPLOYMENT: "gpt-4o-mini"
+  AZURE_OPENAI_EMBED_DEPLOYMENT: "text-embedding-3-small"
+  AZURE_OPENAI_EMBED_DIMENSIONS: "768"
   SECRETS_PROVIDER: "azure_kv"
   # AZURE_KEY_VAULT_URL deliberately omitted — comes from app-env-secret.

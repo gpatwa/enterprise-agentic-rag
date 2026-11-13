@@ -49,6 +49,13 @@ class OpenAIEmbedClient:
         if self.client:
             await self.client.close()
 
+    async def refresh_credentials(self) -> None:
+        """Rebuild the SDK client around the current ``settings.OPENAI_API_KEY`` (key rotation, no restart)."""
+        old = self.client
+        await self.start()
+        if old:
+            await old.close()
+
     @backoff.on_exception(backoff.expo, APIError, max_tries=3)
     async def embed_query(self, text: str) -> list[float]:
         """Embed a single query string."""

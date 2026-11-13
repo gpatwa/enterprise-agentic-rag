@@ -69,6 +69,10 @@ if settings.MULTIMODAL_ENABLED:
         gemini_embed_client = None
 
 
+_env_provided_keys: set = set()
+_key_refresher = None
+
+
 async def _inject_secrets_from_vault():
     """
     Fetch sensitive values from Key Vault / Secrets Manager and inject
@@ -83,6 +87,12 @@ async def _inject_secrets_from_vault():
         return
 
     logger.info(f"Secrets provider: {settings.SECRETS_PROVIDER} — fetching from vault")
+
+    # Provider keys already set from the environment are explicit; only the others may be refreshed from the vault.
+    from app.secrets_refresh import PROVIDER_KEY_SECRETS
+
+    global _env_provided_keys
+    _env_provided_keys = {a for a in PROVIDER_KEY_SECRETS if getattr(settings, a, None)}
 
     # Map of setting attribute -> vault secret name
     secret_map = {
@@ -305,9 +315,25 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("MCP init failed (continuing without MCP): %s", e)
 
+    # Re-read rotated provider keys from the vault without a restart (no-op for the env provider and keyless providers).
+    global _key_refresher
+    if settings.SECRETS_PROVIDER != "env" and settings.SECRET_REFRESH_SECONDS > 0:
+        from app.secrets_refresh import ProviderKeyRefresher
+
+        _key_refresher = ProviderKeyRefresher(
+            secrets_client,
+            settings,
+            [llm_client, embed_client, gemini_embed_client],
+            _env_provided_keys,
+            settings.SECRET_REFRESH_SECONDS,
+        )
+        _key_refresher.start()
+
     yield
 
     # Shutdown
+    if _key_refresher:
+        await _key_refresher.stop()
     logger.info("Closing clients...")
     if enterprise_search_provider is not None:
         await enterprise_search_provider.close()

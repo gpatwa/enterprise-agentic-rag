@@ -173,6 +173,8 @@ fi
 # -----------------------------------------------------------
 echo ""
 echo "Step 8: Deploying Ray Cluster (head node + worker config)..."
+# The Ray pods run as this service account (ray-cluster.yaml); on EKS it is the IRSA target (iam.tf trusts default:ray-worker).
+kubectl create serviceaccount ray-worker --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f deploy/ray/ray-cluster.yaml 2>/dev/null || \
     echo "  Ray Cluster skipped (KubeRay CRDs may need a moment)"
 

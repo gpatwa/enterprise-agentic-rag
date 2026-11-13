@@ -95,14 +95,75 @@ class GeminiBatchEmbedder:
         return batch
 
 
+class AzureOpenAIBatchEmbedder:
+    """
+    Text-only Ray Data embedder that calls Azure OpenAI with Entra ID tokens (no API key) and returns
+    ``AZURE_OPENAI_EMBED_DIMENSIONS`` (default 768) vectors.
+
+    The ingestion counterpart of the API's ``AzureOpenAIEmbedClient``: same deployment, same ``dimensions``, so a chunk
+    embedded here is searchable with a query embedded there and fits the 768-dim indexes. The token comes from
+    ``DefaultAzureCredential`` (the Ray worker's workload identity). Like ``GeminiBatchEmbedder`` it never swallows a
+    failure: an error or a wrong-sized vector raises, so Ray retries the batch and nothing wrong is written.
+    """
+
+    MAX_BATCH = 100
+
+    def __init__(self):
+        self.client = None
+        self.deployment = os.getenv("AZURE_OPENAI_EMBED_DEPLOYMENT", "text-embedding-3-small")
+        self.dimensions = int(os.getenv("AZURE_OPENAI_EMBED_DIMENSIONS", "768"))
+
+    def _ensure_client(self):
+        if self.client is not None:
+            return
+        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        if not endpoint:
+            raise RuntimeError("AZURE_OPENAI_ENDPOINT required for the Azure OpenAI ingestion embedder")
+        from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+        from openai import AzureOpenAI
+
+        self.client = AzureOpenAI(
+            azure_endpoint=endpoint,
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-10-21"),
+            azure_ad_token_provider=get_bearer_token_provider(
+                DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"
+            ),
+        )
+
+    def __call__(self, batch: Dict[str, Any]) -> Dict[str, Any]:
+        self._ensure_client()
+        texts = list(batch["text"])
+        vectors = []
+        for start in range(0, len(texts), self.MAX_BATCH):
+            response = self.client.embeddings.create(
+                model=self.deployment,
+                input=texts[start : start + self.MAX_BATCH],
+                dimensions=self.dimensions,
+            )
+            vectors.extend(list(item.embedding) for item in response.data)
+
+        if len(vectors) != len(texts):
+            raise ValueError(f"Azure OpenAI returned {len(vectors)} vectors for {len(texts)} chunks")
+        for vector in vectors:
+            if len(vector) != self.dimensions:
+                raise ValueError(
+                    f"Azure OpenAI returned a {len(vector)}-dimension vector but {self.dimensions} was requested"
+                )
+        batch["vector"] = vectors
+        return batch
+
+
 def select_text_embedder(env: Mapping[str, str]):
-    """The text embedder class for ``INGEST_EMBED_PROVIDER``: ``ray`` (default, the BGE-M3 Serve endpoint) or ``gemini``."""
+    """The text embedder class for ``INGEST_EMBED_PROVIDER``: ``ray`` (default, the BGE-M3 Serve endpoint), ``gemini``
+    or ``azure_openai`` (keyless)."""
     provider = (env.get("INGEST_EMBED_PROVIDER") or "ray").strip().lower()
     if provider == "ray":
         return BatchEmbedder
     if provider == "gemini":
         return GeminiBatchEmbedder
-    raise ValueError(f"INGEST_EMBED_PROVIDER must be 'ray' or 'gemini', got {provider!r}")
+    if provider == "azure_openai":
+        return AzureOpenAIBatchEmbedder
+    raise ValueError(f"INGEST_EMBED_PROVIDER must be 'ray', 'gemini' or 'azure_openai', got {provider!r}")
 
 
 class MultimodalBatchEmbedder:
