@@ -17,7 +17,7 @@ greenlet>=3.0.0  # Required by SQLAlchemy async
 redis==5.0.1
 
 # AI & LLM Clients
-openai==1.10.0   # Standard client often used for compatible endpoints
+openai>=1.54,<2   # >=1.54: max_completion_tokens (newer chat models reject max_tokens), AsyncAzureOpenAI token provider
 google-genai>=0.5.0  # Gemini multimodal embeddings (text + image)
 # NOTE: sentence-transformers, transformers, torch live in the Ray Serve
 # image (services/ray/) — not needed in the API pod.
