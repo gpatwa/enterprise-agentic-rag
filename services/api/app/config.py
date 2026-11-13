@@ -169,7 +169,7 @@ class Settings(BaseSettings):
     # DefaultAzureCredential (workload identity in AKS, `az login` on a laptop), so there is no API key to store or rotate.
     AZURE_OPENAI_ENDPOINT: Optional[str] = None  # https://<account>.openai.azure.com/
     AZURE_OPENAI_API_VERSION: str = "2024-10-21"
-    AZURE_OPENAI_LLM_DEPLOYMENT: str = "gpt-4o-mini"
+    AZURE_OPENAI_LLM_DEPLOYMENT: str = "gpt-6-luna"
     AZURE_OPENAI_EMBED_DEPLOYMENT: str = "text-embedding-3-small"
     AZURE_OPENAI_EMBED_DIMENSIONS: int = 768  # text-embedding-3-small is Matryoshka: 768 fits the 768-dim indexes
 

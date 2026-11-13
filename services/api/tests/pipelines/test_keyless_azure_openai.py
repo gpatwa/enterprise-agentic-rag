@@ -77,7 +77,8 @@ def test_the_llm_client_uses_the_deployment_and_json_mode() -> None:
     client = AzureOpenAILLMClient()
     client.client = SimpleNamespace(chat=SimpleNamespace(completions=_Completions()))
     assert _run(client.chat_completion([{"role": "user", "content": "hi"}], json_mode=True)) == "hello"
-    assert seen["model"] == "gpt-4o-mini" and seen["response_format"] == {"type": "json_object"}
+    assert seen["model"] == "gpt-6-luna" and seen["response_format"] == {"type": "json_object"}
+    assert seen["max_completion_tokens"] == 1024 and "max_tokens" not in seen
 
 
 def test_starting_without_an_endpoint_says_what_is_missing(monkeypatch) -> None:
@@ -248,3 +249,45 @@ def test_the_azure_bootstrap_no_longer_copies_provider_keys_into_the_app_secret(
     code = re.sub(r"(?m)^\s*#.*$", "", text)
     args = code[code.index("SECRET_ARGS=(") : code.index("kubectl create secret generic app-env-secret")]
     assert "GOOGLE_API_KEY" not in args and "TAVILY_API_KEY" not in args and "OPENAI_API_KEY" not in args
+
+
+def test_the_llm_client_retries_without_temperature_when_the_model_only_takes_the_default() -> None:
+    import httpx
+    from openai import BadRequestError
+
+    from app.clients.azure_openai import AzureOpenAILLMClient
+
+    calls = []
+
+    class _Completions:
+        async def create(self, **kwargs):
+            calls.append(kwargs)
+            if "temperature" in kwargs:
+                request = httpx.Request("POST", "https://x")
+                response = httpx.Response(400, request=request)
+                raise BadRequestError(
+                    "Unsupported value: 'temperature' does not support 0.7 with this model.", response=response, body=None
+                )
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))])
+
+    client = AzureOpenAILLMClient()
+    client.client = SimpleNamespace(chat=SimpleNamespace(completions=_Completions()))
+    assert _run(client.chat_completion([{"role": "user", "content": "hi"}])) == "ok"
+    assert _run(client.chat_completion([{"role": "user", "content": "again"}])) == "ok"
+    assert ["temperature" in c for c in calls] == [True, False, False], "the second request must not retry the rejected value"
+
+
+def test_other_bad_requests_are_not_swallowed() -> None:
+    import httpx
+    from openai import BadRequestError
+
+    from app.clients.azure_openai import AzureOpenAILLMClient
+
+    class _Completions:
+        async def create(self, **kwargs):
+            raise BadRequestError("content filter", response=httpx.Response(400, request=httpx.Request("POST", "https://x")), body=None)
+
+    client = AzureOpenAILLMClient()
+    client.client = SimpleNamespace(chat=SimpleNamespace(completions=_Completions()))
+    with pytest.raises(BadRequestError):
+        _run(client.chat_completion([{"role": "user", "content": "hi"}]))

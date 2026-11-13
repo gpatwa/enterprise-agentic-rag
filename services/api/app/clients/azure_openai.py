@@ -10,7 +10,7 @@ Usage:
   LLM_PROVIDER=azure_openai
   EMBED_PROVIDER=azure_openai
   AZURE_OPENAI_ENDPOINT=https://<account>.openai.azure.com/
-  AZURE_OPENAI_LLM_DEPLOYMENT=gpt-4o-mini
+  AZURE_OPENAI_LLM_DEPLOYMENT=gpt-6-luna
   AZURE_OPENAI_EMBED_DEPLOYMENT=text-embedding-3-small
   AZURE_OPENAI_EMBED_DIMENSIONS=768
 
@@ -21,7 +21,7 @@ import logging
 from typing import AsyncGenerator, Dict, List, Optional
 
 import backoff
-from openai import APIError, AsyncAzureOpenAI
+from openai import APIError, AsyncAzureOpenAI, BadRequestError
 
 from app.config import settings
 
@@ -60,17 +60,40 @@ class _AzureOpenAIBase:
 
 
 class AzureOpenAILLMClient(_AzureOpenAIBase):
-    """Async Azure OpenAI chat completion client."""
+    """
+    Async Azure OpenAI chat completion client.
+
+    Newer chat models differ from the 4o family: they take ``max_completion_tokens`` (not ``max_tokens``) and some only
+    accept the default ``temperature``. The client always sends ``max_completion_tokens`` and, when the service rejects a
+    custom temperature, retries once without it and remembers that for this model.
+    """
 
     def __init__(self, model: Optional[str] = None) -> None:
         super().__init__()
         self.model = model or settings.AZURE_OPENAI_LLM_DEPLOYMENT  # the deployment name
+        self._omit_temperature = False
 
     async def start(self) -> None:
         self.client = await self._open()
         logger.info("Azure OpenAI LLM client initialised (deployment=%s, keyless)", self.model)
 
-    @backoff.on_exception(backoff.expo, APIError, max_tries=3)
+    async def _create(self, messages: List[Dict], temperature: float, stream: bool = False, **extra):
+        kwargs = {"model": self.model, "messages": messages, "max_completion_tokens": 1024, **extra}
+        if stream:
+            kwargs["stream"] = True
+        if not self._omit_temperature:
+            kwargs["temperature"] = temperature
+        try:
+            return await self.client.chat.completions.create(**kwargs)
+        except BadRequestError as exc:
+            if "temperature" not in str(exc).lower() or "temperature" not in kwargs:
+                raise
+            logger.info("Deployment %s only accepts the default temperature; retrying without it", self.model)
+            self._omit_temperature = True
+            kwargs.pop("temperature")
+            return await self.client.chat.completions.create(**kwargs)
+
+    @backoff.on_exception(backoff.expo, APIError, max_tries=3, giveup=lambda e: isinstance(e, BadRequestError))
     async def chat_completion(
         self,
         messages: List[Dict],
@@ -79,10 +102,8 @@ class AzureOpenAILLMClient(_AzureOpenAIBase):
     ) -> str:
         if not self.client:
             raise RuntimeError("Client not initialized. Call start() first.")
-        kwargs = {"model": self.model, "messages": messages, "temperature": temperature, "max_tokens": 1024}
-        if json_mode:
-            kwargs["response_format"] = {"type": "json_object"}
-        response = await self.client.chat.completions.create(**kwargs)
+        extra = {"response_format": {"type": "json_object"}} if json_mode else {}
+        response = await self._create(messages, temperature, **extra)
         return response.choices[0].message.content
 
     async def chat_completion_stream(
@@ -92,9 +113,7 @@ class AzureOpenAILLMClient(_AzureOpenAIBase):
     ) -> AsyncGenerator[str, None]:
         if not self.client:
             raise RuntimeError("Client not initialized. Call start() first.")
-        stream = await self.client.chat.completions.create(
-            model=self.model, messages=messages, temperature=temperature, max_tokens=1024, stream=True
-        )
+        stream = await self._create(messages, temperature, stream=True)
         async for chunk in stream:
             if chunk.choices and chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content

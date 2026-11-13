@@ -169,26 +169,26 @@ variable "openai_account_name" {
 variable "openai_llm_deployment" {
   description = "Deployment name the API uses for chat completions"
   type        = string
-  default     = "gpt-4o-mini"
+  default     = "gpt-6-luna"
 }
 
 variable "openai_llm_model" {
   description = "Model behind the chat deployment"
   type        = string
-  default     = "gpt-4o-mini"
+  default     = "gpt-6-luna"
 }
 
 variable "openai_llm_model_version" {
   description = "Version of the chat model"
   type        = string
-  default     = "2024-07-18"
+  default     = "2026-09-22"
 }
 
 variable "openai_llm_sku" {
   description = <<-EOT
-    Deployment type for the chat model. The subscription has no quota for the regional "Standard" gpt-4o-mini in eastus
-    (checked with `az cognitiveservices usage list`); DataZoneStandard keeps processing inside the US data zone, and
-    GlobalStandard (more quota) may process in any region.
+    Deployment type for the chat model. gpt-6-luna is offered as GlobalStandard and DataZoneStandard (no regional
+    Standard); DataZoneStandard keeps processing inside the US data zone (quota 100 in eastus, checked with
+    `az cognitiveservices usage list`), and GlobalStandard (quota 250) may process in any region.
   EOT
   type        = string
   default     = "DataZoneStandard"
