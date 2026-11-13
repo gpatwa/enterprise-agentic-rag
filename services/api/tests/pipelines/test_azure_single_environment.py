@@ -64,3 +64,10 @@ def test_azure_bootstrap_never_prompts_and_never_regenerates_the_jwt_key() -> No
     keyvault = (TF / "keyvault.tf").read_text()
     for vault in ("db-password", "jwt-secret-key", "neo4j-password", "gemini-api-key", "tavily-api-key"):
         assert f'name         = "{vault}"' in keyvault
+
+
+def test_azure_bootstrap_builds_the_image_before_the_helm_install() -> None:
+    text = (REPO / "scripts" / "bootstrap_cluster_azure.sh").read_text()
+    build = text.index("az acr build")
+    assert 'az acr repository show --name "$ACR_NAME"' in text[:build], "build only when the tag is missing"
+    assert build < text.index("helm upgrade --install api")
