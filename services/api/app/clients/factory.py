@@ -5,8 +5,8 @@ Provider is selected via LLM_PROVIDER / EMBED_PROVIDER env vars,
 but can be overridden per-tenant via TenantConfig.
 
 Supported providers:
-  LLM:   "ray" (self-hosted vLLM) | "openai" (OpenAI API / compatible)
-  Embed: "ray" (self-hosted BGE)  | "openai" (OpenAI API / compatible)
+  LLM:   "ray" (self-hosted vLLM) | "openai" (OpenAI API / compatible) | "azure_openai" (keyless, Entra ID)
+  Embed: "ray" (self-hosted BGE)  | "openai" (OpenAI API / compatible) | "gemini" | "azure_openai" (keyless)
 """
 import logging
 from typing import Optional
@@ -43,6 +43,12 @@ def create_llm_client(
         logger.info(f"Using OpenAI LLM provider (model={model})")
         return OpenAILLMClient(model=model) if model else OpenAILLMClient()
 
+    elif provider == "azure_openai":
+        from app.clients.azure_openai import AzureOpenAILLMClient
+
+        logger.info(f"Using Azure OpenAI LLM provider (keyless, deployment={model})")
+        return AzureOpenAILLMClient(model=model)
+
     elif provider == "ray":
         from app.clients.ray_llm import RayLLMClient
 
@@ -52,7 +58,7 @@ def create_llm_client(
     else:
         raise ValueError(
             f"Unknown LLM_PROVIDER: '{provider}'. "
-            f"Supported: 'ray', 'openai'"
+            f"Supported: 'ray', 'openai', 'azure_openai'"
         )
 
 
@@ -78,6 +84,12 @@ def create_embed_client(
         logger.info(f"Using OpenAI Embedding provider (model={model})")
         return OpenAIEmbedClient(model=model) if model else OpenAIEmbedClient()
 
+    elif provider == "azure_openai":
+        from app.clients.azure_openai import AzureOpenAIEmbedClient
+
+        logger.info(f"Using Azure OpenAI Embedding provider (keyless, deployment={model})")
+        return AzureOpenAIEmbedClient(model=model)
+
     elif provider == "ray":
         from app.clients.ray_embed import RayEmbedClient
 
@@ -96,7 +108,7 @@ def create_embed_client(
     else:
         raise ValueError(
             f"Unknown EMBED_PROVIDER: '{provider}'. "
-            f"Supported: 'ray', 'openai', 'gemini'"
+            f"Supported: 'ray', 'openai', 'gemini', 'azure_openai'"
         )
 
 

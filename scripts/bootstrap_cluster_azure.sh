@@ -47,15 +47,14 @@ REDIS_KEY=$(terraform output -raw redis_primary_key 2>/dev/null || echo "")
 STORAGE_ACCOUNT=$(terraform output -raw storage_account_name 2>/dev/null || echo "")
 API_IDENTITY_CLIENT_ID=$(terraform output -raw api_identity_client_id 2>/dev/null || echo "")
 KEY_VAULT_URL=$(terraform output -raw key_vault_url 2>/dev/null || echo "")
+RAY_IDENTITY_CLIENT_ID=$(terraform output -raw ray_identity_client_id 2>/dev/null || echo "")
 cd "$PROJECT_DIR"
 
 # Fetch optional API keys from Key Vault (if configured)
 GOOGLE_API_KEY="${GOOGLE_API_KEY:-}"
-TAVILY_API_KEY="${TAVILY_API_KEY:-}"
 if [ -n "$KEY_VAULT_URL" ]; then
     KV_NAME=$(echo "$KEY_VAULT_URL" | sed 's|https://||;s|\.vault.*||')
     GOOGLE_API_KEY=$(az keyvault secret show --vault-name "$KV_NAME" --name "gemini-api-key" --query "value" -o tsv 2>/dev/null || echo "")
-    TAVILY_API_KEY=$(az keyvault secret show --vault-name "$KV_NAME" --name "tavily-api-key" --query "value" -o tsv 2>/dev/null || echo "")
     echo "  Fetched API keys from Key Vault: ${KV_NAME}"
 fi
 
@@ -120,14 +119,21 @@ SECRET_ARGS=(
     --from-literal=SECRETS_PROVIDER="azure_kv"
 )
 [ -n "$KEY_VAULT_URL" ] && SECRET_ARGS+=(--from-literal=AZURE_KEY_VAULT_URL="$KEY_VAULT_URL")
-[ -n "$GOOGLE_API_KEY" ] && SECRET_ARGS+=(--from-literal=GOOGLE_API_KEY="$GOOGLE_API_KEY")
-[ -n "$TAVILY_API_KEY" ] && SECRET_ARGS+=(--from-literal=TAVILY_API_KEY="$TAVILY_API_KEY")
+# Provider keys (Gemini, Tavily) are NOT copied into app-env-secret: Key Vault stays the only copy, and the API re-reads it
+# on an interval (SECRET_REFRESH_SECONDS), so a rotated key takes effect without a restart. The default providers
+# (azure_openai) are keyless and need none. The Gemini key still reaches the Ray workers through ray-gemini-api-key below.
 
 kubectl create secret generic app-env-secret \
     "${SECRET_ARGS[@]}" \
     --dry-run=client -o yaml | kubectl apply -f -
 
 echo "  Secret app-env-secret created/updated"
+
+# Service account for the Ray pods: the Ray identity (Blob, Azure OpenAI) reaches them through AKS workload identity.
+kubectl create serviceaccount ray-worker --dry-run=client -o yaml | kubectl apply -f -
+if [ -n "$RAY_IDENTITY_CLIENT_ID" ]; then
+    kubectl annotate serviceaccount ray-worker azure.workload.identity/client-id="$RAY_IDENTITY_CLIENT_ID" --overwrite
+fi
 
 # Dedicated secret for the Ray ingestion workers: only the Gemini key, never the app-wide secret. The value goes in on
 # stdin so it never appears on a command line.
@@ -137,7 +143,7 @@ if [ -n "$GOOGLE_API_KEY" ]; then
         --dry-run=client -o yaml | kubectl apply -f -
     echo "  Secret ray-gemini-api-key created/updated"
 else
-    echo "  GOOGLE_API_KEY not set: ray-gemini-api-key not created. Run scripts/setup_provider_keys_azure.sh to add the provider keys"
+    echo "  No Gemini key in Key Vault: ray-gemini-api-key not created (not needed with the keyless azure_openai provider; scripts/setup_provider_keys_azure.sh adds it for Gemini)"
 fi
 
 # Settings for the Ray ingestion sinks (Qdrant, Neo4j, OpenSearch). The OpenSearch endpoint is not secret and goes in a

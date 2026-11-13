@@ -20,7 +20,11 @@ spec:
       num-cpus: '0' # Don't run tasks on head node
 
     template:
+      metadata:
+        labels:
+          azure.workload.identity/use: "true"  # AKS workload identity: keyless Azure OpenAI/Blob (ignored elsewhere)
       spec:
+        serviceAccountName: ray-worker  # created by the bootstrap scripts (annotated with the Ray identity on Azure)
         # Head node doesn't need GPU — use multi-arch image (amd64 + arm64)
         nodeSelector:
           kubernetes.io/arch: amd64
@@ -101,7 +105,11 @@ spec:
     maxReplicas: 3       # Cap for dev budget (prod: 50)
     rayStartParams: {}
     template:
+      metadata:
+        labels:
+          azure.workload.identity/use: "true"  # AKS workload identity: keyless Azure OpenAI/Blob (ignored elsewhere)
       spec:
+        serviceAccountName: ray-worker  # created by the bootstrap scripts (annotated with the Ray identity on Azure)
         containers:
         - name: ray-worker
           image: rayproject/ray:2.60.0-py310 # CPU Image
@@ -182,7 +190,11 @@ spec:
     maxReplicas: 2        # Cap for dev budget (prod: 20)
     rayStartParams: {}
     template:
+      metadata:
+        labels:
+          azure.workload.identity/use: "true"  # AKS workload identity: keyless Azure OpenAI/Blob (ignored elsewhere)
       spec:
+        serviceAccountName: ray-worker  # created by the bootstrap scripts (annotated with the Ray identity on Azure)
         containers:
         - name: ray-worker
           image: rayproject/ray:2.60.0-py310-gpu

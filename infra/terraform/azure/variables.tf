@@ -155,3 +155,65 @@ variable "allow_public_data_services" {
   type        = bool
   default     = true
 }
+
+# ---------------------------------------------------------------------------
+# Azure OpenAI (keyless; see openai.tf)
+# ---------------------------------------------------------------------------
+
+variable "openai_account_name" {
+  description = "Azure OpenAI account and custom subdomain (globally unique). Empty = <cluster_name>-openai."
+  type        = string
+  default     = ""
+}
+
+variable "openai_llm_deployment" {
+  description = "Deployment name the API uses for chat completions"
+  type        = string
+  default     = "gpt-4o-mini"
+}
+
+variable "openai_llm_model" {
+  description = "Model behind the chat deployment"
+  type        = string
+  default     = "gpt-4o-mini"
+}
+
+variable "openai_llm_model_version" {
+  description = "Version of the chat model"
+  type        = string
+  default     = "2024-07-18"
+}
+
+variable "openai_llm_sku" {
+  description = <<-EOT
+    Deployment type for the chat model. The subscription has no quota for the regional "Standard" gpt-4o-mini in eastus
+    (checked with `az cognitiveservices usage list`); DataZoneStandard keeps processing inside the US data zone, and
+    GlobalStandard (more quota) may process in any region.
+  EOT
+  type        = string
+  default     = "DataZoneStandard"
+}
+
+variable "openai_llm_capacity" {
+  description = "Chat deployment capacity, in thousands of tokens per minute"
+  type        = number
+  default     = 30
+}
+
+variable "openai_embed_deployment" {
+  description = "Deployment name for text-embedding-3-small (called with dimensions=768)"
+  type        = string
+  default     = "text-embedding-3-small"
+}
+
+variable "openai_embed_capacity" {
+  description = "Embedding deployment capacity, in thousands of tokens per minute"
+  type        = number
+  default     = 50
+}
+
+variable "openai_user_principal_ids" {
+  description = "Object IDs (users or groups) allowed to call the models with their own az login, for local development"
+  type        = list(string)
+  default     = []
+}

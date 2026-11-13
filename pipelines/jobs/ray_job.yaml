@@ -20,15 +20,20 @@ runtime_env:
     - pydantic-settings==2.1.0
     # Gemini embedder (INGEST_EMBED_PROVIDER=gemini): 768-dim vectors that fit the OpenSearch index
     - google-genai>=0.5.0
+    # Azure OpenAI embedder (INGEST_EMBED_PROVIDER=azure_openai): keyless, Entra ID tokens from the worker's identity
+    - openai>=1.30
+    - azure-identity>=1.15.0
     
   env_vars:
     # Environment variables injected into workers
     LOG_LEVEL: "INFO"
-    # 768 dims everywhere: the OpenSearch index is 768 and the API embeds queries with the same Gemini model.
-    INGEST_EMBED_PROVIDER: "gemini"
-    GEMINI_EMBED_DIMENSIONS: "768"
-    # GOOGLE_API_KEY must reach the workers as a secret; it is deliberately not written here.
-    # Secrets are injected via K8s Secrets, not here for security
+    # 768 dims everywhere: the indexes are 768 and the API embeds queries with the same Azure OpenAI deployment.
+    # Keyless: the workers authenticate with their workload identity (service account ray-worker), so there is no key.
+    INGEST_EMBED_PROVIDER: "azure_openai"
+    AZURE_OPENAI_ENDPOINT: "https://rag-platform-aks-openai.openai.azure.com/"
+    AZURE_OPENAI_EMBED_DEPLOYMENT: "text-embedding-3-small"
+    AZURE_OPENAI_EMBED_DIMENSIONS: "768"
+    # Provider keys (the optional Gemini path) reach the workers only as a dedicated secret, never written here.
     
 # Resource Request for the Driver (The orchestrator script)
 num_cpus: 1
