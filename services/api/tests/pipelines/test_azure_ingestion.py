@@ -229,21 +229,32 @@ def test_the_azure_cluster_has_the_same_sink_settings_as_the_shared_one() -> Non
         assert env(shared, kind) == env(azure, kind), f"{kind} environment drifted between the two manifests"
 
 
-def test_the_bootstrap_builds_the_ingestion_image_and_fills_the_placeholder() -> None:
-    text = (REPO / "scripts" / "bootstrap_cluster_azure.sh").read_text()
+def test_the_ingestion_deploy_script_builds_the_image_and_fills_the_placeholder() -> None:
+    text = (REPO / "scripts" / "deploy_ingestion_cluster_azure.sh").read_text()
     build = text.index("rag-ingestion:${INGEST_TAG}")
-    assert 'az acr repository show --name "$ACR_NAME" --image "rag-ingestion' in text[:build + 200]
+    assert 'az acr repository show --name "$ACR_NAME" --image "rag-ingestion' in text[: build + 200]
     assert "--file Dockerfile.ingestion" in text
     assert "git archive HEAD" in text, "the image must be built from a clean export of the commit, not the working directory"
     assert "__INGESTION_IMAGE__" in text and "ray-cluster-azure.yaml" in text
-    assert text.index("create serviceaccount ray-worker") < text.index("ray-cluster-azure.yaml"), "the SA must exist first"
+    assert "delete pods -l ray.io/cluster=rag-ray-cluster" in text, "a new image must replace running pods"
+
+
+def test_the_bootstrap_runs_it_after_the_service_account_exists_and_before_the_api() -> None:
+    text = (REPO / "scripts" / "bootstrap_cluster_azure.sh").read_text()
+    assert text.index("create serviceaccount ray-worker") < text.index("deploy_ingestion_cluster_azure.sh")
+    assert text.index("deploy_ingestion_cluster_azure.sh") < text.index("helm upgrade --install api")
+
+
+def test_the_bootstrap_deploys_the_api_with_the_production_values_by_default() -> None:
+    text = (REPO / "scripts" / "bootstrap_cluster_azure.sh").read_text()
+    assert 'HELM_EXTRA_VALUES="-f deploy/helm/api/values-prod.yaml"' in text
 
 
 def test_the_ingestion_image_has_what_kuberay_and_the_pdf_stack_need() -> None:
     dockerfile = (REPO / "Dockerfile.ingestion").read_text()
-    for needed in ("wget", "libgl1", "poppler-utils", "tesseract-ocr", "ray==2.60.0"):
+    for needed in ("wget", "libgl1", "poppler-utils", "tesseract-ocr", "ray[default]==2.60.0"):
         assert needed in dockerfile, needed
-    assert "ray==2.60.0" in (REPO / "requirements-ingestion.txt").read_text()
+    assert "ray[default]==2.60.0" in (REPO / "requirements-ingestion.txt").read_text(), "plain ray has no dashboard: no health probe, no job API"
     assert "adlfs" in (REPO / "requirements-ingestion.txt").read_text() and "azure-storage-blob" in (
         REPO / "requirements-ingestion.txt"
     ).read_text()

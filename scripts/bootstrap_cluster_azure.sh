@@ -224,27 +224,7 @@ helm upgrade --install neo4j neo4j/neo4j \
 # -----------------------------------------------------------
 # 5b. Ingestion: image (built in ACR) and the Ray cluster that runs it
 # -----------------------------------------------------------
-echo ""
-echo "Step 5b: Deploying the ingestion Ray cluster..."
-INGEST_ACR_URI="${ACR_NAME}.azurecr.io"
-INGEST_TAG=$(git rev-parse --short HEAD 2>/dev/null || echo "v0.1.0")
-if ! az acr repository show --name "$ACR_NAME" --image "rag-ingestion:${INGEST_TAG}" >/dev/null 2>&1; then
-    echo "  Image rag-ingestion:${INGEST_TAG} not in ${ACR_NAME}; building it with az acr build (several minutes)..."
-    # Build from a clean export of the commit, not the working directory: the directory can hold sockets (git's
-    # fsmonitor daemon leaves .git/fsmonitor--daemon.ipc, which az acr build cannot tar), untracked files and local
-    # edits, and the image must be what the tag says.
-    INGEST_CTX="$(mktemp -d)"
-    if git archive HEAD 2>/dev/null | tar -x -C "$INGEST_CTX"; then
-        az acr build --registry "$ACR_NAME" --image "rag-ingestion:${INGEST_TAG}" --file Dockerfile.ingestion "$INGEST_CTX"
-    else
-        az acr build --registry "$ACR_NAME" --image "rag-ingestion:${INGEST_TAG}" --file Dockerfile.ingestion .
-    fi
-    rm -rf "${INGEST_CTX:?}"
-else
-    echo "  Image rag-ingestion:${INGEST_TAG} already in ${ACR_NAME}"
-fi
-# Workers start at 0 replicas; scripts/ingest_azure.sh scales them up for a run and back down.
-sed "s#__INGESTION_IMAGE__#${INGEST_ACR_URI}/rag-ingestion:${INGEST_TAG}#g" deploy/ray/ray-cluster-azure.yaml | kubectl apply -f -
+ACR_NAME="$ACR_NAME" bash "$SCRIPT_DIR/deploy_ingestion_cluster_azure.sh"
 
 # -----------------------------------------------------------
 # 6. Deploy NGINX Ingress Controller
@@ -282,8 +262,10 @@ else
 fi
 
 # Apply staging overrides if HELM_VALUES_FILE is set or ENV=staging
+# Production is the one live environment, so its values are the default (the same as the deploy-prod workflow uses):
+# without them a bootstrap would quietly drop the replica count, the support worker and the migration hook.
 HELM_VALUES_FILE="${HELM_VALUES_FILE:-}"
-HELM_EXTRA_VALUES=""
+HELM_EXTRA_VALUES="-f deploy/helm/api/values-prod.yaml"
 if [ -n "$HELM_VALUES_FILE" ]; then
     HELM_EXTRA_VALUES="-f $HELM_VALUES_FILE"
 elif [ "${ENV:-}" = "staging" ]; then
