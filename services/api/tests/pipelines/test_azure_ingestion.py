@@ -237,6 +237,9 @@ def test_the_ingestion_deploy_script_builds_the_image_and_fills_the_placeholder(
     assert "git archive HEAD" in text, "the image must be built from a clean export of the commit, not the working directory"
     assert "__INGESTION_IMAGE__" in text and "ray-cluster-azure.yaml" in text
     assert "delete pods -l ray.io/cluster=rag-ray-cluster" in text, "a new image must replace running pods"
+    tag = text[text.index("INGEST_TAG=") : text.index("INGEST_TAG=") + 400]
+    assert "git rev-parse HEAD:pipelines/ingestion HEAD:services/api/app HEAD:Dockerfile.ingestion" in tag
+    assert "rev-parse HEAD)" not in tag and "rev-parse --short" not in tag, "the tag is a content hash, not the commit"
 
 
 def test_the_bootstrap_runs_it_after_the_service_account_exists_and_before_the_api() -> None:
@@ -276,3 +279,13 @@ def test_the_ingest_script_always_scales_the_workers_back_down_and_takes_its_env
     assert "--auth-mode login" in text
     # the storage key, when needed, travels in this process's environment, never on a command line
     assert "AZURE_STORAGE_KEY" in text and "--account-key" not in text
+
+
+def test_every_ray_data_stage_can_get_a_logical_cpu_on_the_one_worker() -> None:
+    """Found live: with one logical CPU the fetch, embed and graph actors starved each other and the job stalled."""
+    spec = _cluster("ray-cluster-azure.yaml")
+    logical = int(spec["workerGroupSpecs"][0]["rayStartParams"]["num-cpus"])
+    env = yaml.safe_load((REPO / "pipelines" / "jobs" / "ray_job.yaml").read_text())["runtime_env"]["env_vars"]
+    actors = sum(int(env[k]) for k in ("INGEST_FETCH_CONCURRENCY", "INGEST_EMBED_CONCURRENCY", "INGEST_GRAPH_CONCURRENCY"))
+    assert logical >= actors + 2, f"{actors} one-CPU actors plus the parse tasks need more than {logical} logical CPUs"
+    assert spec["headGroupSpec"]["rayStartParams"]["num-cpus"] == "0", "the head does no work"

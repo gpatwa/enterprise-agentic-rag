@@ -41,9 +41,9 @@ runtime_env:
     # Knowledge-graph extraction with the same keyless Azure OpenAI chat deployment; no GPU is requested anywhere.
     INGEST_GRAPH_PROVIDER: "azure_openai"
     AZURE_OPENAI_LLM_DEPLOYMENT: "gpt-6-luna"
-    INGEST_EMBED_CONCURRENCY: "2"
-    INGEST_GRAPH_CONCURRENCY: "2"
-    INGEST_FETCH_CONCURRENCY: "2"
+    INGEST_EMBED_CONCURRENCY: "1"
+    INGEST_GRAPH_CONCURRENCY: "1"
+    INGEST_FETCH_CONCURRENCY: "1"
     # Provider keys (the optional Gemini path) reach the workers only as a dedicated secret, never written here.
     
 # Resource Request for the Driver (The orchestrator script)

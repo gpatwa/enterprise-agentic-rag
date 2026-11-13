@@ -107,7 +107,11 @@ spec:
     replicas: 0
     minReplicas: 0       # Scale to zero when idle (prod: 1)
     maxReplicas: 2       # Cap for the budget
-    rayStartParams: {}
+    # Logical CPUs Ray hands out per worker, above the pod's 1 physical CPU on purpose. Every Ray Data stage reserves a
+    # whole CPU per actor (fetch, embed and graph actors wait on the network most of the time), so with one logical CPU
+    # the stages starve each other and the job stalls with "No available node types can fulfill resource requests".
+    rayStartParams:
+      num-cpus: '6'
     template:
       metadata:
         labels:

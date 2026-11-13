@@ -10,7 +10,12 @@ cd "$PROJECT_DIR"
 
 echo "Deploying the ingestion Ray cluster..."
 INGEST_ACR_URI="${ACR_NAME}.azurecr.io"
-INGEST_TAG=$(git rev-parse --short HEAD 2>/dev/null || echo "v0.1.0")
+# Tag by the content the image runs, not by the commit: a change to a manifest, a job spec or a doc must not trigger a
+# 10-minute rebuild, and a change to the ingestion code, the API app package it imports, its requirements or the
+# Dockerfile must. Git tree and blob hashes are exact content hashes.
+INGEST_TAG=$(git rev-parse HEAD:pipelines/ingestion HEAD:services/api/app HEAD:Dockerfile.ingestion \
+    HEAD:requirements-ingestion.txt HEAD:.dockerignore 2>/dev/null | shasum -a 256 | cut -c1-12)
+[ -n "$INGEST_TAG" ] || INGEST_TAG="v0.1.0"
 if ! az acr repository show --name "$ACR_NAME" --image "rag-ingestion:${INGEST_TAG}" >/dev/null 2>&1; then
     echo "  Image rag-ingestion:${INGEST_TAG} not in ${ACR_NAME}; building it with az acr build (several minutes)..."
     # Build from a clean export of the commit, not the working directory: the directory can hold sockets (git's
