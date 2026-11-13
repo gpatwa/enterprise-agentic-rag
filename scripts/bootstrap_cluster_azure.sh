@@ -240,6 +240,16 @@ echo "Step 7: Deploying Backend API..."
 ACR_URI="${ACR_NAME}.azurecr.io"
 TAG=$(git rev-parse --short HEAD 2>/dev/null || echo "v0.1.0")
 
+# Build the image in ACR (no local Docker needed) unless this tag is already there, so a fresh registry needs no manual
+# build and push before the Helm install.
+if ! az acr repository show --name "$ACR_NAME" --image "rag-backend-api:${TAG}" >/dev/null 2>&1; then
+    echo "  Image rag-backend-api:${TAG} not in ${ACR_NAME}; building it with az acr build..."
+    az acr build --registry "$ACR_NAME" --image "rag-backend-api:${TAG}" \
+        --file services/api/Dockerfile services/api
+else
+    echo "  Image rag-backend-api:${TAG} already in ${ACR_NAME}"
+fi
+
 # Apply staging overrides if HELM_VALUES_FILE is set or ENV=staging
 HELM_VALUES_FILE="${HELM_VALUES_FILE:-}"
 HELM_EXTRA_VALUES=""
