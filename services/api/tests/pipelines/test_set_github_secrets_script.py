@@ -24,6 +24,7 @@ echo "$name $*" >> "$FAKE_LOG"
 case "$name $*" in
   "gh auth status"*|"az account show") [ "$*" = "account show" ] && { echo "{}"; exit 0; }; exit 0 ;;
   "gh repo view"*) echo "gpatwa/agentic-resolution-intelligence" ;;
+  "gh api repos/gpatwa/agentic-resolution-intelligence --jq"*) echo "72292 1153827673" ;;
   "gh api"*) exit 0 ;;
   "gh secret set"*) echo "secret ${3} = $(cat)" >> "$FAKE_LOG" ;;
   "az account show --query tenantId"*) echo "tenant-0000" ;;
@@ -92,7 +93,8 @@ def test_every_secret_is_scoped_to_the_production_environment_and_passed_on_stdi
 
 def test_the_identity_gets_an_environment_credential_and_two_narrow_roles(tmp_path: Path) -> None:
     _, log = _run(tmp_path, apply=True)
-    assert "repo:gpatwa/agentic-resolution-intelligence:environment:production" in log
+    assert "repo:gpatwa@72292/agentic-resolution-intelligence@1153827673:environment:production" in log
+    assert "repo:gpatwa/agentic-resolution-intelligence:environment:production" not in log
     roles = re.findall(r"^az role assignment create .*--role (.+?) --scope", log, flags=re.M)
     assert sorted(roles) == sorted(["AcrPush", "Azure Kubernetes Service Cluster User Role"])
     assignments = " ".join(re.findall(r"^az role assignment .*$", log, flags=re.M))

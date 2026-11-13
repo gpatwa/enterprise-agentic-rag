@@ -14,7 +14,7 @@
 #   ACR_NAME, AZURE_RESOURCE_GROUP, AKS_CLUSTER_NAME, API_IDENTITY_CLIENT_ID   from `terraform output`
 #
 # What it creates with APPLY=1 (only if missing):
-#   - Entra app "<repo>-deploy" with a federated credential for repo:<owner>/<repo>:environment:production
+#   - Entra app "<repo>-deploy" with a federated credential for repo:<owner>@<id>/<repo>@<id>:environment:production
 #     (no client secret exists; GitHub exchanges its OIDC token)
 #   - AcrPush on the registry and "Azure Kubernetes Service Cluster User Role" on the cluster, nothing broader
 #
@@ -95,14 +95,23 @@ if [ -z "$client_id" ]; then
   echo "created Entra app ${app_name}"
 fi
 
-subject="repo:${repo}:environment:${environment}"
+# GitHub presents the immutable-ID form of the subject (owner and repository IDs, as infra/terraform/platform-identity
+# registers them); the plain repo:<owner>/<name> form never matches.
+read -r owner_id repo_id < <(gh api "repos/${repo}" --jq '"\(.owner.id) \(.id)"')
+subject="repo:${repo%%/*}@${owner_id}/${repo_name}@${repo_id}:environment:${environment}"
 existing_subjects="$(az ad app federated-credential list --id "$client_id" --query '[].subject' -o tsv)"
 if ! grep -qxF "$subject" <<<"$existing_subjects"; then
-  az ad app federated-credential create --id "$client_id" --parameters "$(
-    printf '{"name":"github-%s","issuer":"https://token.actions.githubusercontent.com","subject":"%s","audiences":["api://AzureADTokenExchange"]}' \
-      "$environment" "$subject"
-  )" >/dev/null
-  echo "added federated credential for ${subject}"
+  credential="$(printf '{"name":"github-%s","issuer":"https://token.actions.githubusercontent.com","subject":"%s","audiences":["api://AzureADTokenExchange"]}' \
+    "$environment" "$subject")"
+  # A credential of this name with another subject (for example the plain repo form) is corrected, not duplicated.
+  stale_id="$(az ad app federated-credential list --id "$client_id" --query "[?name=='github-${environment}'].id" -o tsv)"
+  if [ -n "$stale_id" ]; then
+    az ad app federated-credential update --id "$client_id" --federated-credential-id "$stale_id" --parameters "$credential" >/dev/null
+    echo "updated federated credential to ${subject}"
+  else
+    az ad app federated-credential create --id "$client_id" --parameters "$credential" >/dev/null
+    echo "added federated credential for ${subject}"
+  fi
 fi
 
 assign_role() {  # assign_role <role> <scope>
