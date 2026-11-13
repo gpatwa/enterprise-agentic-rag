@@ -59,13 +59,19 @@ def parse_pdf_bytes(
             tmp_file.flush()
 
             # 2. Partition PDF
-            # strategy="hi_res" uses OCR (Tesseract) and Layout Analysis (Detectron2)
+            # INGEST_PDF_STRATEGY (default "hi_res"): "hi_res" uses OCR (Tesseract) and layout analysis (Detectron2/ONNX) and
+            # needs those system packages and model weights; "fast" extracts the text layer with pdfminer only (no OCR, no
+            # models, no table structure), which is what a stock CPU Ray image can run. Scanned PDFs need "hi_res".
+            strategy = os.getenv("INGEST_PDF_STRATEGY", "hi_res").strip().lower()
+            if strategy not in {"hi_res", "fast"}:
+                raise ValueError(f"INGEST_PDF_STRATEGY must be 'hi_res' or 'fast', got {strategy!r}")
             partition_kwargs = dict(
                 filename=tmp_file.name,
-                strategy="hi_res",
+                strategy=strategy,
                 include_page_breaks=True,
-                infer_table_structure=True,
             )
+            if strategy == "hi_res":
+                partition_kwargs["infer_table_structure"] = True
             if extract_images:
                 partition_kwargs["extract_images_in_pdf"] = True
 

@@ -13,16 +13,16 @@ runtime_env:
     - neo4j==5.14.0
     - langchain-text-splitters>=0.3,<1 # chunking/splitter.py imports langchain_text_splitters; the full langchain pin forced packaging<24 against Ray
     - unstructured[pdf,docx]==0.11.0 # Heavy dependency for parsing
-    - sentence-transformers==2.2.2
     # OpenSearch sink (INGEST_VECTOR_SINKS=opensearch); same pins as services/api/requirements.txt
     - opensearch-py[async]>=2.4,<3.0
     - pydantic==2.6.0
     - pydantic-settings==2.1.0
     # Gemini embedder (INGEST_EMBED_PROVIDER=gemini): 768-dim vectors that fit the OpenSearch index
     - google-genai>=0.5.0
-    # Azure OpenAI embedder (INGEST_EMBED_PROVIDER=azure_openai): keyless, Entra ID tokens from the worker's identity
+    # Azure OpenAI embedder / graph extractor and the Blob source: keyless, Entra ID tokens from the worker's identity
     - openai>=1.54,<2
     - azure-identity>=1.15.0
+    - azure-storage-blob>=12.19.0
     
   env_vars:
     # Environment variables injected into workers
@@ -33,6 +33,17 @@ runtime_env:
     AZURE_OPENAI_ENDPOINT: "https://rag-platform-aks-openai.openai.azure.com/"
     AZURE_OPENAI_EMBED_DEPLOYMENT: "text-embedding-3-small"
     AZURE_OPENAI_EMBED_DIMENSIONS: "768"
+    # Azure Blob source (workload identity, no storage key) and a stock-CPU-image friendly pipeline.
+    INGEST_SOURCE: "azure_blob"
+    AZURE_STORAGE_ACCOUNT_NAME: "ragplatformaksdocs"
+    # "fast" reads the PDF text layer (pdfminer); "hi_res" needs OCR/layout models the stock Ray image does not have.
+    INGEST_PDF_STRATEGY: "fast"
+    # Knowledge-graph extraction with the same keyless Azure OpenAI chat deployment; no GPU is requested anywhere.
+    INGEST_GRAPH_PROVIDER: "azure_openai"
+    AZURE_OPENAI_LLM_DEPLOYMENT: "gpt-6-luna"
+    INGEST_EMBED_CONCURRENCY: "2"
+    INGEST_GRAPH_CONCURRENCY: "2"
+    INGEST_FETCH_CONCURRENCY: "2"
     # Provider keys (the optional Gemini path) reach the workers only as a dedicated secret, never written here.
     
 # Resource Request for the Driver (The orchestrator script)

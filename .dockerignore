@@ -54,3 +54,11 @@ Dockerfile.*
 *.tfstate
 *.tfstate.backup
 .terraform/
+
+# Sample data, artifacts, design work, web apps and evals are not part of the ingestion image (the test PDFs alone are
+# tens of megabytes sent to ACR on every build).
+data/
+artifacts/
+design-explorations/
+apps/
+eval/

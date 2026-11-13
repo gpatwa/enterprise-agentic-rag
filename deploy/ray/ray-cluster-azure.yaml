@@ -1,0 +1,184 @@
+# deploy/ray/ray-cluster-azure.yaml
+# Ray cluster for ingestion on AKS: CPU only (no GPU pool exists), sized for B2s_v2 nodes, running the image built from
+# Dockerfile.ingestion (Debian bookworm with libGL, Poppler and Tesseract, Ray 2.60.0 and the pipeline code in /app), so
+# nothing is pip-installed at run time. __INGESTION_IMAGE__ is replaced by the bootstrap with the ACR image reference.
+# Workers are off until an ingestion run: scripts/ingest_azure.sh scales them up and back down. The sink settings below
+# match deploy/ray/ray-cluster.yaml (a test keeps them in step).
+apiVersion: ray.io/v1
+kind: RayCluster
+metadata:
+  name: rag-ray-cluster
+  namespace: default
+spec:
+  # Ray Version: Must match your Python SDK version
+  rayVersion: '2.60.0'
+
+  ###################################
+  # HEAD NODE (The Manager)
+  # Orchestrates tasks but does no heavy lifting.
+  ###################################
+  headGroupSpec:
+    serviceType: ClusterIP # Internal communication only
+    rayStartParams:
+      dashboard-host: '0.0.0.0' # Enable dashboard for monitoring
+      num-cpus: '0' # Don't run tasks on head node
+
+    template:
+      metadata:
+        labels:
+          azure.workload.identity/use: "true"  # AKS workload identity: keyless Azure OpenAI/Blob (ignored elsewhere)
+      spec:
+        serviceAccountName: ray-worker  # created by the bootstrap scripts (annotated with the Ray identity on Azure)
+        # Head node doesn't need GPU — use multi-arch image (amd64 + arm64)
+        nodeSelector:
+          kubernetes.io/arch: amd64
+        containers:
+        - name: ray-head
+          image: __INGESTION_IMAGE__
+          env:
+          # Sink settings (Qdrant, Neo4j, OpenSearch). The driver (this pod, on the head) and the workers both read them.
+          # Qdrant and Neo4j are the Helm releases the bootstrap scripts install; their Services are named after the release.
+          - name: QDRANT_HOST
+            value: "qdrant"
+          - name: QDRANT_PORT
+            value: "6333"
+          - name: NEO4J_URI
+            value: "bolt://neo4j:7687"
+          - name: NEO4J_USER
+            value: "neo4j"
+          # OpenSearch is external, so its endpoint comes from the optional ConfigMap ray-sink-config.
+          - name: OPENSEARCH_URL
+            valueFrom:
+              configMapKeyRef:
+                name: ray-sink-config
+                key: OPENSEARCH_URL
+                optional: true
+          - name: OPENSEARCH_AUTH_MODE
+            valueFrom:
+              configMapKeyRef:
+                name: ray-sink-config
+                key: OPENSEARCH_AUTH_MODE
+                optional: true
+          # Credentials: one key each from the dedicated secret ray-sink-credentials (never app-env-secret); pods start without it.
+          - name: NEO4J_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: NEO4J_PASSWORD
+                optional: true
+          - name: OPENSEARCH_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: OPENSEARCH_USERNAME
+                optional: true
+          - name: OPENSEARCH_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: OPENSEARCH_PASSWORD
+                optional: true
+          - name: OPENSEARCH_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: OPENSEARCH_API_KEY
+                optional: true
+          resources:
+            # Sized for B2s_v2 nodes (2 vCPU / 8 GiB shared with the platform pods)
+            limits:
+              cpu: "1"
+              memory: "3Gi"
+            requests:
+              cpu: "1"
+              memory: "3Gi"
+          ports:
+          - containerPort: 6379 # Redis port (Ray uses Redis internally)
+          - containerPort: 8265 # Dashboard port
+
+  ###################################
+  # WORKER GROUPS (The Muscle)
+  ###################################
+  workerGroupSpecs:
+
+  # GROUP A: CPU Workers (For Ingestion: PDF Parsing, Text Splitting)
+  # Dev: scales 0-3 with smaller instances (prod: 1-50 with c6i.2xlarge)
+  - groupName: cpu-workers
+    replicas: 0
+    minReplicas: 0       # Scale to zero when idle (prod: 1)
+    maxReplicas: 2       # Cap for the budget
+    rayStartParams: {}
+    template:
+      metadata:
+        labels:
+          azure.workload.identity/use: "true"  # AKS workload identity: keyless Azure OpenAI/Blob (ignored elsewhere)
+      spec:
+        serviceAccountName: ray-worker  # created by the bootstrap scripts (annotated with the Ray identity on Azure)
+        containers:
+        - name: ray-worker
+          image: __INGESTION_IMAGE__
+          # Gemini key for the ingestion embedder (INGEST_EMBED_PROVIDER=gemini). A dedicated single-key secret, not
+          # app-env-secret: Ray must not see the database URL or JWT secret. optional: pods still start without it.
+          env:
+          - name: GOOGLE_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: ray-gemini-api-key
+                key: GOOGLE_API_KEY
+                optional: true
+          # Sink settings (Qdrant, Neo4j, OpenSearch). The driver (this pod, on the head) and the workers both read them.
+          # Qdrant and Neo4j are the Helm releases the bootstrap scripts install; their Services are named after the release.
+          - name: QDRANT_HOST
+            value: "qdrant"
+          - name: QDRANT_PORT
+            value: "6333"
+          - name: NEO4J_URI
+            value: "bolt://neo4j:7687"
+          - name: NEO4J_USER
+            value: "neo4j"
+          # OpenSearch is external, so its endpoint comes from the optional ConfigMap ray-sink-config.
+          - name: OPENSEARCH_URL
+            valueFrom:
+              configMapKeyRef:
+                name: ray-sink-config
+                key: OPENSEARCH_URL
+                optional: true
+          - name: OPENSEARCH_AUTH_MODE
+            valueFrom:
+              configMapKeyRef:
+                name: ray-sink-config
+                key: OPENSEARCH_AUTH_MODE
+                optional: true
+          # Credentials: one key each from the dedicated secret ray-sink-credentials (never app-env-secret); pods start without it.
+          - name: NEO4J_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: NEO4J_PASSWORD
+                optional: true
+          - name: OPENSEARCH_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: OPENSEARCH_USERNAME
+                optional: true
+          - name: OPENSEARCH_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: OPENSEARCH_PASSWORD
+                optional: true
+          - name: OPENSEARCH_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: ray-sink-credentials
+                key: OPENSEARCH_API_KEY
+                optional: true
+          resources:
+            # One worker per node slice: PDF parsing is memory hungry, so keep the limit and the request equal
+            limits:
+              cpu: "1"
+              memory: "3Gi"
+            requests:
+              cpu: "1"
+              memory: "3Gi"

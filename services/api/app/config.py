@@ -74,6 +74,7 @@ class Settings(BaseSettings):
     QDRANT_HOST: str = "qdrant"
     QDRANT_PORT: int = 6333
     QDRANT_COLLECTION: str = "rag_collection"
+    QDRANT_VECTOR_SIZE: Optional[int] = None  # override; default follows EMBED_PROVIDER (azure_openai/gemini 768)
 
     # -----------------------------------------------------------------
     # Enterprise Search — OpenSearch provider
