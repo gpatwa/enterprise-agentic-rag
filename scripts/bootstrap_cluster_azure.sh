@@ -230,7 +230,16 @@ INGEST_ACR_URI="${ACR_NAME}.azurecr.io"
 INGEST_TAG=$(git rev-parse --short HEAD 2>/dev/null || echo "v0.1.0")
 if ! az acr repository show --name "$ACR_NAME" --image "rag-ingestion:${INGEST_TAG}" >/dev/null 2>&1; then
     echo "  Image rag-ingestion:${INGEST_TAG} not in ${ACR_NAME}; building it with az acr build (several minutes)..."
-    az acr build --registry "$ACR_NAME" --image "rag-ingestion:${INGEST_TAG}" --file Dockerfile.ingestion .
+    # Build from a clean export of the commit, not the working directory: the directory can hold sockets (git's
+    # fsmonitor daemon leaves .git/fsmonitor--daemon.ipc, which az acr build cannot tar), untracked files and local
+    # edits, and the image must be what the tag says.
+    INGEST_CTX="$(mktemp -d)"
+    if git archive HEAD 2>/dev/null | tar -x -C "$INGEST_CTX"; then
+        az acr build --registry "$ACR_NAME" --image "rag-ingestion:${INGEST_TAG}" --file Dockerfile.ingestion "$INGEST_CTX"
+    else
+        az acr build --registry "$ACR_NAME" --image "rag-ingestion:${INGEST_TAG}" --file Dockerfile.ingestion .
+    fi
+    rm -rf "${INGEST_CTX:?}"
 else
     echo "  Image rag-ingestion:${INGEST_TAG} already in ${ACR_NAME}"
 fi

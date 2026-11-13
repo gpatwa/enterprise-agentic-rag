@@ -234,6 +234,7 @@ def test_the_bootstrap_builds_the_ingestion_image_and_fills_the_placeholder() ->
     build = text.index("rag-ingestion:${INGEST_TAG}")
     assert 'az acr repository show --name "$ACR_NAME" --image "rag-ingestion' in text[:build + 200]
     assert "--file Dockerfile.ingestion" in text
+    assert "git archive HEAD" in text, "the image must be built from a clean export of the commit, not the working directory"
     assert "__INGESTION_IMAGE__" in text and "ray-cluster-azure.yaml" in text
     assert text.index("create serviceaccount ray-worker") < text.index("ray-cluster-azure.yaml"), "the SA must exist first"
 
