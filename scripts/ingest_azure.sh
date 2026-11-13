@@ -12,6 +12,7 @@
 #
 # Environment:
 #   TENANT_ID        tenant the chunks are written under (default: the second argument, else "default")
+#   INGEST_*         any such variable overrides the job file for this run (INGEST_GRAPH_PROVIDER=none: vectors only)
 #   KEEP_WORKERS=1   leave the workers running afterwards
 set -euo pipefail
 
@@ -26,7 +27,10 @@ tf_dir="$root/infra/terraform/azure"
 account="$(terraform -chdir="$tf_dir" output -raw storage_account_name)"
 container="$(terraform -chdir="$tf_dir" output -raw storage_container_name)"
 run_id="ingest-$(date +%Y%m%d-%H%M%S)"
-prefix="uploads/${tenant}/${run_id}"
+# A document's identity in the index is its blob path, so the path must not change between runs: re-ingesting the same
+# file then updates its chunks in place instead of adding a second copy under a new folder.
+name="$(basename "$source_path")"
+if [ -d "$source_path" ]; then prefix="uploads/${tenant}/${name}/"; else prefix="uploads/${tenant}/${name}"; fi
 
 scale_workers() {  # scale_workers <replicas>
   kubectl patch raycluster "$cluster" --type json \
@@ -44,11 +48,11 @@ trap cleanup EXIT
 echo "Uploading to az://${container}/${prefix} ..."
 upload() {
   if [ -d "$source_path" ]; then
-    az storage blob upload-batch --account-name "$account" --destination "$container" --destination-path "$prefix" \
+    az storage blob upload-batch --account-name "$account" --destination "$container" --destination-path "${prefix%/}" \
       --source "$source_path" "$@" >/dev/null
   else
     az storage blob upload --account-name "$account" --container-name "$container" \
-      --name "${prefix}/$(basename "$source_path")" --file "$source_path" --overwrite "$@" >/dev/null
+      --name "$prefix" --file "$source_path" --overwrite "$@" >/dev/null
   fi
 }
 if ! upload --auth-mode login 2>/dev/null; then
@@ -77,6 +81,10 @@ import json, sys, yaml
 spec = yaml.safe_load(open(sys.argv[1]))
 env = dict(spec["runtime_env"]["env_vars"])
 env["TENANT_ID"] = sys.argv[2]
+# Any INGEST_* variable set when running this script overrides the job file (e.g. INGEST_GRAPH_PROVIDER=none for a
+# vector-only run, INGEST_GRAPH_CONCURRENCY=4 for more parallel graph calls).
+import os
+env.update({k: v for k, v in os.environ.items() if k.startswith("INGEST_")})
 print(json.dumps({"env_vars": env}))
 PY
 )"
@@ -86,7 +94,8 @@ kubectl exec "$head" -- ray job submit --address http://127.0.0.1:8265 --submiss
 
 status=""
 for _ in $(seq 1 360); do
-  status="$(kubectl exec "$head" -- ray job status --address http://127.0.0.1:8265 "$run_id" 2>/dev/null | grep -o -E 'SUCCEEDED|FAILED|STOPPED' | head -1 || true)"
+  status="$(kubectl exec "$head" -- ray job status --address http://127.0.0.1:8265 "$run_id" 2>/dev/null \
+    | grep -o -i -E "succeeded|failed|stopped" | head -1 | tr '[:lower:]' '[:upper:]' || true)"
   [ -n "$status" ] && break
   sleep 10
 done
