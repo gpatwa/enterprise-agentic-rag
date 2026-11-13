@@ -34,6 +34,9 @@ resource "azurerm_cognitive_deployment" "llm" {
   name                 = var.openai_llm_deployment
   cognitive_account_id = azurerm_cognitive_account.openai.id
 
+  # Pinned, not left unset: Azure applies its default content filter and Terraform would otherwise plan to remove it.
+  rai_policy_name = "Microsoft.DefaultV2"
+
   model {
     format  = "OpenAI"
     name    = var.openai_llm_model
@@ -49,6 +52,8 @@ resource "azurerm_cognitive_deployment" "llm" {
 resource "azurerm_cognitive_deployment" "embed" {
   name                 = var.openai_embed_deployment
   cognitive_account_id = azurerm_cognitive_account.openai.id
+
+  rai_policy_name = "Microsoft.DefaultV2"
 
   model {
     format  = "OpenAI"

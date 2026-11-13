@@ -291,3 +291,8 @@ def test_other_bad_requests_are_not_swallowed() -> None:
     client.client = SimpleNamespace(chat=SimpleNamespace(completions=_Completions()))
     with pytest.raises(BadRequestError):
         _run(client.chat_completion([{"role": "user", "content": "hi"}]))
+
+
+def test_both_deployments_pin_the_default_content_filter() -> None:
+    text = re.sub(r"(?m)^\s*#.*$", "", (TF / "openai.tf").read_text())
+    assert text.count('rai_policy_name = "Microsoft.DefaultV2"') == 2
