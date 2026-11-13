@@ -13,8 +13,9 @@ on:
           - aws
           - azure
       image_tag:
-        description: "Image tag to promote (staging-<sha> from deploy-staging)"
-        required: true
+        description: "Image tag to promote (e.g. staging-<sha>). Leave empty to build this commit (Azure only)."
+        required: false
+        default: ""
         type: string
 
 env:
@@ -43,6 +44,12 @@ jobs:
 
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Require an image tag
+        env:
+          SOURCE_TAG: ${{ inputs.image_tag }}
+        run: |
+          test -n "$SOURCE_TAG" || { echo "AWS production promotes an existing image: set image_tag"; exit 1; }
 
       - name: Retag for production
         env:
@@ -98,16 +105,23 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Retag for production
+      # No staging environment yet: with no image_tag, build this commit and push it as the production tag.
+      # With an image_tag, promote that image instead.
+      - name: Build or retag for production
         env:
           ACR_REGISTRY: ${{ secrets.ACR_NAME }}.azurecr.io
           SOURCE_TAG: ${{ inputs.image_tag }}
           PROD_TAG: prod-${{ github.sha }}
         run: |
           az acr login --name ${{ secrets.ACR_NAME }}
-          docker pull $ACR_REGISTRY/rag-backend-api:$SOURCE_TAG
-          docker tag $ACR_REGISTRY/rag-backend-api:$SOURCE_TAG \
-            $ACR_REGISTRY/rag-backend-api:$PROD_TAG
+          if [ -z "$SOURCE_TAG" ]; then
+            docker build -t $ACR_REGISTRY/rag-backend-api:$PROD_TAG \
+              -f services/api/Dockerfile services/api
+          else
+            docker pull $ACR_REGISTRY/rag-backend-api:$SOURCE_TAG
+            docker tag $ACR_REGISTRY/rag-backend-api:$SOURCE_TAG \
+              $ACR_REGISTRY/rag-backend-api:$PROD_TAG
+          fi
           docker push $ACR_REGISTRY/rag-backend-api:$PROD_TAG
 
       - name: Get AKS Credentials

@@ -145,3 +145,13 @@ variable "servicebus_sku" {
   type        = string
   default     = "Standard"
 }
+
+variable "allow_public_data_services" {
+  description = <<-EOT
+    Keep Postgres (allow-azure-services firewall rule) and Redis reachable over their public endpoints, as AKS needs
+    today. Set to false only after Postgres VNet integration and the Redis private endpoint exist (see postgres.tf and
+    redis.tf); with false and no private networking AKS cannot reach either service.
+  EOT
+  type        = bool
+  default     = true
+}
