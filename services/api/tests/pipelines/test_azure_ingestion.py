@@ -289,3 +289,17 @@ def test_every_ray_data_stage_can_get_a_logical_cpu_on_the_one_worker() -> None:
     actors = sum(int(env[k]) for k in ("INGEST_FETCH_CONCURRENCY", "INGEST_EMBED_CONCURRENCY", "INGEST_GRAPH_CONCURRENCY"))
     assert logical >= actors + 2, f"{actors} one-CPU actors plus the parse tasks need more than {logical} logical CPUs"
     assert spec["headGroupSpec"]["rayStartParams"]["num-cpus"] == "0", "the head does no work"
+
+
+def test_the_ingest_script_uses_a_path_that_does_not_change_between_runs() -> None:
+    """Found live: a run-stamped folder made three runs of one PDF three documents (525 points instead of 175)."""
+    text = (REPO / "scripts" / "ingest_azure.sh").read_text()
+    prefix_lines = [line for line in text.splitlines() if line.startswith("if [ -d") and "prefix=" in line]
+    assert prefix_lines and "run_id" not in prefix_lines[0]
+    assert 'prefix="uploads/${tenant}/${run_id}"' not in text
+
+
+def test_the_ingest_script_recognises_this_rays_lower_case_final_status() -> None:
+    """``ray job status`` prints ``Job '<id>' succeeded`` when it is done; matching only SUCCEEDED waited an hour."""
+    text = (REPO / "scripts" / "ingest_azure.sh").read_text()
+    assert 'grep -o -i -E "succeeded|failed|stopped"' in text and "tr '[:lower:]' '[:upper:]'" in text
