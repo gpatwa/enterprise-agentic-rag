@@ -71,3 +71,12 @@ def test_azure_bootstrap_builds_the_image_before_the_helm_install() -> None:
     build = text.index("az acr build")
     assert 'az acr repository show --name "$ACR_NAME"' in text[:build], "build only when the tag is missing"
     assert build < text.index("helm upgrade --install api")
+
+
+def test_the_deployed_api_values_carry_an_explicit_cors_allowlist() -> None:
+    """The API raises at import time when ENV is prod (its default) and CORS_ORIGINS is empty or ``*``."""
+    for name in ("values-azure.yaml", "values-prod.yaml"):
+        env = yaml.safe_load((REPO / "deploy" / "helm" / "api" / name).read_text())["env"]
+        origins = [o.strip() for o in env["CORS_ORIGINS"].split(",") if o.strip()]
+        assert origins and "*" not in origins, f"{name}: CORS_ORIGINS must be an explicit allowlist"
+        assert all(o.startswith("https://") for o in origins)

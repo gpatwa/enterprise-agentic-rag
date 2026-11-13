@@ -17,6 +17,10 @@ env:
   QDRANT_HOST: "qdrant"
   QDRANT_PORT: "6333"
   NEO4J_URI: "bolt://neo4j:7687"
+  # The API refuses to start with ENV=prod (the default) and a wildcard or empty CORS_ORIGINS. Least privilege: only the
+  # API's own origin (api.<dns_zone_name>), so no other site's browser code can call it. Add a web app's origin here, as
+  # a comma-separated list, when it has a domain.
+  CORS_ORIGINS: "https://api.patwa-rag-platform.com"
   # Embedding — Gemini at 768 dims, matching the 768-dim OpenSearch index (BGE-M3 is 1024, text-embedding-3-small 1536).
   # GOOGLE_API_KEY comes from app-env-secret.
   EMBED_PROVIDER: "gemini"
