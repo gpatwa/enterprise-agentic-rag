@@ -239,7 +239,7 @@ def test_the_ingestion_deploy_script_builds_the_image_and_fills_the_placeholder(
     assert "delete pods -l ray.io/cluster=rag-ray-cluster" in text, "a new image must replace running pods"
     tag = text[text.index("INGEST_TAG=") : text.index("INGEST_TAG=") + 400]
     assert "git rev-parse HEAD:pipelines/ingestion HEAD:services/api/app HEAD:Dockerfile.ingestion" in tag
-    assert "rev-parse" not in tag, "the tag is a content hash: a manifest-only change must not rebuild the image"
+    assert "rev-parse HEAD)" not in tag and "rev-parse --short" not in tag, "the tag is a content hash, not the commit"
 
 
 def test_the_bootstrap_runs_it_after_the_service_account_exists_and_before_the_api() -> None:
