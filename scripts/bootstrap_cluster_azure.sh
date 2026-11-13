@@ -137,7 +137,7 @@ if [ -n "$GOOGLE_API_KEY" ]; then
         --dry-run=client -o yaml | kubectl apply -f -
     echo "  Secret ray-gemini-api-key created/updated"
 else
-    echo "  GOOGLE_API_KEY not set: ray-gemini-api-key not created (Gemini ingestion will stop with a clear error)"
+    echo "  GOOGLE_API_KEY not set: ray-gemini-api-key not created. Run scripts/setup_provider_keys_azure.sh to add the provider keys"
 fi
 
 # Settings for the Ray ingestion sinks (Qdrant, Neo4j, OpenSearch). The OpenSearch endpoint is not secret and goes in a
