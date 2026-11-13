@@ -45,11 +45,11 @@ resource "azurerm_postgresql_flexible_server_database" "ragdb" {
 }
 
 # Firewall rule — allow Azure services (AKS pods communicate via Azure backbone)
-# SECURITY: In production, remove this rule and use VNet integration instead
+# SECURITY: Set allow_public_data_services = false and use VNet integration instead
 # by setting delegated_subnet_id + private_dns_zone_id on the server,
 # and setting public_network_access_enabled = false.
 resource "azurerm_postgresql_flexible_server_firewall_rule" "allow_azure" {
-  count     = var.environment == "prod" ? 0 : 1 # Disabled in production
+  count     = var.allow_public_data_services ? 1 : 0 # Off only when private networking replaces it
   name      = "allow-azure-services"
   server_id = azurerm_postgresql_flexible_server.main.id
   # 0.0.0.0 to 0.0.0.0 = allow Azure internal services
