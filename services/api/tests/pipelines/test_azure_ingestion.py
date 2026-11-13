@@ -303,3 +303,9 @@ def test_the_ingest_script_recognises_this_rays_lower_case_final_status() -> Non
     """``ray job status`` prints ``Job '<id>' succeeded`` when it is done; matching only SUCCEEDED waited an hour."""
     text = (REPO / "scripts" / "ingest_azure.sh").read_text()
     assert 'grep -o -i -E "succeeded|failed|stopped"' in text and "tr '[:lower:]' '[:upper:]'" in text
+
+
+def test_the_ingest_script_passes_its_count_snippet_on_stdin() -> None:
+    """``kubectl exec`` drops stdin without ``-i``, so the heredoc ran nothing and the count never printed."""
+    text = (REPO / "scripts" / "ingest_azure.sh").read_text()
+    assert 'kubectl exec -i "$head" -- python - "$tenant" <<' in text

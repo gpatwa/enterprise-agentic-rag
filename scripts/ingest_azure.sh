@@ -105,7 +105,7 @@ echo "---- job log (tail) ----"
 kubectl exec "$head" -- ray job logs --address http://127.0.0.1:8265 "$run_id" 2>/dev/null | tail -25 || true
 echo "---- result: ${status:-TIMED_OUT} ----"
 if [ "$status" = "SUCCEEDED" ]; then
-  kubectl exec "$head" -- python - "$tenant" <<'PY' || true
+  kubectl exec -i "$head" -- python - "$tenant" <<'PY' || true
 import os, sys
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
