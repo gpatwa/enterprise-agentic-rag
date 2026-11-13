@@ -44,3 +44,23 @@ def test_the_aws_prod_job_still_requires_a_tag() -> None:
     workflow = yaml.safe_load((REPO / ".github" / "workflows" / "deploy-prod.yml").read_text())
     names = [s.get("name") for s in workflow["jobs"]["deploy-aws"]["steps"]]
     assert names.index("Require an image tag") < names.index("Retag for production")
+
+
+# ----- the bootstrap needs no typing and does not rotate secrets -------------------------------------------------------
+
+
+def test_azure_bootstrap_never_prompts_and_never_regenerates_the_jwt_key() -> None:
+    text = (REPO / "scripts" / "bootstrap_cluster_azure.sh").read_text()
+    code = re.sub(r"(?m)^\s*#.*$", "", text)
+    assert not re.search(r"\bread\s+-", code), "the bootstrap must not wait for typed input"
+    assert "openssl rand -hex 32" not in code, "a fresh JWT key per run invalidates every issued token"
+    for name, tfvar, vault in (
+        ("DB_PASSWORD", "db_password", "db-password"),
+        ("JWT_SECRET_KEY", "jwt_secret_key", "jwt-secret-key"),
+        ("NEO4J_PASSWORD", "neo4j_password", "neo4j-password"),
+    ):
+        assert f"resolve_secret {name} {tfvar} {vault}" in code
+    # Every Key Vault name the script reads is one Terraform writes.
+    keyvault = (TF / "keyvault.tf").read_text()
+    for vault in ("db-password", "jwt-secret-key", "neo4j-password", "gemini-api-key", "tavily-api-key"):
+        assert f'name         = "{vault}"' in keyvault

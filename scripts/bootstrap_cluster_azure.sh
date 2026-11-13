@@ -59,13 +59,6 @@ if [ -n "$KEY_VAULT_URL" ]; then
     echo "  Fetched API keys from Key Vault: ${KV_NAME}"
 fi
 
-# Read DB password from tfvars (or prompt)
-DB_PASSWORD="${DB_PASSWORD:-}"
-if [ -z "$DB_PASSWORD" ]; then
-    read -sp "Enter PostgreSQL password: " DB_PASSWORD
-    echo ""
-fi
-
 read_tfvar() {
     local key="$1"
     awk -F= -v key="$key" '
@@ -80,10 +73,32 @@ read_tfvar() {
     ' "$PROJECT_DIR/infra/terraform/azure/terraform.tfvars" 2>/dev/null || true
 }
 
-NEO4J_PASSWORD="${NEO4J_PASSWORD:-}"
-if [ -z "$NEO4J_PASSWORD" ]; then
-    NEO4J_PASSWORD="$(read_tfvar neo4j_password)"
+# The secrets Terraform manages are read, never typed in and never regenerated: environment, then terraform.tfvars, then
+# the Key Vault copy Terraform wrote. A fresh random value here would silently diverge from Terraform (and, for the JWT
+# key, invalidate every issued token on each run).
+kv_secret() {
+    [ -n "${KV_NAME:-}" ] || return 0
+    az keyvault secret show --vault-name "$KV_NAME" --name "$1" --query value -o tsv 2>/dev/null || true
+}
+resolve_secret() {  # resolve_secret <ENV_NAME> <tfvar name> <key vault secret name>
+    local value="${!1:-}"
+    [ -n "$value" ] || value="$(read_tfvar "$2")"
+    [ -n "$value" ] || value="$(kv_secret "$3")"
+    printf %s "$value"
+}
+
+DB_PASSWORD="$(resolve_secret DB_PASSWORD db_password db-password)"
+if [ -z "$DB_PASSWORD" ]; then
+    echo "ERROR: no PostgreSQL password found in DB_PASSWORD, terraform.tfvars or Key Vault (db-password)." >&2
+    exit 1
 fi
+JWT_SECRET_KEY="$(resolve_secret JWT_SECRET_KEY jwt_secret_key jwt-secret-key)"
+if [ -z "$JWT_SECRET_KEY" ]; then
+    echo "ERROR: no JWT secret found in JWT_SECRET_KEY, terraform.tfvars or Key Vault (jwt-secret-key)." >&2
+    exit 1
+fi
+
+NEO4J_PASSWORD="$(resolve_secret NEO4J_PASSWORD neo4j_password neo4j-password)"
 if [ -z "$NEO4J_PASSWORD" ]; then
     NEO4J_PASSWORD="$(kubectl get secret app-env-secret -o jsonpath='{.data.NEO4J_PASSWORD}' 2>/dev/null | base64 -d 2>/dev/null || true)"
 fi
@@ -97,7 +112,7 @@ REDIS_URL="rediss://:${REDIS_KEY}@${REDIS_HOST}:${REDIS_PORT}/0"
 SECRET_ARGS=(
     --from-literal=DATABASE_URL="$DATABASE_URL"
     --from-literal=REDIS_URL="$REDIS_URL"
-    --from-literal=JWT_SECRET_KEY="$(openssl rand -hex 32)"
+    --from-literal=JWT_SECRET_KEY="$JWT_SECRET_KEY"
     --from-literal=NEO4J_PASSWORD="$NEO4J_PASSWORD"
     --from-literal=AZURE_STORAGE_ACCOUNT_NAME="$STORAGE_ACCOUNT"
     --from-literal=CLOUD_PROVIDER="azure"
