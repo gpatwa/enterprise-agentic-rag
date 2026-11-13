@@ -78,10 +78,10 @@ searchWorker:
 
 migrations:
   enabled: false
+  # alembic_runner.py runs `alembic upgrade head`, or stamps head when the API already created the schema.
   command:
-    - alembic
-    - upgrade
-    - head
+    - python
+    - alembic_runner.py
   backoffLimit: 1
   activeDeadlineSeconds: 180
   ttlSecondsAfterFinished: 300
