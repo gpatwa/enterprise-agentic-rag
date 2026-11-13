@@ -26,11 +26,12 @@ RUN pip install --no-cache-dir -r requirements-ingestion.txt
 FROM python:3.11-slim-bookworm
 
 # Runtime-only system libraries (libmagic for file-type detection,
-# poppler/tesseract for PDF OCR, GL/glib for image processing)
+# poppler/tesseract for PDF OCR, GL/glib for image processing, wget for the KubeRay readiness probe)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
     poppler-utils tesseract-ocr \
     libgl1 libglib2.0-0 \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

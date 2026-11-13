@@ -155,6 +155,12 @@ async def lifespan(app: FastAPI):
 
     # Abstracted DB clients (VectorDB + GraphDB)
     await vectordb_client.connect()
+    try:
+        from app.vector_collections import ensure_collections
+
+        await ensure_collections(vectordb_client, settings)
+    except Exception as e:
+        logger.warning(f"Could not ensure vector collections (continuing): {e}")
     await graphdb_client.connect()
 
     # Re-ranker client

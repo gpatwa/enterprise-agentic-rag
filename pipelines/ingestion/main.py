@@ -7,12 +7,14 @@ import ray
 
 from pipelines.ingestion.chunking.splitter import split_multimodal, split_text
 from pipelines.ingestion.embedding.compute import MultimodalBatchEmbedder, select_text_embedder
-from pipelines.ingestion.graph.extractor import GraphExtractor
+from pipelines.ingestion.graph.extractor import select_graph_extractor
 from pipelines.ingestion.identity import file_identity
 from pipelines.ingestion.indexing.neo4j import Neo4jIndexer
 from pipelines.ingestion.indexing.ray_sink import write_rows
 from pipelines.ingestion.indexing.sinks import build_vector_sinks, finalize_sinks
 from pipelines.ingestion.loaders.pdf import parse_pdf_bytes
+from pipelines.ingestion.loaders.source import read_source
+from pipelines.ingestion.options import embed_num_gpus, graph_num_gpus, int_env
 
 # Initialize Ray (Connect to the existing cluster)
 ray.init(address="auto")
@@ -82,11 +84,8 @@ def main(bucket_name: str, prefix: str):
     """
     Main Orchestration Flow.
     """
-    # 1. Read from S3 using Ray Data (Lazy Loading)
-    ds = ray.data.read_binary_files(
-        paths=f"s3://{bucket_name}/{prefix}",
-        include_paths=True
-    )
+    # 1. Read the source documents (S3 by default, Azure Blob with INGEST_SOURCE=azure_blob)
+    ds = read_source(ray.data, os.environ, bucket_name, prefix)
 
     # 2. Parse & Chunk (Map Phase)
     chunked_ds = ds.map_batches(
@@ -97,22 +96,25 @@ def main(bucket_name: str, prefix: str):
 
     # 3. FORK: Branch A - Vector Embeddings
     # Use MultimodalBatchEmbedder when multimodal is enabled (Gemini unified space)
-    # Text embedder is chosen by INGEST_EMBED_PROVIDER: ray (BGE-M3, 1024 dims) or gemini (768, matches the index).
+    # Text embedder is chosen by INGEST_EMBED_PROVIDER: ray (BGE-M3, 1024 dims), gemini or azure_openai (768, matching the index).
     embedder_cls = MultimodalBatchEmbedder if MULTIMODAL_ENABLED else select_text_embedder(os.environ)
     vector_ds = chunked_ds.map_batches(
         embedder_cls,
-        concurrency=5,
-        num_gpus=0.2,
+        concurrency=int_env(os.environ, "INGEST_EMBED_CONCURRENCY", 5),
+        num_gpus=embed_num_gpus(os.environ),
         batch_size=100
     )
 
-    # 4. FORK: Branch B - Graph Extraction (LLM Intensive)
-    graph_ds = chunked_ds.map_batches(
-        GraphExtractor,
-        concurrency=10,
-        num_gpus=0.5,
-        batch_size=5
-    )
+    # 4. FORK: Branch B - Graph Extraction (LLM Intensive); INGEST_GRAPH_PROVIDER=none skips the graph entirely
+    graph_cls = select_graph_extractor(os.environ)
+    graph_ds = None
+    if graph_cls is not None:
+        graph_ds = chunked_ds.map_batches(
+            graph_cls,
+            concurrency=int_env(os.environ, "INGEST_GRAPH_CONCURRENCY", 10),
+            num_gpus=graph_num_gpus(os.environ),
+            batch_size=5
+        )
 
     # 5. Indexing (Write to DBs)
     # When multimodal, use the multimodal Qdrant collection
@@ -126,7 +128,8 @@ def main(bucket_name: str, prefix: str):
         vector_ds = vector_ds.materialize()
     for sink in vector_sinks:
         write_rows(vector_ds, sink)
-    write_rows(graph_ds, Neo4jIndexer())
+    if graph_ds is not None:
+        write_rows(graph_ds, Neo4jIndexer())
 
     # Only reached when every write above succeeded; an error here fails the job but loses nothing.
     for report in finalize_sinks(vector_sinks):

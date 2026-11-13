@@ -222,6 +222,22 @@ helm upgrade --install neo4j neo4j/neo4j \
     --wait --timeout 180s
 
 # -----------------------------------------------------------
+# 5b. Ingestion: image (built in ACR) and the Ray cluster that runs it
+# -----------------------------------------------------------
+echo ""
+echo "Step 5b: Deploying the ingestion Ray cluster..."
+INGEST_ACR_URI="${ACR_NAME}.azurecr.io"
+INGEST_TAG=$(git rev-parse --short HEAD 2>/dev/null || echo "v0.1.0")
+if ! az acr repository show --name "$ACR_NAME" --image "rag-ingestion:${INGEST_TAG}" >/dev/null 2>&1; then
+    echo "  Image rag-ingestion:${INGEST_TAG} not in ${ACR_NAME}; building it with az acr build (several minutes)..."
+    az acr build --registry "$ACR_NAME" --image "rag-ingestion:${INGEST_TAG}" --file Dockerfile.ingestion .
+else
+    echo "  Image rag-ingestion:${INGEST_TAG} already in ${ACR_NAME}"
+fi
+# Workers start at 0 replicas; scripts/ingest_azure.sh scales them up for a run and back down.
+sed "s#__INGESTION_IMAGE__#${INGEST_ACR_URI}/rag-ingestion:${INGEST_TAG}#g" deploy/ray/ray-cluster-azure.yaml | kubectl apply -f -
+
+# -----------------------------------------------------------
 # 6. Deploy NGINX Ingress Controller
 # -----------------------------------------------------------
 echo ""

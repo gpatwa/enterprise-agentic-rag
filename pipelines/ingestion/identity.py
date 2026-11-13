@@ -1,7 +1,7 @@
 """Which file a chunk came from: the full path is its identity, the base name is only for display.
 
 Ray's ``read_binary_files(include_paths=True)`` yields a ``path`` column holding the object's full location
-(``bucket/prefix/dir/file.pdf``; a leading ``s3://`` is tolerated) and no ``filename`` column. Two files in
+(``bucket/prefix/dir/file.pdf``; a leading ``s3://`` or ``az://`` is tolerated) and no ``filename`` column. Two files in
 different folders can share a base name, and the sinks derive chunk IDs and the stale-chunk sweep from the file's
 identity, so keying on the base name would let one file overwrite or sweep away another's chunks.
 """
@@ -11,7 +11,7 @@ from __future__ import annotations
 import posixpath
 from typing import Tuple
 
-_SCHEMES = ("s3://", "s3a://", "s3n://")
+_SCHEMES = ("s3://", "s3a://", "s3n://", "az://")
 
 
 def file_identity(path: str) -> Tuple[str, str]:
