@@ -24,9 +24,11 @@ service:
   port: 8080
 
 resources:
+  # Requests are what the scheduler reserves, and the cluster is billed by nodes. Measured use of one API pod is ~3m CPU and
+  # ~225Mi, so the request is small; the limit below still lets a burst use a full CPU and 1Gi.
   requests:
-    cpu: 500m
-    memory: 512Mi
+    cpu: 100m
+    memory: 256Mi
   limits:
     cpu: "1"
     memory: 1Gi

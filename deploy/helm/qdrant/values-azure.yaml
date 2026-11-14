@@ -3,3 +3,14 @@
 # AKS uses Azure Disk CSI storage classes. The base values are AWS-oriented.
 persistence:
   storageClassName: managed-csi
+
+# Right-sized for a small deployment: measured use is ~2m CPU and ~70Mi, and the cluster is billed by nodes, so the
+# request is small. The limits stay generous so an ingestion burst can use what it needs (Qdrant's memory grows with the
+# number of vectors: raise the request as the collection grows).
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 4Gi

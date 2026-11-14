@@ -16,7 +16,9 @@
 # What it creates with APPLY=1 (only if missing):
 #   - Entra app "<repo>-deploy" with a federated credential for repo:<owner>@<id>/<repo>@<id>:environment:production
 #     (no client secret exists; GitHub exchanges its OIDC token)
-#   - AcrPush on the registry and "Azure Kubernetes Service Cluster User Role" on the cluster, nothing broader
+#   - AcrPush on the registry and "Azure Kubernetes Service Cluster User Role" on the cluster, plus (once the Terraform has
+#     created it) the narrow "<cluster>-scheduler" role that lets the off-hours schedule start and stop the cluster and the
+#     database; nothing broader
 #
 # What it does not touch: the `production` environment itself (its approval rules stay as they are; it must already exist).
 #
@@ -124,6 +126,15 @@ assign_role() {  # assign_role <role> <scope>
 }
 assign_role "AcrPush" "$acr_id"
 assign_role "Azure Kubernetes Service Cluster User Role" "$aks_id"
+
+# The off-hours schedule (.github/workflows/azure-schedule.yml) stops and starts the cluster and the database with this
+# identity. The role is defined in infra/terraform/azure/scheduler.tf and can only read, start and stop those two resources.
+scheduler_role="${aks_name}-scheduler"
+if [ -n "$(az role definition list --name "$scheduler_role" --query '[0].name' -o tsv 2>/dev/null)" ]; then
+  assign_role "$scheduler_role" "$(az group show --name "$resource_group" --query id -o tsv)"
+else
+  echo "role '${scheduler_role}' does not exist yet: apply infra/terraform/azure, then re-run this script to enable the off-hours schedule"
+fi
 
 # --- the secrets: values go in on stdin, never on a command line -------------------------------------------------------
 set_secret() {  # set_secret <NAME> <value>
