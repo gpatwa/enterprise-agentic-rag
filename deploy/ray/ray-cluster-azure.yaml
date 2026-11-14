@@ -85,13 +85,14 @@ spec:
                 key: OPENSEARCH_API_KEY
                 optional: true
           resources:
-            # Sized for B2s_v2 nodes (2 vCPU / 8 GiB shared with the platform pods)
+            # The head idles at ~50m CPU and ~2Gi (dashboard + driver), so it reserves a quarter CPU and 2.5Gi; the limits
+            # leave room for the driver of a large run. Sized for B2s_v2 nodes shared with the platform pods.
             limits:
               cpu: "1"
               memory: "3Gi"
             requests:
-              cpu: "1"
-              memory: "3Gi"
+              cpu: 250m
+              memory: 2560Mi
           ports:
           - containerPort: 6379 # Redis port (Ray uses Redis internally)
           - containerPort: 8265 # Dashboard port

@@ -1,0 +1,95 @@
+# .github/workflows/azure-schedule.yml
+# Off-hours stop/start of the Azure stack, to save about $60 a month on the nodes and $5 on Postgres compute (the cluster is
+# billed by node-hour; a stopped AKS cluster and a stopped Postgres server bill only their disks).
+#
+#   start  Mon-Fri 14:00 UTC  (6am PST / 7am PDT)
+#   stop   Tue-Sat 02:00 UTC  (6pm PST / 7pm PDT, the evening of Mon-Fri)   -> down nights and weekends
+#
+# For an internal or few-customer deployment. The API is unavailable while stopped, and takes about 5 minutes to come back
+# after a start. Redis cannot be stopped and keeps billing. Manual runs: Actions > Azure schedule > Run workflow (start, stop
+# or status). To keep the stack up for a day (a demo), set the repository variable SCHEDULE_PAUSED=true; remove it to resume.
+#
+# The identity is the production deploy identity (scripts/set_github_secrets_azure.sh) holding the narrow role from
+# infra/terraform/azure/scheduler.tf: read, start and stop the cluster and the database, nothing else.
+name: Azure schedule
+
+on:
+  schedule:
+    - cron: "0 14 * * 1-5"
+    - cron: "0 2 * * 2-6"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "What to do"
+        required: true
+        type: choice
+        options:
+          - status
+          - start
+          - stop
+        default: status
+
+concurrency:
+  group: azure-schedule
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  schedule:
+    name: ${{ github.event_name == 'schedule' && 'Scheduled' || 'Manual' }} stop/start
+    runs-on: ubuntu-24.04
+    if: github.event_name != 'schedule' || vars.SCHEDULE_PAUSED != 'true'
+    environment: production
+    steps:
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Start, stop or report
+        env:
+          RG: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          AKS: ${{ secrets.AKS_CLUSTER_NAME }}
+          EVENT: ${{ github.event_name }}
+          CRON: ${{ github.event.schedule }}
+          REQUESTED: ${{ inputs.action }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "schedule" ]; then
+            case "$CRON" in
+              "0 14 * * 1-5") action=start ;;
+              "0 2 * * 2-6")  action=stop ;;
+              *) echo "unknown schedule: $CRON" >&2; exit 1 ;;
+            esac
+          else
+            action="$REQUESTED"
+          fi
+
+          pg="$(az postgres flexible-server list --resource-group "$RG" --query '[0].name' -o tsv)"
+          aks_state() { az aks show --resource-group "$RG" --name "$AKS" --query powerState.code -o tsv; }
+          pg_state()  { az postgres flexible-server show --resource-group "$RG" --name "$pg" --query state -o tsv; }
+          echo "Before: AKS $(aks_state), Postgres $(pg_state); action: $action"
+
+          case "$action" in
+            start)
+              # database first: the API needs it the moment the cluster is up
+              [ "$(pg_state)" = "Ready" ]    || az postgres flexible-server start --resource-group "$RG" --name "$pg"
+              [ "$(aks_state)" = "Running" ] || az aks start --resource-group "$RG" --name "$AKS"
+              ;;
+            stop)
+              # cluster first: nothing should be writing when the database goes down
+              [ "$(aks_state)" = "Stopped" ] || az aks stop --resource-group "$RG" --name "$AKS"
+              [ "$(pg_state)" = "Stopped" ]  || az postgres flexible-server stop --resource-group "$RG" --name "$pg"
+              ;;
+            status) ;;
+          esac
+
+          summary="After: AKS $(aks_state), Postgres $(pg_state)"
+          echo "$summary"
+          echo "### Azure schedule: $action" >> "$GITHUB_STEP_SUMMARY"
+          echo "$summary" >> "$GITHUB_STEP_SUMMARY"

@@ -35,6 +35,8 @@ case "$name $*" in
   "az ad app create"*) echo "client-0000" ;;
   "az ad app federated-credential list"*) exit 0 ;;
   "az role assignment list"*) exit 0 ;;
+  "az role definition list"*) [ -n "${FAKE_NO_SCHEDULER_ROLE:-}" ] || echo "rag-platform-aks-scheduler" ;;
+  "az group show"*) echo "/subscriptions/s/resourceGroups/rag-platform-rg" ;;
   "terraform"*)
     case "$*" in
       *"output -raw acr_name"*) echo ragplatformacr ;;
@@ -91,12 +93,12 @@ def test_every_secret_is_scoped_to_the_production_environment_and_passed_on_stdi
         assert "--body" not in line and "-b " not in line, f"a value must not be on the command line: {line}"
 
 
-def test_the_identity_gets_an_environment_credential_and_two_narrow_roles(tmp_path: Path) -> None:
+def test_the_identity_gets_an_environment_credential_and_three_narrow_roles(tmp_path: Path) -> None:
     _, log = _run(tmp_path, apply=True)
     assert "repo:gpatwa@72292/agentic-resolution-intelligence@1153827673:environment:production" in log
     assert "repo:gpatwa/agentic-resolution-intelligence:environment:production" not in log
     roles = re.findall(r"^az role assignment create .*--role (.+?) --scope", log, flags=re.M)
-    assert sorted(roles) == sorted(["AcrPush", "Azure Kubernetes Service Cluster User Role"])
+    assert sorted(roles) == sorted(["AcrPush", "Azure Kubernetes Service Cluster User Role", "rag-platform-aks-scheduler"])
     assignments = " ".join(re.findall(r"^az role assignment .*$", log, flags=re.M))
     assert not re.search(r"--role (Owner|Contributor)\b", assignments)
 
@@ -119,3 +121,16 @@ def test_it_refuses_when_terraform_has_no_outputs(tmp_path: Path) -> None:
     result = subprocess.run(["bash", str(SCRIPT)], env=env, capture_output=True, text=True, cwd=REPO, timeout=60)
     assert result.returncode != 0 and "acr_name" in result.stderr
     assert "secret set" not in log.read_text()
+
+
+def test_the_scheduler_role_is_assigned_only_once_terraform_has_created_it(tmp_path: Path) -> None:
+    import os as _os
+
+    _os.environ["FAKE_NO_SCHEDULER_ROLE"] = "1"
+    try:
+        result, log = _run(tmp_path, apply=True)
+    finally:
+        del _os.environ["FAKE_NO_SCHEDULER_ROLE"]
+    assert result.returncode == 0, result.stderr
+    assert "rag-platform-aks-scheduler' does not exist yet" in result.stdout
+    assert "rag-platform-aks-scheduler --scope" not in log

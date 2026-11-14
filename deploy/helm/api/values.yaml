@@ -54,8 +54,8 @@ supportWorker:
     SUPPORT_JOB_WORKER_ENABLED: "true"
   resources:
     requests:
-      cpu: 250m
-      memory: 256Mi
+      cpu: 100m
+      memory: 192Mi
     limits:
       cpu: 500m
       memory: 512Mi

@@ -1,5 +1,8 @@
 # deploy/helm/neo4j/values-azure.yaml
 
+# Neo4j is not right-sized here: the chart refuses anything below 0.5 CPU and 2Gi (_helpers.tpl), which is what the base
+# values already request. If the graph is not used, `kubectl scale statefulset neo4j --replicas=0` frees that capacity.
+
 # AKS uses Azure Disk CSI storage classes. The base values are AWS-oriented.
 volumes:
   data:
