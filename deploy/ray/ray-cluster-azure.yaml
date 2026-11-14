@@ -10,6 +10,11 @@ metadata:
   name: rag-ray-cluster
   namespace: default
 spec:
+  # Suspended while idle: no head pod runs between ingestions. The head reserves 2.5Gi, which kept a second app node above
+  # the autoscaler's 50% scale-down threshold (~$60 a month). scripts/ingest_azure.sh resumes it for a run and suspends it
+  # again afterwards, even when the run fails.
+  suspend: true
+
   # Ray Version: Must match your Python SDK version
   rayVersion: '2.60.0'
 

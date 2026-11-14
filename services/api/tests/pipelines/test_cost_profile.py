@@ -63,14 +63,37 @@ def _platform_requests() -> dict[str, tuple[float, float]]:
     }
 
 
+def _steady_state() -> dict[str, tuple[float, float]]:
+    """What runs all the time: everything except the Ray head, which is suspended between ingestions."""
+    return {name: req for name, req in _platform_requests().items() if name != "ray head"}
+
+
 def test_the_platform_fits_on_two_small_nodes_with_headroom() -> None:
-    pods = _platform_requests()
+    pods = _steady_state()
     cpu = sum(c for c, _ in pods.values()) + KUBE_SYSTEM_FIXED[0] + 2 * KUBE_SYSTEM_PER_NODE[0]
     mem = sum(m for _, m in pods.values()) + KUBE_SYSTEM_FIXED[1] + 2 * KUBE_SYSTEM_PER_NODE[1]
     cap_cpu = sum(c for c, _ in NODES.values())
     cap_mem = sum(m for _, m in NODES.values())
-    assert cpu <= 0.85 * cap_cpu, f"requests {cpu:.2f} CPU of {cap_cpu:.2f}: no headroom for a rolling update"
-    assert mem <= 0.85 * cap_mem, f"requests {mem:.0f} MiB of {cap_mem}: no headroom for a rolling update"
+    assert cpu <= 0.7 * cap_cpu, f"requests {cpu:.2f} CPU of {cap_cpu:.2f}: no headroom for a rolling update"
+    assert mem <= 0.6 * cap_mem, f"requests {mem:.0f} MiB of {cap_mem}: not below the autoscaler's 50% scale-down line"
+
+
+def test_the_ray_cluster_is_suspended_while_idle_and_the_script_resumes_and_suspends_it() -> None:
+    """Found live: the idle head's 2.5Gi kept the second app node at 53% memory, above the 50% scale-down threshold."""
+    cluster = yaml.safe_load((REPO / "deploy" / "ray" / "ray-cluster-azure.yaml").read_text())["spec"]
+    assert cluster["suspend"] is True
+    script = (REPO / "scripts" / "ingest_azure.sh").read_text()
+    assert "set_suspend false" in script and "set_suspend true" in script
+    assert script.index("trap cleanup EXIT") < script.index("set_suspend false"), "the trap must exist before the resume"
+
+
+def test_a_run_adds_the_head_and_a_worker_and_still_fits_on_three_nodes() -> None:
+    steady = _steady_state()
+    head = _platform_requests()["ray head"]
+    worker = (1.0, 3072)  # the worker's own request (deploy/ray/ray-cluster-azure.yaml)
+    cpu = sum(c for c, _ in steady.values()) + head[0] + worker[0] + KUBE_SYSTEM_FIXED[0] + 3 * KUBE_SYSTEM_PER_NODE[0]
+    mem = sum(m for _, m in steady.values()) + head[1] + worker[1] + KUBE_SYSTEM_FIXED[1] + 3 * KUBE_SYSTEM_PER_NODE[1]
+    assert cpu <= 3 * 1.9 * 0.85 and mem <= (3080 + 2 * 7180) * 0.85
 
 
 def test_the_requests_that_drove_the_third_node_stay_small() -> None:
@@ -93,6 +116,7 @@ def test_an_ingestion_run_adds_one_worker_node_not_a_permanent_one() -> None:
     cluster = yaml.safe_load((REPO / "deploy" / "ray" / "ray-cluster-azure.yaml").read_text())["spec"]
     assert cluster["workerGroupSpecs"][0]["replicas"] == 0
     assert "scale_workers 0" in (REPO / "scripts" / "ingest_azure.sh").read_text()
+    assert yaml.safe_load((REPO / "deploy" / "ray" / "ray-cluster-azure.yaml").read_text())["spec"]["workerGroupSpecs"][0]["template"]["spec"]["containers"][0]["resources"]["requests"]["cpu"] == "1"
 
 
 def test_the_neo4j_override_is_documented_as_the_chart_floor_not_a_missed_saving() -> None:
