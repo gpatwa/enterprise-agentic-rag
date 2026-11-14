@@ -157,6 +157,28 @@ def test_a_bad_chunk_yields_an_empty_graph_not_a_failed_batch() -> None:
     assert out["graph_nodes"] == [[1], []] and out["graph_edges"] == [[], []]
 
 
+def test_a_batch_of_chunks_is_extracted_in_parallel_and_keeps_order() -> None:
+    import threading
+    import time
+
+    from pipelines.ingestion.graph.extractor import AzureOpenAIGraphExtractor
+
+    barrier = threading.Barrier(4, timeout=5)  # only passes if 4 calls are in flight at once
+
+    class _Completions:
+        def create(self, **kwargs):
+            text = kwargs["messages"][0]["content"].rsplit("Input Text:", 1)[1].strip()
+            barrier.wait()
+            time.sleep(0.05 * (4 - int(text)))  # finish out of order
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content='{"nodes": [%s]}' % text))])
+
+    extractor = AzureOpenAIGraphExtractor()
+    extractor.threads = 4
+    extractor.client = SimpleNamespace(chat=SimpleNamespace(completions=_Completions()))
+    out = extractor({"text": ["0", "1", "2", "3"]})
+    assert out["graph_nodes"] == [[0], [1], [2], [3]]
+
+
 def test_the_graph_extractor_needs_an_endpoint_not_a_key(monkeypatch) -> None:
     from pipelines.ingestion.graph.extractor import AzureOpenAIGraphExtractor
 
