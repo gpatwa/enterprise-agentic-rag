@@ -86,6 +86,7 @@ class AzureOpenAIGraphExtractor:
 
         self.deployment = os.getenv("AZURE_OPENAI_LLM_DEPLOYMENT", "gpt-6-luna")
         self.max_completion_tokens = int(os.getenv("INGEST_GRAPH_MAX_COMPLETION_TOKENS", "4096"))
+        self.threads = int(os.getenv("INGEST_GRAPH_THREADS", "5"))
         self.client = None
 
     def _ensure_client(self):
@@ -106,36 +107,48 @@ class AzureOpenAIGraphExtractor:
                 DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"
             ),
             timeout=120.0,
+            max_retries=int(os.getenv("INGEST_GRAPH_MAX_RETRIES", "6")),  # rate limits (429) back off and retry
         )
+
+    def _extract(self, text):
+        prompt = dedent(
+            f"""
+            {GraphSchema.get_system_prompt()}
+
+            Input Text:
+            {text}
+            """
+        ).strip()
+        response = self.client.chat.completions.create(
+            model=self.deployment,
+            messages=[{"role": "user", "content": prompt}],
+            max_completion_tokens=self.max_completion_tokens,
+            response_format={"type": "json_object"},
+        )
+        graph_data = json.loads(response.choices[0].message.content)
+        return graph_data.get("nodes", []), graph_data.get("edges", [])
+
+    def _safe_extract(self, text):
+        try:
+            return self._extract(text)
+        except Exception as e:  # one bad chunk must not fail the batch
+            print(f"Graph extraction failed for chunk: {e}")
+            return [], []
 
     def __call__(self, batch: Dict[str, Any]) -> Dict[str, Any]:
         self._ensure_client()
-        nodes_list, edges_list = [], []
-        for text in batch["text"]:
-            try:
-                prompt = dedent(
-                    f"""
-                    {GraphSchema.get_system_prompt()}
+        texts = list(batch["text"])
+        # The calls are network-bound and independent, so a batch's chunks run in parallel threads (order is kept).
+        workers = max(1, min(self.threads, len(texts)))
+        if workers == 1:
+            results = [self._safe_extract(t) for t in texts]
+        else:
+            from concurrent.futures import ThreadPoolExecutor
 
-                    Input Text:
-                    {text}
-                    """
-                ).strip()
-                response = self.client.chat.completions.create(
-                    model=self.deployment,
-                    messages=[{"role": "user", "content": prompt}],
-                    max_completion_tokens=self.max_completion_tokens,
-                    response_format={"type": "json_object"},
-                )
-                graph_data = json.loads(response.choices[0].message.content)
-                nodes_list.append(graph_data.get("nodes", []))
-                edges_list.append(graph_data.get("edges", []))
-            except Exception as e:  # one bad chunk must not fail the batch
-                print(f"Graph extraction failed for chunk: {e}")
-                nodes_list.append([])
-                edges_list.append([])
-        batch["graph_nodes"] = nodes_list
-        batch["graph_edges"] = edges_list
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                results = list(pool.map(self._safe_extract, texts))
+        batch["graph_nodes"] = [r[0] for r in results]
+        batch["graph_edges"] = [r[1] for r in results]
         return batch
 
 
