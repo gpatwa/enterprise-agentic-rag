@@ -309,3 +309,11 @@ def test_the_ingest_script_passes_its_count_snippet_on_stdin() -> None:
     """``kubectl exec`` drops stdin without ``-i``, so the heredoc ran nothing and the count never printed."""
     text = (REPO / "scripts" / "ingest_azure.sh").read_text()
     assert 'kubectl exec -i "$head" -- python - "$tenant" <<' in text
+
+
+def test_the_ingest_script_waits_for_the_head_pod_to_appear_after_resuming_the_cluster() -> None:
+    """A suspended RayCluster has no pods; looking the head up straight after resuming found nothing."""
+    text = (REPO / "scripts" / "ingest_azure.sh").read_text()
+    resume = text.index("set_suspend false")
+    assert text.index("for _ in $(seq 1 90); do", resume) < text.index('kubectl wait --for=condition=Ready "pod/$head"')
+    assert "the Ray head pod did not appear" in text

@@ -2,10 +2,10 @@
 # scripts/ingest_azure.sh <file-or-directory> [tenant-id]
 # Ingest local documents into the Azure deployment, end to end, with no manual steps:
 #   1. upload them to the documents container (your az login; falls back to the storage key from your own session)
-#   2. scale the Ray ingestion workers up
+#   2. resume the (otherwise suspended) Ray cluster and scale its workers up
 #   3. submit the ingestion job (pipelines/ingestion/main.py) to the Ray head with the env from pipelines/jobs/ray_job.yaml
 #   4. wait for it, print the log tail and what landed in Qdrant and Neo4j
-#   5. scale the workers back to zero (always, even when the job fails)
+#   5. scale the workers to zero and suspend the cluster again (always, even when the job fails)
 #
 # The pods authenticate to Blob, Azure OpenAI and the databases with their own identity or in-cluster settings; nothing
 # here handles a provider key. Needs: az (logged in), kubectl pointed at the cluster, python3 with PyYAML.
@@ -13,7 +13,7 @@
 # Environment:
 #   TENANT_ID        tenant the chunks are written under (default: the second argument, else "default")
 #   INGEST_*         any such variable overrides the job file for this run (INGEST_GRAPH_PROVIDER=none: vectors only)
-#   KEEP_WORKERS=1   leave the workers running afterwards
+#   KEEP_RUNNING=1   leave the Ray head and workers running afterwards (KEEP_WORKERS=1 is accepted too)
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -32,14 +32,18 @@ run_id="ingest-$(date +%Y%m%d-%H%M%S)"
 name="$(basename "$source_path")"
 if [ -d "$source_path" ]; then prefix="uploads/${tenant}/${name}/"; else prefix="uploads/${tenant}/${name}"; fi
 
+set_suspend() {  # set_suspend true|false: a suspended RayCluster has no pods at all
+  kubectl patch raycluster "$cluster" --type merge -p "{\"spec\":{\"suspend\":$1}}" >/dev/null
+}
 scale_workers() {  # scale_workers <replicas>
   kubectl patch raycluster "$cluster" --type json \
     -p "[{\"op\":\"replace\",\"path\":\"/spec/workerGroupSpecs/0/replicas\",\"value\":$1}]" >/dev/null
 }
 cleanup() {
-  if [ "${KEEP_WORKERS:-0}" != "1" ]; then
-    echo "Scaling Ray workers to 0..."
+  if [ "${KEEP_RUNNING:-${KEEP_WORKERS:-0}}" != "1" ]; then
+    echo "Scaling Ray workers to 0 and suspending the cluster..."
     scale_workers 0 || true
+    set_suspend true || true
   fi
 }
 trap cleanup EXIT
@@ -64,9 +68,16 @@ if ! upload --auth-mode login 2>/dev/null; then
 fi
 
 # --- 2. workers --------------------------------------------------------------------------------------------------------
-echo "Scaling Ray workers to 1..."
+echo "Resuming the Ray cluster and scaling workers to 1..."
+set_suspend false
 scale_workers 1
-head="$(kubectl get pods -l ray.io/cluster="$cluster",ray.io/node-type=head -o jsonpath='{.items[0].metadata.name}')"
+head=""
+for _ in $(seq 1 90); do
+  head="$(kubectl get pods -l ray.io/cluster="$cluster",ray.io/node-type=head -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+  [ -n "$head" ] && break
+  sleep 5
+done
+[ -n "$head" ] || { echo "the Ray head pod did not appear" >&2; exit 1; }
 kubectl wait --for=condition=Ready "pod/$head" --timeout=900s
 for _ in $(seq 1 90); do
   ready="$(kubectl get pods -l ray.io/cluster="$cluster",ray.io/group=cpu-workers --no-headers 2>/dev/null | grep -c ' 1/1 ' || true)"
